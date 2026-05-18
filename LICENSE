@@ -1,0 +1,37 @@
+MIT License
+
+Copyright (c) 2026 SusPect147
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+ADDITIONAL VISIBLE UI ATTRIBUTION REQUIREMENT:
+Any public deployment, modification, or redistribution of this software 
+must display a visible and prominent attribution in the main user interface 
+of the website (for example, in the footer or in the "About/Credits" section). 
+
+To satisfy this requirement, the user must choose ONE of the following options:
+
+Option 1: Include a visible, clickable hyperlink pointing back to the original 
+project repository (https://github.com/SusPect147/Compass) with the text: 
+"Based on Compass by SusPect147" or "Powered by Compass".
+
+Option 2: Alternatively, if a hyperlink is not used, include a prominent and 
+clearly visible text mention of the author "hammer147", explicitly stating 
+that the website is built on or based on the original code developed by "hammer147" 
+(for example: "Based on original code by hammer147" or "Created on the basis of code by hammer147").
