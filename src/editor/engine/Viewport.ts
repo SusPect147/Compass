@@ -1,4 +1,9 @@
-// @ts-nocheck
+/**
+ * ViewportMixin — управление зумом, панорамированием и центрированием холста.
+ *
+ * Отвечает за: масштаб (`zoomLevel`), авто-подгонку под контейнер,
+ * центрирование карты при открытии, и определение мобильного устройства.
+ */
 export const ViewportMixin = {
 autoScaleViewport() {
         if (this.headless) return;

@@ -1,4 +1,10 @@
-// @ts-nocheck
+/**
+ * ValidatorMixin — проверка корректности расстановки тайлов.
+ *
+ * Определяет «зажатые» тайлы (squeezed tiles) — позиции, в которые
+ * бравлер физически не может войти из-за окружающих стен.
+ * Подсвечивает их красным при включённом режиме отображения ошибок.
+ */
 export const ValidatorMixin = {
     checkForErrors() {
         if (!this.showErrors) return;
@@ -100,11 +106,11 @@ export const ValidatorMixin = {
         this.showErrors = !this.showErrors;
 
         // Update UI
-        const showErrorsBtn = document.getElementById('errorsBtn');
+        const showErrorsBtn = document.getElementById('errorsBtn') as HTMLInputElement | null;
         if (showErrorsBtn) {
             showErrorsBtn.checked = this.showErrors;
-            showErrorsBtn.parentElement.classList.toggle('active', this.showErrors);
-            showErrorsBtn.parentElement.classList.toggle('active-red', this.showErrors);
+            showErrorsBtn.parentElement?.classList.toggle('active', this.showErrors);
+            showErrorsBtn.parentElement?.classList.toggle('active-red', this.showErrors);
         }
 
         // Clear error tiles if deactivated

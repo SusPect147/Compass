@@ -251,11 +251,11 @@ placeTile(x, y, tileId = null, saveState = true) {
                             if (this.tileGrid[targetLayer][ty + dy][tx + dx] !== 0) return;
                         }
                     }
-                    // Place the tile and mark occupied spaces
-                    this.tileGrid[targetLayer][ty][tx] = mid;
-                    this.tileGrid[targetLayer][ty][tx + 1] = -1;
-                    this.tileGrid[targetLayer][ty + 1][tx] = -1;
-                    this.tileGrid[targetLayer][ty + 1][tx + 1] = -1;
+                    // BUG-05 fix: correct sub-cell IDs so findTopmostTileAt resolves them properly
+                    this.tileGrid[targetLayer][ty][tx]         = mid;
+                    this.tileGrid[targetLayer][ty][tx + 1]     = -1;
+                    this.tileGrid[targetLayer][ty + 1][tx]     = -2;
+                    this.tileGrid[targetLayer][ty + 1][tx + 1] = -3;
                 } else {
                     this.tileGrid[targetLayer][ty][tx] = mid;
                 }
@@ -507,8 +507,9 @@ async setSize(size, changing = true) {
                 }
 
                 // вЂ”вЂ”вЂ” Showdown в†” other: adjust Objective tile + data sizes вЂ”вЂ”вЂ”
-                const isShowdown = size => size === this.mapSizes.showdown;
-                const isShowdownNow = isShowdown(newSize);
+                // BUG-03 fix: renamed inner fn to avoid shadowing the outer `size` parameter
+                const isShowdownSize = (s) => s === this.mapSizes.showdown;
+                const isShowdownNow = isShowdownSize(newSize);
 
                 if (!isShowdownNow) {
                     this.minZoom = 0.2;
@@ -609,9 +610,13 @@ async setSize(size, changing = true) {
                 this.autoScaleViewport();
                 await this.setGamemode(this.gamemode);
             } else {
-                // reset dropdown if cancelled
-                e.target.value = Object.entries(this.mapSizes)
-                    .find(([k, v]) => v.width === this.mapWidth && v.height === this.mapHeight)[0];
+                // BUG-04 fix: `e` is not a parameter of setSize() — restore dropdown value safely
+                const sizeSelect = document.getElementById('mapSize');
+                if (sizeSelect) {
+                    const currentSizeKey = Object.entries(this.mapSizes)
+                        .find(([, v]) => v.width === this.mapWidth && v.height === this.mapHeight)?.[0];
+                    if (currentSizeKey) sizeSelect.value = currentSizeKey;
+                }
             }
             if (typeof this.updateSelectOptionDots === 'function') this.updateSelectOptionDots();
     },

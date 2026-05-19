@@ -171,6 +171,14 @@ async saveMap() {
     },
 
 async createMapPNG() {
+        // === HD EXPORT: temporarily scale up tileSize/padding for crisp output ===
+        const EXPORT_SCALE = 4; // 4x → tiles render at 128px instead of 32px
+        const originalTileSize = this.tileSize;
+        const originalPadding = this.canvasPadding;
+
+        this.tileSize = originalTileSize * EXPORT_SCALE;
+        this.canvasPadding = originalPadding * EXPORT_SCALE;
+
         const tileSize = this.tileSize;
         const padding = this.canvasPadding;
 
@@ -178,6 +186,12 @@ async createMapPNG() {
         canvas.width = (this.mapWidth * tileSize) + (padding * 2);
         canvas.height = (this.mapHeight * tileSize) + (padding * 2);
         const ctx = canvas.getContext('2d');
+
+        // Enable high-quality image interpolation
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        try {
 
         // Draw background
         for (let y = 0; y < this.mapHeight; y++) {
@@ -387,6 +401,7 @@ async createMapPNG() {
                             const tile = getTileAt(layerKey, x, y);
                             const red = tile?.red ?? false;
 
+                            // drawTile reads this.tileSize internally → renders at 128px/tile
                             this.drawTile(ctx, tileId, x, y, red);
 
                         });
@@ -406,6 +421,7 @@ async createMapPNG() {
         }
 
         // Draw goal images if any
+        // offsetX/offsetY are absolute pixels tuned for 32px tiles → scale them proportionally
         if (this.goalImages?.length) {
             for (const goal of this.goalImages) {
                 const img =
@@ -415,8 +431,8 @@ async createMapPNG() {
 
                 ctx.drawImage(
                     img,
-                    goal.x * tileSize + padding + (goal.offsetX || 0),
-                    goal.y * tileSize + padding + (goal.offsetY || 0),
+                    goal.x * tileSize + padding + (goal.offsetX || 0) * EXPORT_SCALE,
+                    goal.y * tileSize + padding + (goal.offsetY || 0) * EXPORT_SCALE,
                     (goal.w || 1) * tileSize,
                     (goal.h || 1) * tileSize
                 );
@@ -424,6 +440,12 @@ async createMapPNG() {
         }
 
         return canvas.toDataURL('image/png');
+
+        } finally {
+            // Always restore original editor tile size — export must never affect the live canvas
+            this.tileSize = originalTileSize;
+            this.canvasPadding = originalPadding;
+        }
     },
 
 async exportMap() {
@@ -481,10 +503,14 @@ async exportMap() {
                 this.preloadWaterTiles(); // Preload water, ice, and snow tiles!
             }
 
+            // Use fetch+blob to trigger download without holding a large base64 string in memory
+            const blob = await fetch(dataUrl).then(r => r.blob());
+            const blobUrl = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.download = `${mapName}.png`;
-            link.href = dataUrl;
+            link.href = blobUrl;
             link.click();
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
         } finally {
             window.cp_bypassTheme = false;
         }

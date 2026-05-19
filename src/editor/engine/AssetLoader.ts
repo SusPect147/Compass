@@ -1,4 +1,24 @@
-// @ts-nocheck
+/**
+ * AssetLoaderMixin — загрузка и кэширование игровых ассетов.
+ *
+ * Отвечает за: фоновые изображения окружения, тайловые спрайты,
+ * анимированные водные тайлы, ледяные/снежные тайлы, и изображения целей (goal images).
+ * Все изображения загружаются с автоматическим fallback на окружение Desert.
+ */
+
+/** Extended image element that carries the biome context it was loaded for. */
+interface EnvHTMLImageElement extends HTMLImageElement {
+    parentEnvironment?: string;
+}
+
+/** Minimal shape of a tile definition entry from tileDefinitions. */
+interface TileDef {
+    img?: string;
+    getImg?: (gamemode: string, frame: number, mapHeight: number, env: string) => { img: string } | null | undefined;
+    showInEnvironment?: string[];
+    [key: string]: unknown;
+}
+
 export const AssetLoaderMixin = {
 preloadWaterTiles() {
         if (!this.tileImages) this.tileImages = {};
@@ -13,7 +33,7 @@ preloadWaterTiles() {
                 return;
             }
 
-            const img = new Image();
+            const img = new Image() as EnvHTMLImageElement;
             img.parentEnvironment = this.environment; // Affix environment context for the global interceptor
             img.src = imagePath;
 
@@ -83,7 +103,7 @@ async preloadGoalImage(name, environment) {
             return this.goalImageCache[fallbackKey];
         }
 
-        const img = new Image();
+        const img = new Image() as EnvHTMLImageElement;
         img.parentEnvironment = environment; // Affix environment context for the global interceptor
 
         return new Promise((resolve) => {
@@ -93,7 +113,7 @@ async preloadGoalImage(name, environment) {
                 resolve(img);
             };
             img.onerror = () => {
-                const fallbackImg = new Image();
+                const fallbackImg = new Image() as EnvHTMLImageElement;
                 fallbackImg.parentEnvironment = environment; // Carry environment context to the fallback image
                 fallbackImg.onload = () => {
                     this.goalImageCache[fallbackKey] = fallbackImg;
@@ -108,7 +128,7 @@ async preloadGoalImage(name, environment) {
     },
 
 async loadEnvironmentBackgrounds() {
-        return new Promise((resolve) => {
+        return new Promise<void>((resolve) => {
             let loadedCount = 0;
             const onLoad = () => {
                 loadedCount++;
@@ -119,8 +139,8 @@ async loadEnvironmentBackgrounds() {
             };
 
             // Affix environment contexts to background image instances to secure biome integrity
-            this.bgDark.parentEnvironment = this.environment;
-            this.bgLight.parentEnvironment = this.environment;
+            (this.bgDark as EnvHTMLImageElement).parentEnvironment = this.environment;
+            (this.bgLight as EnvHTMLImageElement).parentEnvironment = this.environment;
 
             this.bgDark.onload = onLoad;
             this.bgLight.onload = onLoad;
@@ -128,21 +148,26 @@ async loadEnvironmentBackgrounds() {
             this.bgDark.src = `Resources/${this.environment}/BGDark.png`;
             this.bgLight.src = `Resources/${this.environment}/BGLight.png`;
 
-            // Handle errors by falling back to Desert environment
+            // Guard against infinite onerror loops: null the handler before retrying with fallback.
+            // If even the Desert fallback fails, call onLoad() anyway so the promise always resolves.
             this.bgDark.onerror = () => {
-                const currentSrc = this.bgDark.getAttribute('src') || this.bgDark.src || '';
-                if (this.environment !== 'Desert' && !currentSrc.includes('Desert')) {
+                this.bgDark.onerror = null;
+                const src = this.bgDark.src || '';
+                if (this.environment !== 'Desert' && !src.includes('Desert')) {
+                    this.bgDark.onerror = () => { this.bgDark.onerror = null; onLoad(); };
                     this.bgDark.src = 'Resources/Desert/BGDark.png';
                 } else {
-                    onLoad();
+                    onLoad(); // Total failure — still resolve so initialize() doesn't hang
                 }
             };
             this.bgLight.onerror = () => {
-                const currentSrc = this.bgLight.getAttribute('src') || this.bgLight.src || '';
-                if (this.environment !== 'Desert' && !currentSrc.includes('Desert')) {
+                this.bgLight.onerror = null;
+                const src = this.bgLight.src || '';
+                if (this.environment !== 'Desert' && !src.includes('Desert')) {
+                    this.bgLight.onerror = () => { this.bgLight.onerror = null; onLoad(); };
                     this.bgLight.src = 'Resources/Desert/BGLight.png';
                 } else {
-                    onLoad();
+                    onLoad(); // Total failure — still resolve so initialize() doesn't hang
                 }
             };
         });
@@ -152,9 +177,9 @@ async loadTileImages() {
         if (!this.tileImages) this.tileImages = {};
         if (!this.tileImagePaths) this.tileImagePaths = {};
         
-        return new Promise((resolve) => {
+        return new Promise<void>((resolve) => {
             let loadedCount = 0;
-            const tileDefs = Object.entries(this.tileDefinitions);
+            const tileDefs = Object.entries(this.tileDefinitions) as [string, TileDef][];
             const relevantTiles = tileDefs.filter(([id, def]) => 
                 (def.img || def.getImg) &&
                 (!def.showInEnvironment || def.showInEnvironment.includes(this.environment) || id === '45')
@@ -196,7 +221,7 @@ async loadTileImages() {
                     return;
                 }
     
-                const img = new Image();
+                const img = new Image() as EnvHTMLImageElement;
                 img.parentEnvironment = envToUse; // Affix environment context to the tile image instance
                 img.onload = onLoad;
                 img.onerror = () => {

@@ -16,9 +16,11 @@ export const InputMixin = {
         const guidesBtn = document.getElementById('guidesBtn');
 
         // Mirror checkboxes
-        const mirrorDiagonal = document.getElementById('mirrorDiagonal');
+        const mirrorVertical   = document.getElementById('mirrorVertical');   // BUG-01 fix
+        const mirrorHorizontal = document.getElementById('mirrorHorizontal'); // BUG-01 fix
+        const mirrorDiagonal   = document.getElementById('mirrorDiagonal');
         const showThemeInDownloadToggle = document.getElementById('showThemeInDownloadToggle');
-        const showThemeInGalleryToggle = document.getElementById('showThemeInGalleryToggle');
+        const showThemeInGalleryToggle  = document.getElementById('showThemeInGalleryToggle');
         const isPublicToggle = document.getElementById('isPublicToggle');
         // const hideZoom = document.getElementById('hideZoomBtn'); // Removed
 
@@ -56,19 +58,18 @@ export const InputMixin = {
             });
         }
 
-        eraseBtn.addEventListener('change', (e) => {
-            this.toggleEraseMode(e.target.checked);
-        });
+        // BUG-02: null-checks for all tool buttons before binding
+        if (eraseBtn)   eraseBtn.addEventListener('change', (e) => this.toggleEraseMode(e.target.checked));
 
-        if (zoomInBtn) zoomInBtn.addEventListener('click', () => this.zoom(this.zoomStep));
+        if (zoomInBtn)       zoomInBtn.addEventListener('click', () => this.zoom(this.zoomStep));
         if (zoomInBtnBottom) zoomInBtnBottom.addEventListener('click', () => this.zoom(this.zoomStep));
-        if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => this.zoom(-this.zoomStep));
+        if (zoomOutBtn)      zoomOutBtn.addEventListener('click', () => this.zoom(-this.zoomStep));
         if (zoomOutBtnBottom) zoomOutBtnBottom.addEventListener('click', () => this.zoom(-this.zoomStep));
-        clearBtn.addEventListener('click', () => this.clearMap());
-        saveBtn.addEventListener('click', () => this.saveMap());
-        exportBtn.addEventListener('click', async () => await this.exportMap());
-        errorsBtn.addEventListener('click', () => this.toggleShowErrors());
-        guidesBtn.addEventListener('click', () => this.toggleGuides());
+        if (clearBtn)   clearBtn.addEventListener('click', () => this.clearMap());
+        if (saveBtn)    saveBtn.addEventListener('click', () => this.saveMap());
+        if (exportBtn)  exportBtn.addEventListener('click', async () => await this.exportMap());
+        if (errorsBtn)  errorsBtn.addEventListener('click', () => this.toggleShowErrors());
+        if (guidesBtn)  guidesBtn.addEventListener('click', () => this.toggleGuides());
 
         // Mirror listeners
         if (mirrorVertical) mirrorVertical.addEventListener('change', (e) => this.mirrorVertical = e.target.checked);
@@ -110,11 +111,13 @@ export const InputMixin = {
         }
         // if (hideZoom) hideZoom.addEventListener('change', () => this.toggleHideZoom()); // Removed
 
-        // Map setting listeners
-        mapSizeSelect.addEventListener('change', (e) => {
-            this.setSize(e.target.value);
-            this.updateSelectOptionDots();
-        });
+        // Map setting listeners — BUG-02: null-check
+        if (mapSizeSelect) {
+            mapSizeSelect.addEventListener('change', (e) => {
+                this.setSize(e.target.value);
+                this.updateSelectOptionDots();
+            });
+        }
 
 
         gamemodeSelect.addEventListener('change', async (e) => {
@@ -126,15 +129,15 @@ export const InputMixin = {
             this.updateSelectOptionDots();
         });
 
-        // Undo/Redo buttons
-        document.getElementById('undoBtn').addEventListener('click', () => this.undo());
-        document.getElementById('redoBtn').addEventListener('click', () => this.redo());
+        // Undo/Redo buttons — BUG-02: null-checks
+        document.getElementById('undoBtn')?.addEventListener('click', () => this.undo());
+        document.getElementById('redoBtn')?.addEventListener('click', () => this.redo());
 
         // Replace button
-        document.getElementById('replaceBtn').addEventListener('click', () => this.toggleReplaceMode());
+        document.getElementById('replaceBtn')?.addEventListener('click', () => this.toggleReplaceMode());
 
         // Rotate button
-        document.getElementById('rotateBtn').addEventListener('click', () => this.rotateSelectedTiles());
+        document.getElementById('rotateBtn')?.addEventListener('click', () => this.rotateSelectedTiles());
 
         // Add keyboard shortcuts
         document.addEventListener('keydown', (e) => {
@@ -399,8 +402,9 @@ export const InputMixin = {
         }
 
 
-        // Document-level mouseup fallback
-        document.addEventListener('mouseup', this.handleMouseUp.bind(this));
+        // BUG-16: Removed duplicate document-level mouseup for handleMouseUp.
+        // Canvas already has its own mouseup (line 252). The panning mouseup above (line 380)
+        // handles the pan stop. Binding handleMouseUp to document caused double-fire on each release.
 
         // Touch events
         this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });

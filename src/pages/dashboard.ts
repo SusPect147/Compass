@@ -193,7 +193,8 @@ async function triggerMapDeletion(mapId, card) {
         const { error } = await supabase
             .from('maps')
             .delete()
-            .eq('id', mapId);
+            .eq('id', mapId)
+            .eq('user_id', currentUserId); // BUG-11 fix: scope deletion to owner only
 
         if (error) throw error;
 

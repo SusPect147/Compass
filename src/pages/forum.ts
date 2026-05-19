@@ -149,6 +149,12 @@ function handleVideoSelection(e) {
 function renderAttachmentPreviews() {
     if (!attachmentsPreview) return;
     
+    // BUG-13 fix: revoke old blob URLs before creating new ones to prevent memory leaks
+    // Collect and revoke all existing blob URLs from previous render
+    attachmentsPreview.querySelectorAll('img[data-blob-url]').forEach(img => {
+        URL.revokeObjectURL(img.getAttribute('data-blob-url'));
+    });
+
     attachmentsPreview.innerHTML = '';
     
     if (selectedPhotos.length === 0 && selectedVideos.length === 0) {
@@ -166,7 +172,9 @@ function renderAttachmentPreviews() {
         item.className = 'preview-item';
         
         const img = document.createElement('img');
-        img.src = URL.createObjectURL(file);
+        const blobUrl = URL.createObjectURL(file);
+        img.src = blobUrl;
+        img.setAttribute('data-blob-url', blobUrl); // BUG-13: track for revocation
         item.appendChild(img);
 
         const remBtn = document.createElement('button');
@@ -656,6 +664,12 @@ async function handleSendMessage() {
         const uploadedVideos = [];
 
         if (selectedPhotos.length > 0 || selectedVideos.length > 0) {
+            // BUG-12 fix: never upload files for anonymous users — block before any storage call
+            if (!userId) {
+                alert(window.cp_translate("Please sign in via Discord to attach media!"));
+                throw new Error("Unauthenticated upload blocked.");
+            }
+
             submitMsgBtn.innerHTML = `<span>⏳</span> ${window.cp_translate('⏳ Sending...')} (${window.cp_translate('Uploading attachments')}...)`;
             
             // Upload photos to custom_tiles bucket under /forum_attachments
@@ -663,7 +677,7 @@ async function handleSendMessage() {
                 const file = selectedPhotos[i];
                 const timestamp = Date.now();
                 const fileExt = file.name.split('.').pop() || 'png';
-                const uploadPath = `forum_attachments/${userId || 'anonymous'}/${timestamp}_photo_${i}.${fileExt}`;
+                const uploadPath = `forum_attachments/${userId}/${timestamp}_photo_${i}.${fileExt}`;
                 
                 const { error: sError } = await supabase.storage
                     .from('custom_tiles')
@@ -683,7 +697,7 @@ async function handleSendMessage() {
                 const file = selectedVideos[i];
                 const timestamp = Date.now();
                 const fileExt = file.name.split('.').pop() || 'mp4';
-                const uploadPath = `forum_attachments/${userId || 'anonymous'}/${timestamp}_video_${i}.${fileExt}`;
+                const uploadPath = `forum_attachments/${userId}/${timestamp}_video_${i}.${fileExt}`;
                 
                 const { error: sError } = await supabase.storage
                     .from('custom_tiles')
@@ -729,6 +743,7 @@ async function handleSendMessage() {
         alert(window.cp_translate("Failed to send message:") + " " + (err.message || "Server error."));
     } finally {
         isSubmitting = false;
+        submitMsgBtn.disabled = false; // BUG-14 fix: always re-enable button, even after error
         submitMsgBtn.innerHTML = originalBtnHTML;
     }
 }

@@ -93,6 +93,29 @@
                 <p style="opacity: 0.5; font-style: italic; font-size: 0.88rem; text-align: center;">Loading comments...</p>
             </div>
         </section>
+
+        <!-- ═══ FRIEND SUGGESTIONS SECTION (owner only) ═══ -->
+        <section id="suggestionsSection" class="comments-section" style="display:none;">
+            <div class="comments-header-wrapper" style="margin-bottom:1.2rem;">
+                <h2 class="comments-title" style="display:flex; align-items:center; gap:10px;">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:#a78bfa;">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    Friend Suggestions
+                    <span id="suggestionsCount" style="background:rgba(139,92,246,0.2); border:1px solid rgba(139,92,246,0.35);
+                        color:#a78bfa; font-size:0.7rem; font-weight:800; padding:2px 9px; border-radius:20px;">0</span>
+                </h2>
+                <p style="font-size:0.82rem; color:rgba(255,255,255,0.45); margin-top:0.2rem;">
+                    Versions of your map submitted by collaborators. You can accept any version as the new primary map data.
+                </p>
+            </div>
+            <div id="suggestionsList" style="display:flex; flex-direction:column; gap:0.8rem;">
+                <p style="opacity:0.4; font-style:italic; font-size:0.85rem; text-align:center; padding:1rem 0;">
+                    Loading suggestions...
+                </p>
+            </div>
+        </section>
     </main>
 
     <div class="tooltip-floating">

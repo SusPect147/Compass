@@ -9,6 +9,8 @@ import {
     getTileDefinitions
 } from './editor-config.js';
 import { FenceAutoTiler } from '../utils/fence-auto-tiler.js';
+import { EventBus } from './engine/EventBus.js';
+import { createDefaultEditorState } from './engine/EditorState.js';
 
 // Import Engine Subsystems (Mixins)
 import { ViewportMixin } from './engine/Viewport.js';
@@ -61,6 +63,7 @@ export class MapEditor {
         // Initialize undo/redo stacks
         this.undoStack = [];
         this.redoStack = [];
+        this.maxStackSize = 50; // Hard cap — prevents unbounded memory growth during long editing sessions
         
         this.zoomLevel = 0.775;
         this.minZoom = 0.2;
@@ -71,8 +74,22 @@ export class MapEditor {
         this._drawPending = false;
         this._errorsDirty = true;
 
+        // ── Event Bus — pub/sub for decoupled subsystem communication ────────
+        // Usage: this.events.on('tile:placed', handler) / this.events.emit('tile:placed', data)
+        this.events = new EventBus();
+
+        // ── Typed Editor State ────────────────────────────────────────────────
+        // All boolean flags and UI state in one typed object.
+        // Backward-compat: we also assign them directly on `this` below
+        // so existing mixin code (this.isErasing, etc.) keeps working unchanged.
+        this.state = createDefaultEditorState();
+
         // Initialize map data
         this.tileGrid = this.createEmptyLayeredMap(this.mapWidth, this.mapHeight);
+
+        // History delta capture state (used by new delta-based History)
+        this._capturingHistory = false;
+        this._captureSnapshot  = null;
 
         
         this.activeToolBrush = { id: 1, name: 'Wall', color: '#666666' };
@@ -145,10 +162,11 @@ export class MapEditor {
         this.fenceLogicHandler = new FenceAutoTiler();
 
         // Initialize UI and event listeners
+        // NOTE: initializeUI() already calls initializeTileSelector() internally.
+        // Do NOT call initializeTileSelector() here again — that causes duplicate event listeners on every tile button.
         if (!this.headless) {
             this.initializeUI();
             this.initializeEventListeners();
-            this.initializeTileSelector();
             // Set initial zoom to fit the map
             this.autoScaleViewport();
             this.applyDeviceZoomSettings();
