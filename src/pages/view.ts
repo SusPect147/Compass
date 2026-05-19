@@ -675,6 +675,193 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Trigger initial comments load
         await loadComments();
 
+        // ════════════════════════════════════════════════════════
+        // 👥 COLLABORATION SUGGESTIONS SECTION (OWNER ONLY)
+        // ════════════════════════════════════════════════════════
+        if (currentUserId && currentUserId === data.user_id) {
+            const suggestionsSection = document.getElementById('suggestionsSection');
+            if (suggestionsSection) {
+                suggestionsSection.style.display = 'block';
+                await loadSuggestions();
+            }
+        }
+
+        async function loadSuggestions() {
+            try {
+                const sList = document.getElementById('suggestionsList');
+                const sCount = document.getElementById('suggestionsCount');
+                if (!sList) return;
+
+                const { data: suggestions, error: sugErr } = await supabase
+                    .from('map_suggestions')
+                    .select('*')
+                    .eq('map_id', mapId)
+                    .order('created_at', { ascending: false });
+
+                if (sugErr) throw sugErr;
+
+                if (sCount) sCount.textContent = (suggestions?.length || 0).toString();
+
+                if (!suggestions || suggestions.length === 0) {
+                    sList.innerHTML = `
+                        <p style="opacity: 0.4; font-style: italic; font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">
+                            ${window.cp_translate('No suggestions yet. Invite a friend using the collab link!')}
+                        </p>
+                    `;
+                    return;
+                }
+
+                sList.innerHTML = '';
+                suggestions.forEach(s => {
+                    const item = document.createElement('div');
+                    item.className = 'comment-card suggestion-item';
+                    item.style.cssText = `
+                        background: rgba(255, 255, 255, 0.02);
+                        border: 1px solid rgba(255, 255, 255, 0.05);
+                        border-radius: 12px;
+                        padding: 1rem;
+                        margin-bottom: 0.8rem;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 0.5rem;
+                        transition: all 0.2s;
+                    `;
+
+                    const dateStr = new Date(s.created_at).toLocaleString();
+                    const isPrevious = s.contributor_name.includes('Previous Version') || s.contributor_name.includes('Предыдущая версия');
+
+                    item.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                            <div style="display:flex; flex-direction:column;">
+                                <span style="font-weight:700; color:${isPrevious ? '#a78bfa' : '#60a5fa'}; font-size:0.9rem;">
+                                    ${isPrevious ? `⬅️ ${window.cp_translate('Previous Version')}` : `👤 ${s.contributor_name}`}
+                                </span>
+                                <span style="font-size:0.75rem; color:rgba(255,255,255,0.4);">${dateStr}</span>
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button class="collab-action-btn use-btn" style="
+                                    background: rgba(96, 165, 250, 0.15);
+                                    border: 1px solid rgba(96, 165, 250, 0.3);
+                                    color: #93c5fd;
+                                    padding: 4px 12px;
+                                    border-radius: 8px;
+                                    font-size: 0.78rem;
+                                    font-weight:700;
+                                    cursor:pointer;
+                                    transition: all 0.2s;
+                                ">
+                                    ${window.cp_translate('Use this version')}
+                                </button>
+                                <button class="collab-action-btn del-btn" style="
+                                    background: rgba(239, 68, 68, 0.12);
+                                    border: 1px solid rgba(239, 68, 68, 0.25);
+                                    color: #f87171;
+                                    padding: 4px 12px;
+                                    border-radius: 8px;
+                                    font-size: 0.78rem;
+                                    font-weight:700;
+                                    cursor:pointer;
+                                    transition: all 0.2s;
+                                ">
+                                    ${window.cp_translate('Delete')}
+                                </button>
+                            </div>
+                        </div>
+                    `;
+
+                    const useBtn = item.querySelector('.use-btn') as HTMLButtonElement;
+                    const delBtn = item.querySelector('.del-btn') as HTMLButtonElement;
+
+                    useBtn.onmouseover = () => {
+                        useBtn.style.background = 'rgba(96, 165, 250, 0.25)';
+                        useBtn.style.borderColor = 'rgba(96, 165, 250, 0.5)';
+                        useBtn.style.color = '#fff';
+                    };
+                    useBtn.onmouseout = () => {
+                        useBtn.style.background = 'rgba(96, 165, 250, 0.15)';
+                        useBtn.style.borderColor = 'rgba(96, 165, 250, 0.3)';
+                        useBtn.style.color = '#93c5fd';
+                    };
+
+                    delBtn.onmouseover = () => {
+                        delBtn.style.background = 'rgba(239, 68, 68, 0.22)';
+                        delBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                        delBtn.style.color = '#fff';
+                    };
+                    delBtn.onmouseout = () => {
+                        delBtn.style.background = 'rgba(239, 68, 68, 0.12)';
+                        delBtn.style.borderColor = 'rgba(239, 68, 68, 0.25)';
+                        delBtn.style.color = '#f87171';
+                    };
+
+                    useBtn.onclick = async () => {
+                        const confirmSwap = window.cp_translate("🔄 Are you sure you want to load this version as the primary map? Your current version will be archived below as a backup.");
+                        if (!confirm(confirmSwap)) return;
+
+                        useBtn.disabled = true;
+                        useBtn.textContent = '...';
+
+                        try {
+                            const archivePayload = {
+                                map_id: mapId,
+                                contributor_id: currentUserId,
+                                contributor_name: window.cp_translate('Previous Version'),
+                                map_data: data.map_data,
+                                note: 'Auto-archived backup'
+                            };
+
+                            const { error: archErr } = await supabase
+                                .from('map_suggestions')
+                                .insert([archivePayload]);
+
+                            if (archErr) throw archErr;
+
+                            const { error: updErr } = await supabase
+                                .from('maps')
+                                .update({ map_data: s.map_data })
+                                .eq('id', mapId);
+
+                            if (updErr) throw updErr;
+
+                            alert(window.cp_translate("✅ Map successfully updated to selected version! Reloading..."));
+                            window.location.reload();
+
+                        } catch (err) {
+                            console.error(err);
+                            alert(window.cp_translate("❌ Failed to swap versions:") + " " + err.message);
+                            useBtn.disabled = false;
+                            useBtn.textContent = window.cp_translate('Use this version');
+                        }
+                    };
+
+                    delBtn.onclick = async () => {
+                        const confirmDel = window.cp_translate("🗑️ Delete this suggestion permanently?");
+                        if (!confirm(confirmDel)) return;
+
+                        delBtn.disabled = true;
+                        try {
+                            const { error: dErr } = await supabase
+                                .from('map_suggestions')
+                                .delete()
+                                .eq('id', s.id);
+
+                            if (dErr) throw dErr;
+                            await loadSuggestions();
+                        } catch (err) {
+                            console.error(err);
+                            alert(window.cp_translate("❌ Failed to delete suggestion:") + " " + err.message);
+                            delBtn.disabled = false;
+                        }
+                    };
+
+                    sList.appendChild(item);
+                });
+
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
         // Set up real-time updates for comments and votes
         supabase
             .channel(`map_comments_realtime_${mapId}`)

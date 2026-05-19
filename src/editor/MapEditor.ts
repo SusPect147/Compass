@@ -129,6 +129,8 @@ export class MapEditor {
         this.showGuides = false; 
         
         this.loadedMapId = null; // Tracks the active map identifier if loaded in direct Edit mode!
+        this.collabLinkId = null; // Tracks collab share link ID if editing a friend's map
+        this.collabOriginalMapId = null; // Tracks original map ID during collaboration
 
         // Environment and background
         this.bgDark = new Image();
@@ -306,11 +308,15 @@ const targetCanvas = document.getElementById('mapCanvas');
 if (targetCanvas) {
     const urlParams = new URLSearchParams(window.location.search);
     const mapId = urlParams.get('id');
+    const collabId = urlParams.get('collab');
 
-    window.mapEditor = new MapEditor('mapCanvas', false, !!mapId);
+    window.mapEditor = new MapEditor('mapCanvas', false, !!(mapId || collabId));
     console.info('[Compass] Clean Modularized MapEditor initialized successfully.');
     
-    if (mapId) {
+    if (collabId) {
+        console.info(`[Compass] Initiating collaborative auto-load routine for Collab Link ID: ${collabId}`);
+        window.mapEditor.loadCollabMap(collabId);
+    } else if (mapId) {
         console.info(`[Compass] Initiating auto-load routine for shared Map ID: ${mapId}`);
         window.mapEditor.loadMap(mapId);
     }

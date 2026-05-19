@@ -2,6 +2,88 @@
 import { supabase } from '../../core/supabase-client.js';
 
 export const IOMixin = {
+    async loadCollabMap(collabLinkId) {
+        try {
+            console.log(`[Compass] Loading collab map with link ID: ${collabLinkId}`);
+            const { data: link, error: linkError } = await supabase
+                .from('map_collab_links')
+                .select('*')
+                .eq('id', collabLinkId)
+                .single();
+
+            if (linkError || !link) throw linkError || new Error('Collab link not found');
+            if (!link.is_active) throw new Error('This collaboration link has been revoked by the owner.');
+
+            const { data, error } = await supabase
+                .from('maps')
+                .select('*')
+                .eq('id', link.map_id)
+                .single();
+
+            if (error || !data) throw error || new Error('Map not found');
+
+            this.collabLinkId = collabLinkId;
+            this.collabOriginalMapId = link.map_id;
+            this.loadedMapId = null; // Save as a new copy suggestion instead of overwriting!
+
+            // Populate UI values and lock inputs
+            const nameInput = document.getElementById('mapName') as HTMLInputElement;
+            if (nameInput) {
+                nameInput.value = data.name || 'Untitled Map';
+                nameInput.disabled = true;
+                nameInput.title = window.cp_translate("🔒 Name is locked in Collaboration mode");
+            }
+
+            const sizeSelect = document.getElementById('mapSize') as HTMLSelectElement;
+            if (sizeSelect) {
+                sizeSelect.value = data.size || 'regular';
+                sizeSelect.disabled = true;
+                sizeSelect.title = window.cp_translate("🔒 Size is locked in Collaboration mode");
+            }
+
+            const gamemodeSelect = document.getElementById('gamemode') as HTMLSelectElement;
+            if (gamemodeSelect) {
+                gamemodeSelect.value = data.gamemode || 'Gem_Grab';
+                gamemodeSelect.disabled = true;
+                gamemodeSelect.title = window.cp_translate("🔒 Gamemode is locked in Collaboration mode");
+            }
+
+            const environmentSelect = document.getElementById('environment') as HTMLSelectElement;
+            if (environmentSelect) {
+                environmentSelect.value = data.environment || 'Desert';
+                environmentSelect.disabled = true;
+                environmentSelect.title = window.cp_translate("🔒 Environment is locked in Collaboration mode");
+            }
+
+            const collabBanner = document.getElementById('collabBanner');
+            if (collabBanner) collabBanner.style.display = 'flex';
+
+            this.gamemode = data.gamemode || 'Gem_Grab';
+            this.environment = data.environment || 'Desert';
+
+            await this.setSize(data.size || 'regular', false);
+
+            if (data.map_data && Array.isArray(data.map_data)) {
+                this.tileGrid = data.map_data;
+            }
+
+            await this.setEnvironment(this.environment);
+            await this.setGamemode(this.gamemode, false);
+
+            this._errorsDirty = true;
+            this.draw();
+
+            requestAnimationFrame(() => {
+                this.autoScaleViewport();
+                this.centerCanvas();
+            });
+
+        } catch (error) {
+            console.error('[Compass] Critical failure loading collab map:', error);
+            alert(`${window.cp_translate('❌ Collaboration Access Failed:')} ${error.message}`);
+        }
+    },
+
 async loadMap(mapId) {
         try {
             const { data, error } = await supabase
@@ -88,6 +170,29 @@ async saveMap() {
             
             if (userError || !user) {
                 alert(window.cp_translate("❌ You must be logged in with Discord to save maps! Go to the Home page to log in."));
+                return;
+            }
+
+            // COLLAB REDIRECT ROUTING
+            if (this.collabLinkId) {
+                console.info(`[Compass] Diverting save logic to Collab Suggestion. Collab Link: ${this.collabLinkId}`);
+                const contributor = user.user_metadata.full_name || user.user_metadata.display_name || user.user_metadata.name || 'Anonymous';
+                
+                const suggestionPayload = {
+                    map_id: this.collabOriginalMapId,
+                    contributor_id: user.id,
+                    contributor_name: contributor,
+                    map_data: this.tileGrid,
+                    note: ''
+                };
+
+                const { error: sugErr } = await supabase
+                    .from('map_suggestions')
+                    .insert([suggestionPayload]);
+
+                if (sugErr) throw sugErr;
+
+                alert(window.cp_translate("🤝 Suggestion successfully sent to the map owner!"));
                 return;
             }
 

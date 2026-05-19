@@ -102,10 +102,12 @@ function displayNextBatch() {
             .then(png => {
                 const card = createOwnerCard(map, png);
                 container.appendChild(card);
+                loadCardSuggestions(map.id, card);
             })
             .catch(() => {
                 const card = createOwnerCard(map, 'Resources/Additional/Icons/compass.png');
                 container.appendChild(card);
+                loadCardSuggestions(map.id, card);
             });
     });
 
@@ -151,6 +153,22 @@ function createOwnerCard(map, image) {
             </div>
             
             <div class="owner-controls" style="display: flex; gap: 8px; flex-shrink:0; align-items: center;">
+                 <button class="collab-btn" data-id="${map.id}" title="${window.cp_translate('Work on Map with a Friend')}" style="
+                     background: rgba(139, 92, 246, 0.08);
+                     border: 1px solid rgba(139, 92, 246, 0.25);
+                     color: #c4b5fd;
+                     width: 32px;
+                     height: 32px;
+                     border-radius: 12px;
+                     cursor: pointer;
+                     display: flex;
+                     align-items: center;
+                     justify-content: center;
+                     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+                     font-size: 0.9rem;
+                 ">
+                      👥
+                 </button>
                  <button class="visibility-btn ${isPublic ? 'pub' : 'priv'}" data-id="${map.id}" data-public="${isPublic}">
                      ${isPublic ? window.cp_translate('🌍 Public') : window.cp_translate('🔒 Private')}
                  </button>
@@ -182,7 +200,275 @@ function createOwnerCard(map, image) {
         await triggerMapDeletion(map.id, card);
     });
 
+    // Вешаем логику совместной работы
+    const collabBtn = card.querySelector('.collab-btn');
+    collabBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await openCollabModal(map);
+    });
+
     return card;
+}
+
+async function loadCardSuggestions(mapId, card) {
+    try {
+        const { count, error } = await supabase
+            .from('map_suggestions')
+            .select('*', { count: 'exact', head: true })
+            .eq('map_id', mapId);
+        
+        if (error) return;
+        if (count && count > 0) {
+            const metaDiv = card.querySelector('.card-meta');
+            if (metaDiv) {
+                const badge = document.createElement('div');
+                badge.className = 'suggestion-badge';
+                badge.style.cssText = `
+                    display: inline-block;
+                    margin-top: 6px;
+                    font-size: 0.75rem;
+                    background: rgba(139, 92, 246, 0.15);
+                    border: 1px solid rgba(139, 92, 246, 0.35);
+                    color: #c4b5fd;
+                    padding: 2px 8px;
+                    border-radius: 12px;
+                    font-weight: 600;
+                `;
+                badge.textContent = `👥 ${window.cp_translate('Suggestions')}: ${count}`;
+                metaDiv.appendChild(badge);
+            }
+        }
+    } catch(e) {}
+}
+
+async function openCollabModal(map) {
+    let modal = document.getElementById('collabModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'collabModal';
+        modal.style.cssText = `
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    requestAnimationFrame(() => {
+        if (modal) modal.style.opacity = '1';
+    });
+
+    modal.innerHTML = `
+        <div class="collab-modal-card" style="
+            background: rgba(20, 20, 28, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            position: relative;
+        ">
+            <button class="collab-modal-close" style="
+                position: absolute;
+                top: 16px;
+                right: 16px;
+                background: none;
+                border: none;
+                color: rgba(255,255,255,0.4);
+                font-size: 1.5rem;
+                cursor: pointer;
+                transition: color 0.2s;
+            ">&times;</button>
+            <h3 style="margin-top:0; color:#fff; font-size:1.3rem; font-weight:700; margin-bottom: 0.5rem; display:flex; align-items:center; gap:10px;">
+                👥 ${window.cp_translate('Work on Map with a Friend')}
+            </h3>
+            <p style="color: rgba(255,255,255,0.6); font-size:0.88rem; margin-bottom:1.5rem;">
+                ${window.cp_translate('Generate a secure, unique collaboration link. Anyone with this link can edit a copy of your map and submit their suggestions to you.')}
+            </p>
+            <div id="collabModalBody" style="display:flex; flex-direction:column; gap:1rem;">
+                <div style="text-align:center; padding: 2rem 0; opacity:0.7;">
+                    ⏳ ${window.cp_translate('Checking status...')}
+                </div>
+            </div>
+        </div>
+    `;
+
+    const cardEl = modal.querySelector('.collab-modal-card') as HTMLElement;
+    requestAnimationFrame(() => {
+        if (cardEl) cardEl.style.transform = 'scale(1)';
+    });
+
+    const closeBtn = modal.querySelector('.collab-modal-close') as HTMLElement;
+    const closeModal = () => {
+        if (modal) {
+            modal.style.opacity = '0';
+            if (cardEl) cardEl.style.transform = 'scale(0.9)';
+            setTimeout(() => modal?.remove(), 300);
+        }
+    };
+    closeBtn.onclick = closeModal;
+    modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+
+    const bodyContainer = modal.querySelector('#collabModalBody') as HTMLElement;
+
+    try {
+        const { data: existing, error } = await supabase
+            .from('map_collab_links')
+            .select('*')
+            .eq('map_id', map.id)
+            .maybeSingle();
+
+        if (error) throw error;
+
+        const renderCollabState = (link) => {
+            if (!link) {
+                bodyContainer.innerHTML = `
+                    <button id="generateCollabLinkBtn" class="collab-action-btn" style="
+                        background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+                        color: #fff;
+                        border: none;
+                        padding: 0.8rem 1.5rem;
+                        border-radius: 12px;
+                        font-weight: 700;
+                        cursor: pointer;
+                        transition: all 0.25s;
+                        width: 100%;
+                    ">
+                        ⚡ ${window.cp_translate('Generate Collaboration Link')}
+                    </button>
+                `;
+                const genBtn = bodyContainer.querySelector('#generateCollabLinkBtn') as HTMLButtonElement;
+                genBtn.onclick = async () => {
+                    genBtn.disabled = true;
+                    genBtn.textContent = '...';
+                    try {
+                        const { data: newLink, error: insErr } = await supabase
+                            .from('map_collab_links')
+                            .insert([{ map_id: map.id, owner_id: currentUserId, is_active: true }])
+                            .select('*')
+                            .single();
+                        
+                        if (insErr) throw insErr;
+                        renderCollabState(newLink);
+                    } catch (err) {
+                        console.error(err);
+                        alert(window.cp_translate('Failed to generate collab link:') + ' ' + err.message);
+                        genBtn.disabled = false;
+                        genBtn.textContent = window.cp_translate('Generate Collaboration Link');
+                    }
+                };
+            } else {
+                const collabUrl = `${window.location.origin}${window.location.pathname.replace('dashboard.html', 'editor.html')}?collab=${link.id}`;
+                bodyContainer.innerHTML = `
+                    <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                        <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; font-weight:700;">${window.cp_translate('COLLABORATION LINK')}</label>
+                        <div style="display:flex; gap:8px;">
+                            <input type="text" readonly value="${collabUrl}" style="
+                                flex: 1;
+                                background: rgba(0,0,0,0.3);
+                                border: 1px solid rgba(255,255,255,0.1);
+                                border-radius: 10px;
+                                padding: 0.6rem;
+                                color: #fff;
+                                font-size: 0.8rem;
+                                outline: none;
+                            ">
+                            <button id="copyCollabLinkBtn" style="
+                                background: rgba(255,255,255,0.08);
+                                border: 1px solid rgba(255,255,255,0.1);
+                                border-radius: 10px;
+                                color: #fff;
+                                font-size:0.8rem;
+                                font-weight:700;
+                                padding: 0 1rem;
+                                cursor: pointer;
+                                transition: all 0.2s;
+                            ">
+                                ${window.cp_translate('Copy')}
+                            </button>
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.06);">
+                        <div style="display:flex; flex-direction:column;">
+                            <span style="font-weight:700; color:#fff; font-size:0.85rem;">
+                                ${link.is_active ? `🟢 ${window.cp_translate('Active')}` : `🔴 ${window.cp_translate('Revoked')}`}
+                            </span>
+                            <span style="color:rgba(255,255,255,0.4); font-size:0.7rem;">
+                                ${link.is_active ? window.cp_translate('Your friend can use this link to edit.') : window.cp_translate('Access blocked until restored.')}
+                            </span>
+                        </div>
+                        <button id="toggleCollabActiveBtn" style="
+                            background: ${link.is_active ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)'};
+                            border: 1px solid ${link.is_active ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'};
+                            color: ${link.is_active ? '#f87171' : '#34d399'};
+                            padding: 0.5rem 1rem;
+                            border-radius: 10px;
+                            font-size: 0.8rem;
+                            font-weight: 700;
+                            cursor: pointer;
+                            transition: all 0.25s;
+                        ">
+                            ${link.is_active ? window.cp_translate('Revoke Access') : window.cp_translate('Restore Access')}
+                        </button>
+                    </div>
+                `;
+
+                const copyBtn = bodyContainer.querySelector('#copyCollabLinkBtn') as HTMLButtonElement;
+                copyBtn.onclick = async () => {
+                    try {
+                        await navigator.clipboard.writeText(collabUrl);
+                        copyBtn.textContent = window.cp_translate('Copied!');
+                        copyBtn.style.color = '#34d399';
+                        setTimeout(() => {
+                            copyBtn.textContent = window.cp_translate('Copy');
+                            copyBtn.style.color = '#fff';
+                        }, 2000);
+                    } catch (e) {
+                        alert(window.cp_translate('Link:') + ' ' + collabUrl);
+                    }
+                };
+
+                const toggleBtn = bodyContainer.querySelector('#toggleCollabActiveBtn') as HTMLButtonElement;
+                toggleBtn.onclick = async () => {
+                    toggleBtn.disabled = true;
+                    try {
+                        const { error: updErr } = await supabase
+                            .from('map_collab_links')
+                            .update({ is_active: !link.is_active })
+                            .eq('id', link.id);
+                        
+                        if (updErr) throw updErr;
+                        link.is_active = !link.is_active;
+                        renderCollabState(link);
+                    } catch (err) {
+                        console.error(err);
+                        alert(window.cp_translate('Failed to toggle status:') + ' ' + err.message);
+                        toggleBtn.disabled = false;
+                    }
+                };
+            }
+        };
+
+        renderCollabState(existing);
+
+    } catch (err) {
+        console.error(err);
+        bodyContainer.innerHTML = `
+            <div style="color:#f87171; text-align:center; padding: 1rem 0; font-size:0.85rem;">
+                ❌ ${window.cp_translate('Error loading collab info:')} ${err.message}
+            </div>
+        `;
+    }
 }
 
 async function triggerMapDeletion(mapId, card) {
@@ -482,6 +768,14 @@ function injectPremiumCardStyles() {
             color: #ff4c4c;
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(255, 107, 107, 0.15);
+        }
+
+        .collab-btn:hover {
+            background: rgba(139, 92, 246, 0.18);
+            border-color: rgba(139, 92, 246, 0.5);
+            color: #d8b4fe;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
         }
 
         .delete-card-btn:active {
