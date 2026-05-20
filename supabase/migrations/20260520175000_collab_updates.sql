@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS public.blacklist (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
+DROP FUNCTION IF EXISTS public.check_ban_status(TEXT);
+
 CREATE OR REPLACE FUNCTION public.check_ban_status(check_target TEXT)
 RETURNS TABLE (target TEXT, reason TEXT) AS $$
 BEGIN
