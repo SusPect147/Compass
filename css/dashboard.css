@@ -30,7 +30,7 @@
 
 .filter-controls {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 1rem;
 }
 
@@ -254,3 +254,189 @@
     .filter-controls { grid-template-columns: 1fr; }
     .maps-grid        { grid-template-columns: 1fr; }
 }
+
+/* ── THEME-AWARE COLLABORATION UI ── */
+.global-collab-btn {
+    background: var(--primary-color, var(--text-primary));
+    color: var(--bg-primary, #000);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0 1.2rem;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s var(--ease-premium);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 48px; /* to match filter inputs min-height 48px! */
+    box-shadow: var(--shadow-sm);
+    white-space: nowrap;
+    outline: none;
+}
+
+.global-collab-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px var(--accent-glow, rgba(255, 255, 255, 0.1));
+    filter: brightness(1.1);
+}
+
+.global-collab-btn:active {
+    transform: translateY(0) scale(0.98);
+}
+
+#globalCollabModal {
+    position: fixed;
+    inset: 0;
+    background: rgba(3, 3, 5, 0.75);
+    backdrop-filter: blur(12px) saturate(1.4);
+    -webkit-backdrop-filter: blur(12px) saturate(1.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s var(--ease-premium);
+}
+
+.collab-modal-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 2.5rem;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: var(--shadow-lg);
+    transform: scale(0.9);
+    transition: transform 0.3s var(--ease-premium);
+    position: relative;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.collab-modal-close {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    font-size: 1.75rem;
+    cursor: pointer;
+    transition: color var(--transition), transform var(--transition), background-color var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    line-height: 1;
+}
+
+.collab-modal-close:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+    transform: rotate(90deg);
+}
+
+.collab-modal-card h3 {
+    margin-top: 0;
+    color: var(--text-primary);
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+}
+
+.collab-modal-card p {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    margin-bottom: 1.75rem;
+    line-height: 1.6;
+}
+
+.collab-modal-card label {
+    color: var(--text-tertiary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.collab-modal-card select, 
+.collab-modal-card input[type="text"] {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    margin-top: 0.35rem;
+    font-family: inherit;
+    font-size: 0.88rem;
+    outline: none;
+    transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+}
+
+.collab-modal-card select option {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.collab-modal-card select:focus,
+.collab-modal-card input[type="text"]:focus {
+    border-color: var(--border-bright);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+#gcCreateBtn, #copyCollabLinkBtn {
+    background: var(--primary-color);
+    color: var(--bg-primary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0.8rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition);
+    font-size: 0.9rem;
+    font-family: inherit;
+}
+
+#gcCreateBtn {
+    width: 100%;
+    margin-top: 1.25rem;
+}
+
+#gcCreateBtn:hover, #copyCollabLinkBtn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+    box-shadow: 0 4px 15px var(--accent-glow);
+}
+
+#gcCreateBtn:active, #copyCollabLinkBtn:active {
+    transform: translateY(0);
+}
+
+#copyCollabLinkBtn {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 0 1.25rem;
+}
+
+#copyCollabLinkBtn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--border-bright);
+}
+
+.collab-link-a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 700;
+    transition: color var(--transition);
+}
+
+.collab-link-a:hover {
+    color: var(--text-primary);
+    text-decoration: underline;
+}
+

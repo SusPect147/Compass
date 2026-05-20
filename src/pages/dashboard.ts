@@ -801,18 +801,6 @@ async function openGlobalCollabModal() {
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'globalCollabModal';
-        modal.style.cssText = `
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(8px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        `;
         document.body.appendChild(modal);
     }
     
@@ -821,32 +809,18 @@ async function openGlobalCollabModal() {
     });
 
     modal.innerHTML = `
-        <div class="collab-modal-card" style="
-            background: rgba(20, 20, 28, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            padding: 2rem;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-            transform: scale(0.9);
-            transition: transform 0.3s ease;
-            position: relative;
-        ">
-            <button class="collab-modal-close" style="
-                position: absolute; top: 16px; right: 16px; background: none; border: none;
-                color: rgba(255,255,255,0.4); font-size: 1.5rem; cursor: pointer; transition: color 0.2s;
-            ">&times;</button>
-            <h3 style="margin-top:0; color:#fff; font-size:1.3rem; font-weight:700; margin-bottom: 0.5rem;">
+        <div class="collab-modal-card">
+            <button class="collab-modal-close">&times;</button>
+            <h3>
                 🌍 ${window.cp_translate('Create Map Online')}
             </h3>
-            <p style="color: rgba(255,255,255,0.6); font-size:0.88rem; margin-bottom:1.5rem;">
+            <p>
                 ${window.cp_translate('Choose your map settings. A new blank map will be created, and you will get a link to invite your friend!')}
             </p>
             <div id="globalCollabModalBody" style="display:flex; flex-direction:column; gap:1rem;">
                 <div>
-                    <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; font-weight:700;">GAMEMODE</label>
-                    <select id="gcGamemode" style="width:100%; padding:0.6rem; border-radius:10px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); margin-top:4px;">
+                    <label>GAMEMODE</label>
+                    <select id="gcGamemode">
                         <option value="Showdown">Showdown</option>
                         <option value="Gem_Grab">Gem Grab</option>
                         <option value="Brawl_Ball">Brawl Ball</option>
@@ -855,8 +829,8 @@ async function openGlobalCollabModal() {
                     </select>
                 </div>
                 <div>
-                    <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; font-weight:700;">ENVIRONMENT</label>
-                    <select id="gcEnvironment" style="width:100%; padding:0.6rem; border-radius:10px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); margin-top:4px;">
+                    <label>ENVIRONMENT</label>
+                    <select id="gcEnvironment">
                         <option value="Desert">Desert</option>
                         <option value="Grassy_Field">Grassy Field</option>
                         <option value="Mine">Mine</option>
@@ -865,25 +839,14 @@ async function openGlobalCollabModal() {
                     </select>
                 </div>
                 <div>
-                    <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; font-weight:700;">SIZE</label>
-                    <select id="gcSize" style="width:100%; padding:0.6rem; border-radius:10px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); margin-top:4px;">
+                    <label>SIZE</label>
+                    <select id="gcSize">
                         <option value="regular">Regular</option>
                         <option value="showdown">Showdown</option>
                     </select>
                 </div>
                 
-                <button id="gcCreateBtn" style="
-                    margin-top: 1rem;
-                    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
-                    color: #fff;
-                    border: none;
-                    padding: 0.8rem 1.5rem;
-                    border-radius: 12px;
-                    font-weight: 700;
-                    cursor: pointer;
-                    transition: all 0.25s;
-                    width: 100%;
-                ">
+                <button id="gcCreateBtn">
                     ✨ ${window.cp_translate('Create & Get Link')}
                 </button>
             </div>
@@ -942,35 +905,16 @@ async function openGlobalCollabModal() {
             if (bodyContainer) {
                 bodyContainer.innerHTML = `
                     <div style="display:flex; flex-direction:column; gap:0.5rem;">
-                        <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; font-weight:700;">${window.cp_translate('COLLABORATION LINK')}</label>
+                        <label>${window.cp_translate('COLLABORATION LINK')}</label>
                         <div style="display:flex; gap:8px;">
-                            <input type="text" readonly value="${collabUrl}" style="
-                                flex: 1;
-                                background: rgba(0,0,0,0.3);
-                                border: 1px solid rgba(255,255,255,0.1);
-                                border-radius: 10px;
-                                padding: 0.6rem;
-                                color: #fff;
-                                font-size: 0.8rem;
-                                outline: none;
-                            ">
-                            <button id="copyCollabLinkBtn" style="
-                                background: rgba(255,255,255,0.08);
-                                border: 1px solid rgba(255,255,255,0.1);
-                                border-radius: 10px;
-                                color: #fff;
-                                font-size:0.8rem;
-                                font-weight:700;
-                                padding: 0 1rem;
-                                cursor: pointer;
-                                transition: all 0.2s;
-                            ">
+                            <input type="text" readonly value="${collabUrl}">
+                            <button id="copyCollabLinkBtn">
                                 ${window.cp_translate('Copy')}
                             </button>
                         </div>
                     </div>
-                    <div style="margin-top:1rem; text-align:center;">
-                        <a href="${collabUrl}" style="color:#a78bfa; text-decoration:none; font-weight:700;">${window.cp_translate('Join Editor Now ->')}</a>
+                    <div style="margin-top:1.5rem; text-align:center;">
+                        <a href="${collabUrl}" class="collab-link-a">${window.cp_translate('Join Editor Now ->')}</a>
                     </div>
                 `;
                 
@@ -982,7 +926,7 @@ async function openGlobalCollabModal() {
                         copyBtn.style.color = '#34d399';
                         setTimeout(() => {
                             copyBtn.textContent = window.cp_translate('Copy');
-                            copyBtn.style.color = '#fff';
+                            copyBtn.style.color = '';
                         }, 2000);
                     } catch (e) {
                         alert(collabUrl);
