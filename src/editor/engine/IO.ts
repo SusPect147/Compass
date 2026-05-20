@@ -19,15 +19,32 @@ export const IOMixin = {
                 this.currentUsername = 'Anonymous';
             }
 
+            // 🔧 ИСПРАВЛЕНИЕ: используем maybeSingle вместо single для безопасной обработки
             const { data: link, error: linkError } = await supabase
                 .from('map_collab_links')
                 .select('*')
                 .eq('id', collabLinkId)
-                .single();
-            if (linkError || !link)
-                throw linkError || new Error('Collab link not found');
+                .maybeSingle();  // ← maybeSingle вернёт null вместо ошибки, если записи нет
+            
+            // 🔧 ИСПРАВЛЕНИЕ: правильная обработка ошибок и отсутствия данных
+            if (linkError) {
+                console.error('[Compass] Database error while fetching collab link:', linkError);
+                throw new Error(`Database error: ${linkError.message}`);
+            }
+            
+            if (!link) {
+                console.error('[Compass] Collaboration link not found in database:', collabLinkId);
+                throw new Error('Collaboration link not found. It may have been deleted, expired, or deactivated.');
+            }
+            
             if (!link.is_active)
                 throw new Error('This collaboration link has been revoked by the owner.');
+                
+            // Проверка срока действия ссылки (если поле expires_at существует)
+            if (link.expires_at && new Date(link.expires_at) < new Date()) {
+                throw new Error('This collaboration link has expired.');
+            }
+            
             const { data, error } = await supabase
                 .from('maps')
                 .select('*')
