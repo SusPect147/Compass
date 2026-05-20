@@ -4,6 +4,21 @@ export const IOMixin = {
     async loadCollabMap(collabLinkId) {
         try {
             console.log(`[Compass] Loading collab map with link ID: ${collabLinkId}`);
+            
+            // Resolve session first to prevent race condition before setting up realtime channel
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.user) {
+                    this.currentUsername = session.user.user_metadata?.full_name || session.user.user_metadata?.display_name || session.user.user_metadata?.name || 'Anonymous';
+                    this.currentUserId = session.user.id;
+                } else {
+                    this.currentUsername = 'Anonymous';
+                }
+            } catch (sessErr) {
+                console.warn('[Compass] Could not resolve session:', sessErr);
+                this.currentUsername = 'Anonymous';
+            }
+
             const { data: link, error: linkError } = await supabase
                 .from('map_collab_links')
                 .select('*')
@@ -22,6 +37,7 @@ export const IOMixin = {
                 throw error || new Error('Map not found');
             this.collabLinkId = collabLinkId;
             this.collabOriginalMapId = link.map_id;
+            this.collabMapOwnerId = data.user_id; // Set this early!
             this.loadedMapId = null; // Save as a new copy suggestion instead of overwriting!
 
             if (link.mode === 'realtime') {
@@ -32,14 +48,18 @@ export const IOMixin = {
                 setTimeout(() => {
                     const collabBanner = document.getElementById('collabBanner');
                     if (collabBanner) {
-                        collabBanner.innerHTML = `🌐 ${window.cp_translate('Live Real-time Collaboration Active')} <button id="collabReadyBtn" style="background:#10b981; color:#fff; border:none; padding:4px 12px; border-radius:8px; font-weight:bold; margin-left:10px; cursor:pointer;">Ready</button>`;
-                        collabBanner.style.background = 'rgba(16, 185, 129, 0.2)';
-                        collabBanner.style.border = '1px solid rgba(16, 185, 129, 0.4)';
-                        collabBanner.style.color = '#34d399';
+                        collabBanner.innerHTML = `🌐 ${window.cp_translate('Live Real-time Collaboration Active')} <button id="collabReadyBtn" class="collab-ready-btn">${window.cp_translate('Ready')}</button>`;
+                        collabBanner.className = 'collab-banner-active';
+                        collabBanner.style.background = '';
+                        collabBanner.style.border = '';
+                        collabBanner.style.color = '';
                         
-                        document.getElementById('collabReadyBtn').onclick = () => {
-                            if(this.handleReadyClick) this.handleReadyClick();
-                        };
+                        const readyBtn = document.getElementById('collabReadyBtn');
+                        if (readyBtn) {
+                            readyBtn.onclick = () => {
+                                if (this.handleReadyClick) this.handleReadyClick();
+                            };
+                        }
                     }
                 }, 100);
             }
@@ -81,14 +101,6 @@ export const IOMixin = {
             this.tileAuthors = data.tile_authors || {};
             this.readyUsers = new Set();
             this.collabMapOwnerId = data.user_id;
-            
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) {
-                this.currentUsername = session.user.user_metadata?.full_name || session.user.user_metadata?.display_name || session.user.user_metadata?.name || 'Anonymous';
-                this.currentUserId = session.user.id;
-            } else {
-                this.currentUsername = 'Anonymous';
-            }
             await this.setEnvironment(this.environment);
             await this.setGamemode(this.gamemode, false);
             this._errorsDirty = true;
@@ -558,6 +570,16 @@ export const IOMixin = {
             .subscribe((status) => {
                 if (status === 'SUBSCRIBED') {
                     console.log('[Compass] Successfully connected to realtime channel!');
+                    
+                    // If guest, broadcast 'join' to sync state from the owner's active session memory
+                    if (this.currentUserId !== this.collabMapOwnerId) {
+                        console.log('[Compass] Broadcasting join event...');
+                        this.broadcastMapUpdate({
+                            type: 'join',
+                            user: this.currentUsername || 'Anonymous',
+                            id: this.currentUserId
+                        });
+                    }
                 }
             });
     },
@@ -579,7 +601,26 @@ export const IOMixin = {
         
         this.isProcessingRemote = true;
         try {
-            if (payload.type === 'place') {
+            if (payload.type === 'join') {
+                if (this.currentUserId === this.collabMapOwnerId) {
+                    console.log(`[Compass] Owner received join event from ${payload.user}. Broadcasting full_sync...`);
+                    this.broadcastMapUpdate({
+                        type: 'full_sync',
+                        tileGrid: this.tileGrid,
+                        tileAuthors: this.tileAuthors || {}
+                    });
+                }
+            } else if (payload.type === 'full_sync') {
+                if (this.currentUserId !== this.collabMapOwnerId) {
+                    console.log('[Compass] Guest received full_sync payload. Syncing memory-resident grid...');
+                    if (Array.isArray(payload.tileGrid)) {
+                        this.tileGrid = payload.tileGrid;
+                    }
+                    this.tileAuthors = payload.tileAuthors || {};
+                    this._errorsDirty = true;
+                    this.draw();
+                }
+            } else if (payload.type === 'place') {
                 if (payload.author) {
                     this.tileAuthors = this.tileAuthors || {};
                     this.tileAuthors[`${payload.y},${payload.x}`] = payload.author;

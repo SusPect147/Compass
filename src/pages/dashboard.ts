@@ -154,9 +154,9 @@ function createOwnerCard(map, image) {
             
             <div class="owner-controls" style="display: flex; gap: 8px; flex-shrink:0; align-items: center;">
                  <button class="collab-btn" data-id="${map.id}" title="${window.cp_translate('Generate Suggestion Link')}" style="
-                     background: rgba(139, 92, 246, 0.08);
-                     border: 1px solid rgba(139, 92, 246, 0.25);
-                     color: #c4b5fd;
+                     background: var(--accent-glow, rgba(139, 92, 246, 0.08));
+                     border: 1px solid var(--border-color, rgba(139, 92, 246, 0.25));
+                     color: var(--primary-color, #c4b5fd);
                      width: 32px;
                      height: 32px;
                      border-radius: 12px;
@@ -164,7 +164,7 @@ function createOwnerCard(map, image) {
                      display: flex;
                      align-items: center;
                      justify-content: center;
-                     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+                     transition: all 0.25s var(--ease-premium, cubic-bezier(0.16, 1, 0.3, 1));
                      font-size: 0.9rem;
                  ">
                       👥
@@ -246,18 +246,7 @@ async function openCollabModal(map) {
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'collabModal';
-        modal.style.cssText = `
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(8px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        `;
+        modal.style.opacity = '0';
         document.body.appendChild(modal);
     }
     
@@ -266,33 +255,12 @@ async function openCollabModal(map) {
     });
 
     modal.innerHTML = `
-        <div class="collab-modal-card" style="
-            background: rgba(20, 20, 28, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            padding: 2rem;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-            transform: scale(0.9);
-            transition: transform 0.3s ease;
-            position: relative;
-        ">
-            <button class="collab-modal-close" style="
-                position: absolute;
-                top: 16px;
-                right: 16px;
-                background: none;
-                border: none;
-                color: rgba(255,255,255,0.4);
-                font-size: 1.5rem;
-                cursor: pointer;
-                transition: color 0.2s;
-            ">&times;</button>
-            <h3 style="margin-top:0; color:#fff; font-size:1.3rem; font-weight:700; margin-bottom: 0.5rem; display:flex; align-items:center; gap:10px;">
+        <div class="collab-modal-card">
+            <button class="collab-modal-close">&times;</button>
+            <h3 style="display:flex; align-items:center; gap:10px;">
                 👥 ${window.cp_translate('Generate Suggestion Link')}
             </h3>
-            <p style="color: rgba(255,255,255,0.6); font-size:0.88rem; margin-bottom:1.5rem;">
+            <p>
                 ${window.cp_translate('Generate a secure, unique suggestion link. Anyone with this link can edit a copy of your map and submit their suggestions to you.')}
             </p>
             <div id="collabModalBody" style="display:flex; flex-direction:column; gap:1rem;">
@@ -333,17 +301,7 @@ async function openCollabModal(map) {
         const renderCollabState = (link) => {
             if (!link) {
                 bodyContainer.innerHTML = `
-                    <button id="generateCollabLinkBtn" class="collab-action-btn" style="
-                        background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
-                        color: #fff;
-                        border: none;
-                        padding: 0.8rem 1.5rem;
-                        border-radius: 12px;
-                        font-weight: 700;
-                        cursor: pointer;
-                        transition: all 0.25s;
-                        width: 100%;
-                    ">
+                    <button id="generateCollabLinkBtn" class="collab-action-btn">
                         ⚡ ${window.cp_translate('Generate Suggestion Link')}
                     </button>
                 `;
@@ -371,39 +329,20 @@ async function openCollabModal(map) {
                 const collabUrl = `${window.location.origin}${window.location.pathname.replace('dashboard.html', 'editor.html')}?collab=${link.id}`;
                 bodyContainer.innerHTML = `
                     <div style="display:flex; flex-direction:column; gap:0.5rem;">
-                        <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; font-weight:700;">${window.cp_translate('COLLABORATION LINK')}</label>
+                        <label>${window.cp_translate('COLLABORATION LINK')}</label>
                         <div style="display:flex; gap:8px;">
-                            <input type="text" readonly value="${collabUrl}" style="
-                                flex: 1;
-                                background: rgba(0,0,0,0.3);
-                                border: 1px solid rgba(255,255,255,0.1);
-                                border-radius: 10px;
-                                padding: 0.6rem;
-                                color: #fff;
-                                font-size: 0.8rem;
-                                outline: none;
-                            ">
-                            <button id="copyCollabLinkBtn" style="
-                                background: rgba(255,255,255,0.08);
-                                border: 1px solid rgba(255,255,255,0.1);
-                                border-radius: 10px;
-                                color: #fff;
-                                font-size:0.8rem;
-                                font-weight:700;
-                                padding: 0 1rem;
-                                cursor: pointer;
-                                transition: all 0.2s;
-                            ">
+                            <input type="text" readonly value="${collabUrl}">
+                            <button id="copyCollabLinkBtn">
                                 ${window.cp_translate('Copy')}
                             </button>
                         </div>
                     </div>
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.06);">
-                        <div style="display:flex; flex-direction:column;">
-                            <span style="font-weight:700; color:#fff; font-size:0.85rem;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border-color, rgba(255,255,255,0.06));">
+                        <div style="display:flex; flex-direction:column; gap:2px;">
+                            <span style="font-weight:700; color:var(--text-primary); font-size:0.85rem;">
                                 ${link.is_active ? `🟢 ${window.cp_translate('Active')}` : `🔴 ${window.cp_translate('Revoked')}`}
                             </span>
-                            <span style="color:rgba(255,255,255,0.4); font-size:0.7rem;">
+                            <span style="color:var(--text-secondary); opacity:0.6; font-size:0.7rem;">
                                 ${link.is_active ? window.cp_translate('Your friend can use this link to edit.') : window.cp_translate('Access blocked until restored.')}
                             </span>
                         </div>
@@ -412,11 +351,11 @@ async function openCollabModal(map) {
                             border: 1px solid ${link.is_active ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'};
                             color: ${link.is_active ? '#f87171' : '#34d399'};
                             padding: 0.5rem 1rem;
-                            border-radius: 10px;
+                            border-radius: var(--radius-md, 10px);
                             font-size: 0.8rem;
                             font-weight: 700;
                             cursor: pointer;
-                            transition: all 0.25s;
+                            transition: all var(--transition, 0.25s);
                         ">
                             ${link.is_active ? window.cp_translate('Revoke Access') : window.cp_translate('Restore Access')}
                         </button>
@@ -431,7 +370,7 @@ async function openCollabModal(map) {
                         copyBtn.style.color = '#34d399';
                         setTimeout(() => {
                             copyBtn.textContent = window.cp_translate('Copy');
-                            copyBtn.style.color = '#fff';
+                            copyBtn.style.color = '';
                         }, 2000);
                     } catch (e) {
                         alert(window.cp_translate('Link:') + ' ' + collabUrl);

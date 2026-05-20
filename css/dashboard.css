@@ -440,3 +440,41 @@
     text-decoration: underline;
 }
 
+/* Shared Collab Modal Styles */
+#collabModal {
+    position: fixed;
+    inset: 0;
+    background: rgba(3, 3, 5, 0.75);
+    backdrop-filter: blur(12px) saturate(1.4);
+    -webkit-backdrop-filter: blur(12px) saturate(1.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s var(--ease-premium, ease);
+}
+
+.collab-action-btn {
+    background: var(--primary-color, var(--text-primary));
+    color: var(--bg-primary, #000);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0.8rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s var(--ease-premium, ease);
+    width: 100%;
+    font-family: inherit;
+    font-size: 0.9rem;
+}
+
+.collab-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px var(--accent-glow, rgba(255, 255, 255, 0.1));
+    filter: brightness(1.1);
+}
+
+.collab-action-btn:active {
+    transform: translateY(0) scale(0.98);
+}
