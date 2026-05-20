@@ -825,7 +825,7 @@ async function openGlobalCollabModal() {
                 gamemode: gamemode,
                 environment: environment,
                 size: size,
-                map_data: '',
+                map_data: [],
                 is_public: false
             }]).select('*').single();
             

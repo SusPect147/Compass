@@ -95,14 +95,22 @@ export const IOMixin = {
             this.gamemode = data.gamemode || 'Gem_Grab';
             this.environment = data.environment || 'Desert';
             await this.setSize(data.size || 'regular', false);
-            if (data.map_data && Array.isArray(data.map_data)) {
+            if (data.map_data && Array.isArray(data.map_data) && data.map_data.length > 0) {
                 this.tileGrid = data.map_data;
+                this.tileAuthors = data.tile_authors || {};
+                this.readyUsers = new Set();
+                this.collabMapOwnerId = data.user_id;
+                await this.setEnvironment(this.environment);
+                await this.setGamemode(this.gamemode, false);
+            } else {
+                // map_data is empty or invalid — apply default spawns and objectives
+                console.log('[Compass] map_data is empty, applying default layout...');
+                this.tileAuthors = {};
+                this.readyUsers = new Set();
+                this.collabMapOwnerId = data.user_id;
+                await this.setEnvironment(this.environment);
+                await this.setGamemode(this.gamemode, true); // true = apply default layout
             }
-            this.tileAuthors = data.tile_authors || {};
-            this.readyUsers = new Set();
-            this.collabMapOwnerId = data.user_id;
-            await this.setEnvironment(this.environment);
-            await this.setGamemode(this.gamemode, false);
             this._errorsDirty = true;
             this.draw();
             requestAnimationFrame(() => {
@@ -169,13 +177,19 @@ export const IOMixin = {
             // Resize boundaries gracefully without triggering visual purge alerts
             await this.setSize(data.size || 'regular', false);
             // Load grid content!
-            if (data.map_data && Array.isArray(data.map_data)) {
+            if (data.map_data && Array.isArray(data.map_data) && data.map_data.length > 0) {
                 this.tileGrid = data.map_data;
+                this.tileAuthors = data.tile_authors || {};
+                // Pull and parse standard visual assets
+                await this.setEnvironment(this.environment);
+                await this.setGamemode(this.gamemode, false); // pass false to 'apply' so it does not overwrite our loaded tileGrid with default template!
+            } else {
+                // map_data is empty — apply default spawns and objectives
+                console.log('[Compass] map_data is empty, applying default layout...');
+                this.tileAuthors = {};
+                await this.setEnvironment(this.environment);
+                await this.setGamemode(this.gamemode, true); // true = apply default layout
             }
-            this.tileAuthors = data.tile_authors || {};
-            // Pull and parse standard visual assets
-            await this.setEnvironment(this.environment);
-            await this.setGamemode(this.gamemode, false); // pass false to 'apply' so it does not overwrite our loaded tileGrid with default template!
             this._errorsDirty = true;
             this.draw();
             // Center and scale the map mathematically after the layout settling frame to guarantee normal zoom!
@@ -594,9 +608,21 @@ export const IOMixin = {
                 if (status === 'SUBSCRIBED') {
                     console.log('[Compass] Successfully connected to realtime channel!');
                     
-                    // If guest, broadcast 'join' to sync state from the owner's active session memory
-                    if (this.currentUserId !== this.collabMapOwnerId) {
-                        console.log('[Compass] Broadcasting join event...');
+                    if (this.currentUserId === this.collabMapOwnerId) {
+                        // Owner broadcasts 'owner_join' so guests know to send their current grid
+                        console.log('[Compass] Owner joined — broadcasting owner_join event...');
+                        this.realtimeChannel.send({
+                            type: 'broadcast',
+                            event: 'map_update',
+                            payload: {
+                                type: 'owner_join',
+                                user: this.currentUsername || 'Owner',
+                                id: this.currentUserId
+                            }
+                        }).catch(err => console.error('[Compass] owner_join broadcast failed', err));
+                    } else {
+                        // Guest broadcasts 'join' to sync state from the owner's active session memory
+                        console.log('[Compass] Guest joined — broadcasting join event...');
                         this.broadcastMapUpdate({
                             type: 'join',
                             user: this.currentUsername || 'Anonymous',
@@ -632,6 +658,33 @@ export const IOMixin = {
                         tileGrid: this.tileGrid,
                         tileAuthors: this.tileAuthors || {}
                     });
+                }
+            } else if (payload.type === 'owner_join') {
+                // Owner reconnected — guests respond with their current grid
+                if (this.currentUserId !== this.collabMapOwnerId) {
+                    console.log('[Compass] Received owner_join. Guest sending guest_sync to owner...');
+                    this.realtimeChannel.send({
+                        type: 'broadcast',
+                        event: 'map_update',
+                        payload: {
+                            type: 'guest_sync',
+                            tileGrid: this.tileGrid,
+                            tileAuthors: this.tileAuthors || {},
+                            user: this.currentUsername || 'Anonymous'
+                        }
+                    }).catch(err => console.error('[Compass] guest_sync broadcast failed', err));
+                }
+            } else if (payload.type === 'guest_sync') {
+                // Owner receives guest's active grid and adopts it
+                if (this.currentUserId === this.collabMapOwnerId) {
+                    console.log(`[Compass] Owner received guest_sync from ${payload.user}. Adopting guest grid...`);
+                    if (Array.isArray(payload.tileGrid)) {
+                        this.tileGrid = payload.tileGrid;
+                    }
+                    this.tileAuthors = payload.tileAuthors || {};
+                    this._errorsDirty = true;
+                    this.draw();
+                    if (this.triggerAutoSave) this.triggerAutoSave();
                 }
             } else if (payload.type === 'full_sync') {
                 if (this.currentUserId !== this.collabMapOwnerId) {
@@ -680,7 +733,10 @@ export const IOMixin = {
     },
     
     triggerAutoSave() {
-        if (!this.isRealtimeCollab || this.currentUserId !== this.collabMapOwnerId) return;
+        // Both owner AND guests auto-save in realtime collab mode.
+        // The new RLS policy "Collab partners can update maps" allows guests to write
+        // directly to the DB as long as an active collab link exists for the map.
+        if (!this.isRealtimeCollab) return;
 
         if (this.autoSaveTimeout) clearTimeout(this.autoSaveTimeout);
         this.autoSaveTimeout = setTimeout(async () => {
@@ -707,7 +763,8 @@ export const IOMixin = {
                     }
                     throw error;
                 }
-                console.log('[Compass] Auto-saved collab map state.');
+                const role = this.currentUserId === this.collabMapOwnerId ? 'Owner' : 'Guest';
+                console.log(`[Compass] [${role}] Auto-saved collab map state.`);
             } catch (e) {
                 console.error('[Compass] Auto-save failed:', e);
             }
