@@ -101,15 +101,16 @@ export const IOMixin = {
                 this.readyUsers = new Set();
                 this.collabMapOwnerId = data.user_id;
                 await this.setEnvironment(this.environment);
-                await this.setGamemode(this.gamemode, false);
+                // setEnvironment internally calls setGamemode(false) — preserves our loaded grid
             } else {
-                // map_data is empty or invalid — apply default spawns and objectives
+                // map_data is empty or invalid — render default spawns and objectives
                 console.log('[Compass] map_data is empty, applying default layout...');
                 this.tileAuthors = {};
                 this.readyUsers = new Set();
                 this.collabMapOwnerId = data.user_id;
                 await this.setEnvironment(this.environment);
-                await this.setGamemode(this.gamemode, true); // true = apply default layout
+                // setEnvironment calls setGamemode(false), so tileGrid is valid — now apply defaults
+                this.applyDefaultLayoutIfEmpty();
             }
             this._errorsDirty = true;
             this.draw();
@@ -182,13 +183,14 @@ export const IOMixin = {
                 this.tileAuthors = data.tile_authors || {};
                 // Pull and parse standard visual assets
                 await this.setEnvironment(this.environment);
-                await this.setGamemode(this.gamemode, false); // pass false to 'apply' so it does not overwrite our loaded tileGrid with default template!
+                // setEnvironment internally calls setGamemode(false) — preserves our loaded grid
             } else {
-                // map_data is empty — apply default spawns and objectives
+                // map_data is empty — render default spawns and objectives
                 console.log('[Compass] map_data is empty, applying default layout...');
                 this.tileAuthors = {};
                 await this.setEnvironment(this.environment);
-                await this.setGamemode(this.gamemode, true); // true = apply default layout
+                // setEnvironment calls setGamemode(false), so tileGrid is valid — now apply defaults
+                this.applyDefaultLayoutIfEmpty();
             }
             this._errorsDirty = true;
             this.draw();
