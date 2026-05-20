@@ -1,45 +1,37 @@
 // @ts-nocheck
 import { drawStaticMapPreview } from '../utils/canvas-drawer.js';
 import { supabase } from '../core/supabase-client.js';
-
 document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const mapId = urlParams.get('id');
-
-    if (!mapId) return showError('Map Not Found');
-
+    if (!mapId)
+        return showError('Map Not Found');
     const mapCanvas = document.getElementById('mapCanvas');
     const mapInfo = document.getElementById('mapInfo');
-
     document.getElementById('openMapBtn').onclick = () => {
         window.location.href = `./editor.html?id=${mapId}`;
     };
-
     try {
         // Get current user session for Liking
         const { data: { session } } = await supabase.auth.getSession();
         const currentUserId = session?.user?.id || null;
-
         // Loading map from Supabase, including likes aggregate
         const { data, error } = await supabase
             .from('maps')
             .select('*, map_likes(count)')
             .eq('id', mapId)
             .single();
-
         if (error || !data) {
             throw new Error(error?.message || 'Map not found in database');
         }
-
         // 1. Загружаем общее кол-во лайков
         const totalLikes = data.map_likes?.[0]?.count || 0;
         const likeCountSpan = document.getElementById('pageLikeCount');
-        if (likeCountSpan) likeCountSpan.textContent = totalLikes;
-
+        if (likeCountSpan)
+            likeCountSpan.textContent = totalLikes;
         // 2. Проверяем, лайкнул ли этот пользователь уже
         const likeBtn = document.getElementById('pageLikeBtn');
         let isLikedByUser = false;
-
         if (currentUserId && likeBtn) {
             const { data: hasLiked } = await supabase
                 .from('map_likes')
@@ -47,14 +39,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .eq('user_id', currentUserId)
                 .eq('map_id', mapId)
                 .maybeSingle();
-            
             if (hasLiked) {
                 isLikedByUser = true;
                 likeBtn.style.backgroundColor = 'rgba(255, 62, 92, 0.25)';
                 likeBtn.querySelector('svg').style.fill = '#ff3e5c';
             }
         }
-
         // Populate Details
         document.getElementById('mapTitle').textContent = data.name;
         document.getElementById('mapGamemode').textContent = format(data.gamemode);
@@ -62,19 +52,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (envDisplayEl) {
             if (typeof window.getThemeDisplayText === 'function') {
                 envDisplayEl.textContent = await window.getThemeDisplayText(data.environment);
-            } else {
+            }
+            else {
                 envDisplayEl.textContent = format(data.environment);
             }
         }
         document.getElementById('mapAuthor').textContent = 'By ' + (data.author_name || 'Anonymous');
-
         const shareBtn = document.getElementById('shareMapBtn');
-
         // ЗАЩИТА: Если карта приватная, прячем кнопку Поделиться даже от автора
         if (data.is_public === false && shareBtn) {
             shareBtn.style.display = 'none';
         }
-
         // ACTIVATOR: Show the Edit button if the current logged-in viewer is the author!
         const editBtn = document.getElementById('editMapBtn');
         if (editBtn && currentUserId && currentUserId === data.user_id) {
@@ -83,7 +71,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.location.href = `./editor.html?id=${mapId}&edit=true`;
             };
         }
-
         // ACTIVATOR: Show the Collab button if the current logged-in viewer is the author!
         const collabMapBtn = document.getElementById('collabMapBtn');
         if (collabMapBtn && currentUserId && currentUserId === data.user_id) {
@@ -92,7 +79,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await openCollabModalFromView(data, currentUserId);
             };
         }
-
         async function openCollabModalFromView(map, currentUserId) {
             let modal = document.getElementById('collabModal');
             if (!modal) {
@@ -112,11 +98,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 `;
                 document.body.appendChild(modal);
             }
-            
             requestAnimationFrame(() => {
-                if (modal) modal.style.opacity = '1';
+                if (modal)
+                    modal.style.opacity = '1';
             });
-
             modal.innerHTML = `
                 <div class="collab-modal-card" style="
                     background: rgba(20, 20, 28, 0.95);
@@ -155,34 +140,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
             `;
-
-            const cardEl = modal.querySelector('.collab-modal-card') as HTMLElement;
+            const cardEl = modal.querySelector('.collab-modal-card');
             requestAnimationFrame(() => {
-                if (cardEl) cardEl.style.transform = 'scale(1)';
+                if (cardEl)
+                    cardEl.style.transform = 'scale(1)';
             });
-
-            const closeBtn = modal.querySelector('.collab-modal-close') as HTMLElement;
+            const closeBtn = modal.querySelector('.collab-modal-close');
             const closeModal = () => {
                 if (modal) {
                     modal.style.opacity = '0';
-                    if (cardEl) cardEl.style.transform = 'scale(0.9)';
+                    if (cardEl)
+                        cardEl.style.transform = 'scale(0.9)';
                     setTimeout(() => modal?.remove(), 300);
                 }
             };
             closeBtn.onclick = closeModal;
-            modal.onclick = (e) => { if (e.target === modal) closeModal(); };
-
-            const bodyContainer = modal.querySelector('#collabModalBody') as HTMLElement;
-
+            modal.onclick = (e) => { if (e.target === modal)
+                closeModal(); };
+            const bodyContainer = modal.querySelector('#collabModalBody');
             try {
                 const { data: existing, error } = await supabase
                     .from('map_collab_links')
                     .select('*')
                     .eq('map_id', map.id)
                     .maybeSingle();
-
-                if (error) throw error;
-
+                if (error)
+                    throw error;
                 const renderCollabState = (link) => {
                     if (!link) {
                         bodyContainer.innerHTML = `
@@ -200,7 +183,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 ⚡ ${window.cp_translate('Generate Collaboration Link')}
                             </button>
                         `;
-                        const genBtn = bodyContainer.querySelector('#generateCollabLinkBtn') as HTMLButtonElement;
+                        const genBtn = bodyContainer.querySelector('#generateCollabLinkBtn');
                         genBtn.onclick = async () => {
                             genBtn.disabled = true;
                             genBtn.textContent = '...';
@@ -210,17 +193,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     .insert([{ map_id: map.id, owner_id: currentUserId, is_active: true }])
                                     .select('*')
                                     .single();
-                                
-                                if (insErr) throw insErr;
+                                if (insErr)
+                                    throw insErr;
                                 renderCollabState(newLink);
-                            } catch (err) {
+                            }
+                            catch (err) {
                                 console.error(err);
                                 alert(window.cp_translate('Failed to generate collab link:') + ' ' + err.message);
                                 genBtn.disabled = false;
                                 genBtn.textContent = window.cp_translate('Generate Collaboration Link');
                             }
                         };
-                    } else {
+                    }
+                    else {
                         const collabUrl = `${window.location.origin}${window.location.pathname.replace('view.html', 'editor.html')}?collab=${link.id}`;
                         bodyContainer.innerHTML = `
                             <div style="display:flex; flex-direction:column; gap:0.5rem; text-align:left;">
@@ -275,8 +260,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 </button>
                             </div>
                         `;
-
-                        const copyBtn = bodyContainer.querySelector('#copyCollabLinkBtn') as HTMLButtonElement;
+                        const copyBtn = bodyContainer.querySelector('#copyCollabLinkBtn');
                         copyBtn.onclick = async () => {
                             try {
                                 await navigator.clipboard.writeText(collabUrl);
@@ -286,12 +270,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     copyBtn.textContent = window.cp_translate('Copy');
                                     copyBtn.style.color = '#fff';
                                 }, 2000);
-                            } catch (e) {
+                            }
+                            catch (e) {
                                 alert(window.cp_translate('Link:') + ' ' + collabUrl);
                             }
                         };
-
-                        const toggleBtn = bodyContainer.querySelector('#toggleCollabActiveBtn') as HTMLButtonElement;
+                        const toggleBtn = bodyContainer.querySelector('#toggleCollabActiveBtn');
                         toggleBtn.onclick = async () => {
                             toggleBtn.disabled = true;
                             try {
@@ -299,11 +283,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     .from('map_collab_links')
                                     .update({ is_active: !link.is_active })
                                     .eq('id', link.id);
-                                
-                                if (updErr) throw updErr;
+                                if (updErr)
+                                    throw updErr;
                                 link.is_active = !link.is_active;
                                 renderCollabState(link);
-                            } catch (err) {
+                            }
+                            catch (err) {
                                 console.error(err);
                                 alert(window.cp_translate('Failed to toggle status:') + ' ' + err.message);
                                 toggleBtn.disabled = false;
@@ -311,10 +296,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         };
                     }
                 };
-
                 renderCollabState(existing);
-
-            } catch (err) {
+            }
+            catch (err) {
                 console.error(err);
                 bodyContainer.innerHTML = `
                     <div style="color:#f87171; text-align:center; padding: 1rem 0; font-size:0.85rem;">
@@ -323,7 +307,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 `;
             }
         }
-        
         // ACTIVATOR: Show the Delete button if the current logged-in viewer is the author!
         const deleteBtn = document.getElementById('deleteMapBtn');
         if (deleteBtn && currentUserId && currentUserId === data.user_id) {
@@ -338,19 +321,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                             deleteBtn.disabled = true;
                             // Delete any existing likes on this map first to maintain relational integrity
                             await supabase.from('map_likes').delete().eq('map_id', mapId);
-
                             // Now delete the map
                             const { error } = await supabase
                                 .from('maps')
                                 .delete()
                                 .eq('id', mapId)
                                 .eq('user_id', currentUserId);
-                                
-                            if (error) throw error;
-                            
+                            if (error)
+                                throw error;
                             alert(window.cp_translate("✅ Map deleted successfully!"));
                             window.location.href = "./dashboard.html";
-                        } catch (deleteErr) {
+                        }
+                        catch (deleteErr) {
                             console.error("Delete failed:", deleteErr);
                             alert(window.cp_translate("❌ Failed to delete map:") + " " + deleteErr.message);
                             deleteBtn.disabled = false;
@@ -359,70 +341,143 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             };
         }
-
         // Generate Image (Larger rendering for quality)
         const pngDataUrl = await drawStaticMapPreview(data.map_data, data.size, data.gamemode, data.environment, data.theme_options);
-        
         // Handle rendering
         const mapImg = document.getElementById('mapImage');
         const mapDisplay = document.querySelector('.map-display');
-        
         let scale = 1;
         let posX = 0;
         let posY = 0;
-
         function updateTransform() {
             mapImg.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`;
         }
-
         if (mapImg) {
             mapImg.src = pngDataUrl;
-            
             // НАЧАЛЬНЫЙ МАСШТАБ: Высота = Высоте контейнера
             mapImg.onload = () => {
-                mapImg.style.height = '100%'; 
+                mapImg.style.height = '100%';
                 mapImg.style.transformOrigin = 'center center';
                 updateTransform();
             };
         }
-
         // === СВОБОДНОЕ ПЕРЕМЕЩЕНИЕ БЕЗ ОГРАНИЧЕНИЙ (ЧЕРЕЗ TRANSFORMS) ===
         if (mapDisplay && mapImg) {
             let isDragging = false;
             let lastX, lastY;
-
             // Отключаем стандартное меню ПКМ
             mapDisplay.addEventListener('contextmenu', (e) => e.preventDefault());
-
             mapDisplay.addEventListener('mousedown', (e) => {
-                if (e.button !== 2) return; // Только ПКМ
+                if (e.button === 0) {
+                    const rect = mapImg.getBoundingClientRect();
+                    const intrinsicWidth = mapImg.naturalWidth;
+                    const intrinsicHeight = mapImg.naturalHeight;
+                    if (!intrinsicWidth || !intrinsicHeight) return;
+                    
+                    const ratioX = intrinsicWidth / rect.width;
+                    const ratioY = intrinsicHeight / rect.height;
+                    
+                    const imgX = (e.clientX - rect.left) * ratioX;
+                    const imgY = (e.clientY - rect.top) * ratioY;
+                    
+                    const MAP_SIZES = {
+                        regular: { width: 21, height: 33 },
+                        showdown: { width: 60, height: 60 },
+                        arena: { width: 59, height: 59 },
+                        siege: { width: 27, height: 39 },
+                        volley: { width: 21, height: 25 },
+                        basket: { width: 21, height: 17 },
+                    };
+                    let actualWidth, actualHeight;
+                    if (data.map_data && data.map_data[0] && data.map_data[0][0]) {
+                        actualHeight = data.map_data[0].length;
+                        actualWidth = data.map_data[0][0].length;
+                    } else {
+                        actualWidth = MAP_SIZES[data.size]?.width || 21;
+                        actualHeight = MAP_SIZES[data.size]?.height || 33;
+                    }
+                    
+                    const previewWidth = 21;
+                    const previewHeight = 33;
+                    const padding = 16;
+                    const baseTileSize = 32;
+                    
+                    const widthScale = Math.min(1, previewWidth / actualWidth);
+                    const heightScale = Math.min(1, previewHeight / actualHeight);
+                    const cScale = Math.min(widthScale, heightScale);
+                    
+                    const tileSize = Math.floor(baseTileSize * cScale);
+                    const scaledWidth = actualWidth * cScale;
+                    const scaledHeight = actualHeight * cScale;
+                    
+                    const offsetX = Math.max(0, (previewWidth - scaledWidth) / 2);
+                    const offsetY = Math.max(0, (previewHeight - scaledHeight) / 2);
+                    
+                    const startX = padding + offsetX * baseTileSize;
+                    const startY = padding + offsetY * baseTileSize;
+                    
+                    const mapPixelX = imgX - startX;
+                    const mapPixelY = imgY - startY;
+                    
+                    const tileX = Math.floor(mapPixelX / tileSize);
+                    const tileY = Math.floor(mapPixelY / tileSize);
+                    
+                    if (tileX >= 0 && tileX < actualWidth && tileY >= 0 && tileY < actualHeight) {
+                        const tileAuthors = data.tile_authors || {};
+                        const author = tileAuthors[`${tileY},${tileX}`] || data.author_name || 'Anonymous';
+                        
+                        let tooltip = document.getElementById('tileAuthorTooltip');
+                        if (!tooltip) {
+                            tooltip = document.createElement('div');
+                            tooltip.id = 'tileAuthorTooltip';
+                            tooltip.style.position = 'fixed';
+                            tooltip.style.background = 'rgba(20, 20, 28, 0.95)';
+                            tooltip.style.border = '1px solid rgba(139, 92, 246, 0.4)';
+                            tooltip.style.color = '#c4b5fd';
+                            tooltip.style.padding = '6px 12px';
+                            tooltip.style.borderRadius = '8px';
+                            tooltip.style.fontSize = '0.85rem';
+                            tooltip.style.fontWeight = 'bold';
+                            tooltip.style.pointerEvents = 'none';
+                            tooltip.style.zIndex = '99999';
+                            tooltip.style.transition = 'opacity 0.2s';
+                            document.body.appendChild(tooltip);
+                        }
+                        tooltip.textContent = `Block placed by: ${author}`;
+                        tooltip.style.left = `${e.clientX + 15}px`;
+                        tooltip.style.top = `${e.clientY + 15}px`;
+                        tooltip.style.opacity = '1';
+                        
+                        clearTimeout(tooltip.timeout);
+                        tooltip.timeout = setTimeout(() => {
+                            tooltip.style.opacity = '0';
+                        }, 2500);
+                    }
+                }
+
+                if (e.button !== 2)
+                    return; // Только ПКМ
                 isDragging = true;
                 mapDisplay.style.cursor = 'grabbing';
-                
                 lastX = e.clientX;
                 lastY = e.clientY;
-                
                 // Отключаем анимацию при перетаскивании для отзывчивости
-                mapImg.style.transition = 'none'; 
+                mapImg.style.transition = 'none';
             });
-
             document.addEventListener('mousemove', (e) => {
-                if (!isDragging) return;
-                
+                if (!isDragging)
+                    return;
                 const deltaX = e.clientX - lastX;
                 const deltaY = e.clientY - lastY;
-                
                 posX += deltaX;
                 posY += deltaY;
-                
                 lastX = e.clientX;
                 lastY = e.clientY;
-                
                 updateTransform();
             });
-
             const stopDrag = () => {
-                if (!isDragging) return;
+                if (!isDragging)
+                    return;
                 isDragging = false;
                 mapDisplay.style.cursor = 'grab';
                 // Возвращаем легкую анимацию для зума
@@ -431,21 +486,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.addEventListener('mouseup', stopDrag);
             // При уходе мыши за окно браузера
             window.addEventListener('blur', stopDrag);
-
             // === МАСШТАБИРОВАНИЕ КОЛЕСИКОМ ===
             mapDisplay.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 const zoomIntensity = 0.1;
                 if (e.deltaY < 0) {
                     scale += zoomIntensity; // Увеличение
-                } else {
+                }
+                else {
                     scale = Math.max(0.2, scale - zoomIntensity); // Уменьшение (не меньше 0.2)
                 }
                 mapImg.style.transition = 'transform 0.15s ease-out';
                 updateTransform();
             }, { passive: false });
         }
-
         // === ЛОГИКА КНОПКИ ЛАЙКА ===
         if (likeBtn) {
             likeBtn.onclick = async () => {
@@ -461,21 +515,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                         likeBtn.querySelector('svg').style.fill = 'none';
                         likeCountSpan.textContent = Math.max(0, parseInt(likeCountSpan.textContent) - 1);
                         isLikedByUser = false;
-                    } else {
+                    }
+                    else {
                         await supabase.from('map_likes').insert([{ user_id: currentUserId, map_id: mapId }]);
                         likeBtn.style.backgroundColor = 'rgba(255, 62, 92, 0.25)';
                         likeBtn.querySelector('svg').style.fill = '#ff3e5c';
                         likeCountSpan.textContent = parseInt(likeCountSpan.textContent) + 1;
                         isLikedByUser = true;
                     }
-                } catch (err) {
+                }
+                catch (err) {
                     console.error(err);
-                } finally {
+                }
+                finally {
                     likeBtn.disabled = false;
                 }
             };
         }
-
         // Share Button
         if (shareBtn) {
             shareBtn.onclick = async () => {
@@ -488,12 +544,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         shareBtn.innerHTML = origText;
                         shareBtn.style.color = '';
                     }, 2000);
-                } catch (e) {
+                }
+                catch (e) {
                     alert(window.cp_translate('Link:') + ' ' + window.location.href);
                 }
             };
         }
-
         // Download Button
         const downloadBtn = document.getElementById('downloadMapBtn');
         if (downloadBtn) {
@@ -505,81 +561,74 @@ document.addEventListener('DOMContentLoaded', async () => {
                 link.click();
             };
         }
-
         // ==========================================
         // 🌟 ADMIN & COMMENTS INTEGRATION
         // ==========================================
         const ADMIN_UUID = 'cc1e4139-e600-45e8-88f0-922e0fb69998'; // Secure admin ID
         let isAdmin = false;
-
         if (session && session.user) {
             if (session.user.id === ADMIN_UUID) {
                 isAdmin = true;
             }
         }
-
         // --- 2. Comments Loading & Rendering ---
         const commentsList = document.getElementById('commentsList');
         const replyToIndicator = document.getElementById('replyToIndicator');
         const replyAuthorName = document.getElementById('replyAuthorName');
         const cancelReplyBtn = document.getElementById('cancelReplyBtn');
-
         let allComments = [];
         let currentCommentSort = 'newest'; // default to newest
         let replyToId = null;
-
         async function loadComments() {
             try {
                 const { data: comments, error } = await supabase
                     .from('map_comments')
                     .select('*, map_comment_votes(*)')
                     .eq('map_id', mapId);
-
-                if (error) throw error;
+                if (error)
+                    throw error;
                 allComments = comments || [];
                 sortAndRenderComments();
-            } catch (err) {
+            }
+            catch (err) {
                 console.error("Failed to load comments:", err);
                 commentsList.innerHTML = `<p style="color:#ff6b6b; font-size:0.85rem;">Error loading comments.</p>`;
             }
         }
-
         function sortAndRenderComments() {
             // 1. Split into roots and children
             const roots = [];
             const childrenByParent = {};
-
             allComments.forEach(c => {
                 if (c.parent_id) {
                     if (!childrenByParent[c.parent_id]) {
                         childrenByParent[c.parent_id] = [];
                     }
                     childrenByParent[c.parent_id].push(c);
-                } else {
+                }
+                else {
                     roots.push(c);
                 }
             });
-
             // 2. Sort root comments based on active filter
             if (currentCommentSort === 'newest') {
                 roots.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            } else if (currentCommentSort === 'likes') {
+            }
+            else if (currentCommentSort === 'likes') {
                 roots.sort((a, b) => {
                     const aLikes = (a.map_comment_votes || []).filter(v => v.vote_type === 'like').length;
                     const bLikes = (b.map_comment_votes || []).filter(v => v.vote_type === 'like').length;
-                    if (bLikes !== aLikes) return bLikes - aLikes;
+                    if (bLikes !== aLikes)
+                        return bLikes - aLikes;
                     return new Date(b.created_at) - new Date(a.created_at);
                 });
             }
-
             // 3. Sort nested children chronologically (oldest reply first)
             Object.keys(childrenByParent).forEach(pId => {
                 childrenByParent[pId].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
             });
-
             renderCommentsTree(roots, childrenByParent);
         }
-
         // Bind sorting tabs
         const commentSortControls = document.getElementById('commentSortControls');
         if (commentSortControls) {
@@ -593,7 +642,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             });
         }
-
         // Handle reply cancellation
         if (cancelReplyBtn) {
             cancelReplyBtn.onclick = () => {
@@ -601,17 +649,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 replyToIndicator.style.display = 'none';
             };
         }
-
         function escapeHTML(text) {
             const div = document.createElement('div');
             div.innerText = text;
             return div.innerHTML;
         }
-
         function createCommentCardDOM(c, isReply = false) {
             const card = document.createElement('div');
             card.className = 'comment-card';
-            
             if (isReply) {
                 card.style.marginLeft = '2rem';
                 card.style.borderLeft = '2px solid rgba(255,255,255,0.08)';
@@ -619,19 +664,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 card.style.background = 'rgba(255, 255, 255, 0.01)';
                 card.style.marginTop = '0.2rem';
             }
-
             const commentDate = new Date(c.created_at).toLocaleString();
             const isCommentAdmin = c.user_id === ADMIN_UUID || c.author_name === 'hammer147' || c.author_name?.includes('hammer147');
-
             // Compute voting aggregates
             const votes = c.map_comment_votes || [];
             const likeCount = votes.filter(v => v.vote_type === 'like').length;
             const dislikeCount = votes.filter(v => v.vote_type === 'dislike').length;
-
             const userVote = votes.find(v => v.user_id === currentUserId);
             const isLiked = userVote?.vote_type === 'like';
             const isDisliked = userVote?.vote_type === 'dislike';
-
             card.innerHTML = `
                 <div class="comment-header">
                     <div style="display: flex; flex-direction: column;">
@@ -663,7 +704,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </button>` : ''}
                 </div>
             `;
-
             // Add hover effect for reply button
             const replyBtn = card.querySelector('.comment-reply-btn');
             if (replyBtn) {
@@ -680,7 +720,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (replyAuthorName && replyToIndicator) {
                         replyAuthorName.textContent = c.author_name || 'Anonymous';
                         replyToIndicator.style.display = 'flex';
-                        
                         // Scroll & Focus input
                         const inputField = document.getElementById('commentInput');
                         if (inputField) {
@@ -690,13 +729,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 });
             }
-
             // Delete binding
             const delBtn = card.querySelector('.delete-comment-btn');
             if (delBtn) {
                 delBtn.addEventListener('click', () => handleDeleteComment(c.id));
             }
-
             // Vote bindings
             const voteBtns = card.querySelectorAll('.comment-vote-btn');
             voteBtns.forEach(btn => {
@@ -706,23 +743,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     handleVoteComment(commId, type);
                 });
             });
-
             return card;
         }
-
         function renderCommentsTree(roots, childrenByParent) {
             if (!roots || roots.length === 0) {
                 commentsList.innerHTML = `<p style="opacity: 0.4; font-style: italic; font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No comments yet. Be the first to say something!</p>`;
                 return;
             }
-
             commentsList.innerHTML = ''; // Clear
-
             roots.forEach(root => {
                 // 1. Render root card
                 const rootCard = createCommentCardDOM(root, false);
                 commentsList.appendChild(rootCard);
-
                 // 2. Render any nested replies beneath it
                 const replies = childrenByParent[root.id] || [];
                 replies.forEach(reply => {
@@ -731,14 +763,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             });
         }
-
         // Robust Comment Voting Logic (Fixes 409 unique constraint violation!)
         async function handleVoteComment(commentId, voteType) {
             if (!currentUserId) {
                 alert(window.cp_translate("⚠️ Please sign in via Discord to vote on comments!"));
                 return;
             }
-
             try {
                 // Fetch LIVE true server state dynamically to guarantee 100% race-condition safety!
                 const { data: existing, error: fetchError } = await supabase
@@ -747,9 +777,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     .eq('comment_id', commentId)
                     .eq('user_id', currentUserId)
                     .maybeSingle();
-
-                if (fetchError) throw fetchError;
-
+                if (fetchError)
+                    throw fetchError;
                 if (existing) {
                     if (existing.vote_type === voteType) {
                         // Double click -> Unvote
@@ -757,16 +786,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                             .from('map_comment_votes')
                             .delete()
                             .eq('id', existing.id);
-                        if (error) throw error;
-                    } else {
+                        if (error)
+                            throw error;
+                    }
+                    else {
                         // Swap vote type
                         const { error } = await supabase
                             .from('map_comment_votes')
                             .update({ vote_type: voteType })
                             .eq('id', existing.id);
-                        if (error) throw error;
+                        if (error)
+                            throw error;
                     }
-                } else {
+                }
+                else {
                     // First time insert
                     const { error } = await supabase
                         .from('map_comment_votes')
@@ -775,36 +808,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                             user_id: currentUserId,
                             vote_type: voteType
                         }]);
-                    if (error) throw error;
+                    if (error)
+                        throw error;
                 }
-
                 // UI updates in real time or via manually triggered refresh
                 await loadComments();
-
-            } catch (err) {
+            }
+            catch (err) {
                 console.error("Comment vote error:", err);
                 alert(window.cp_translate("Failed to cast vote:") + " " + err.message);
             }
         }
-
         async function handleDeleteComment(commentId) {
-            if (!isAdmin) return;
-            if (!confirm("Delete this comment?")) return;
-
+            if (!isAdmin)
+                return;
+            if (!confirm("Delete this comment?"))
+                return;
             try {
                 const { error } = await supabase
                     .from('map_comments')
                     .delete()
                     .eq('id', commentId);
-                
-                if (error) throw error;
+                if (error)
+                    throw error;
                 await loadComments();
-            } catch (err) {
+            }
+            catch (err) {
                 console.error(err);
                 alert(window.cp_translate("Delete failed:") + " " + err.message);
             }
         }
-
         // --- 3. Comment Posting Logic ---
         const commentInput = document.getElementById('commentInput');
         const anonCheck = document.getElementById('anonCommentCheck');
@@ -812,10 +845,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const cooldownText = document.getElementById('commentCooldownText');
         const COOLDOWN_MS = 10000; // 10s cooldown
         let cooldownInterval = null;
-
         function checkCommentCooldown() {
             const lastStr = localStorage.getItem('hammer_comment_last');
-            if (!lastStr) return false;
+            if (!lastStr)
+                return false;
             const elapsed = Date.now() - parseInt(lastStr, 10);
             if (elapsed < COOLDOWN_MS) {
                 startCooldownTimer(COOLDOWN_MS - elapsed);
@@ -823,13 +856,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             return false;
         }
-
         function startCooldownTimer(ms) {
             clearInterval(cooldownInterval);
             submitBtn.disabled = true;
             cooldownText.style.display = 'inline';
             let rem = Math.ceil(ms / 1000);
-
             const tick = () => {
                 cooldownText.innerText = `Wait ${rem}s`;
                 if (rem <= 0) {
@@ -842,79 +873,68 @@ document.addEventListener('DOMContentLoaded', async () => {
             tick();
             cooldownInterval = setInterval(tick, 1000);
         }
-
         if (submitBtn) {
             // Initial Check
             checkCommentCooldown();
-
             submitBtn.onclick = async () => {
                 const content = commentInput.value.trim();
-                if (!content) return;
-
+                if (!content)
+                    return;
                 if (content.length > 2500) {
                     alert(window.cp_translate("Comment too long! Max 2500 characters allowed."));
                     return;
                 }
-
-                if (checkCommentCooldown()) return;
-
+                if (checkCommentCooldown())
+                    return;
                 submitBtn.disabled = true;
                 const oldText = submitBtn.innerText;
                 submitBtn.innerText = 'Posting...';
-
                 try {
                     const isAnon = anonCheck.checked;
                     let authName = 'Anonymous';
                     let uId = null;
-
                     if (!isAnon && session && session.user) {
                         const meta = session.user.user_metadata;
                         authName = meta.global_name || meta.full_name || 'Authenticated User';
                         uId = session.user.id;
                     }
-
                     const payload = {
                         map_id: mapId,
                         content: content,
                         author_name: authName,
                         user_id: uId
                     };
-
                     // Append parent ID if user is writing a reply!
                     if (replyToId) {
                         payload.parent_id = replyToId;
                     }
-
                     const { error } = await supabase
                         .from('map_comments')
                         .insert([payload]);
-
-                    if (error) throw error;
-
+                    if (error)
+                        throw error;
                     // Clear input and state
                     commentInput.value = '';
                     replyToId = null;
-                    if (replyToIndicator) replyToIndicator.style.display = 'none';
-
+                    if (replyToIndicator)
+                        replyToIndicator.style.display = 'none';
                     localStorage.setItem('hammer_comment_last', Date.now().toString());
                     startCooldownTimer(COOLDOWN_MS);
-
                     // Instant visual reload!
                     await loadComments();
-
-                } catch (err) {
+                }
+                catch (err) {
                     console.error(err);
                     alert(window.cp_translate("Failed to post comment:") + " " + err.message);
-                } finally {
+                }
+                finally {
                     submitBtn.disabled = false;
                     submitBtn.innerText = oldText;
                 }
             };
         }
-
         // Trigger initial comments load
         await loadComments();
-
         // ════════════════════════════════════════════════════════
         // 👥 COLLABORATION SUGGESTIONS SECTION (OWNER ONLY)
         // ════════════════════════════════════════════════════════
@@ -925,23 +945,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await loadSuggestions();
             }
         }
-
         async function loadSuggestions() {
             try {
                 const sList = document.getElementById('suggestionsList');
                 const sCount = document.getElementById('suggestionsCount');
-                if (!sList) return;
-
+                if (!sList)
+                    return;
                 const { data: suggestions, error: sugErr } = await supabase
                     .from('map_suggestions')
                     .select('*')
                     .eq('map_id', mapId)
                     .order('created_at', { ascending: false });
-
-                if (sugErr) throw sugErr;
-
-                if (sCount) sCount.textContent = (suggestions?.length || 0).toString();
-
+                if (sugErr)
+                    throw sugErr;
+                if (sCount)
+                    sCount.textContent = (suggestions?.length || 0).toString();
                 if (!suggestions || suggestions.length === 0) {
                     sList.innerHTML = `
                         <p style="opacity: 0.4; font-style: italic; font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">
@@ -950,7 +968,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     `;
                     return;
                 }
-
                 sList.innerHTML = '';
                 suggestions.forEach(s => {
                     const item = document.createElement('div');
@@ -966,10 +983,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         gap: 0.5rem;
                         transition: all 0.2s;
                     `;
-
                     const dateStr = new Date(s.created_at).toLocaleString();
                     const isPrevious = s.contributor_name.includes('Previous Version') || s.contributor_name.includes('Предыдущая версия');
-
                     item.innerHTML = `
                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                             <div style="display:flex; flex-direction:column;">
@@ -979,19 +994,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <span style="font-size:0.75rem; color:rgba(255,255,255,0.4);">${dateStr}</span>
                             </div>
                             <div style="display:flex; gap:8px;">
-                                <button class="collab-action-btn preview-btn" style="
-                                    background: rgba(167, 139, 250, 0.15);
-                                    border: 1px solid rgba(167, 139, 250, 0.3);
-                                    color: #c4b5fd;
-                                    padding: 4px 12px;
-                                    border-radius: 8px;
-                                    font-size: 0.78rem;
-                                    font-weight:700;
-                                    cursor:pointer;
-                                    transition: all 0.2s;
-                                ">
-                                    ${window.cp_translate('Preview')}
-                                </button>
                                 <button class="collab-action-btn use-btn" style="
                                     background: rgba(96, 165, 250, 0.15);
                                     border: 1px solid rgba(96, 165, 250, 0.3);
@@ -1020,32 +1022,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 </button>
                             </div>
                         </div>
-                        <div class="suggestion-preview-container" style="display: none; position: relative; width: 100%; height: 350px; margin-top: 12px; overflow: hidden; border-radius: 8px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1);">
-                            <p class="loading-text" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.6); font-size: 0.9rem;">
-                                ${window.cp_translate('Loading preview...')}
-                            </p>
-                            <img class="suggestion-map-img" style="display: none; position: absolute; transform-origin: center center; cursor: grab;" />
-                        </div>
                     `;
-
-                    const previewBtn = item.querySelector('.preview-btn') as HTMLButtonElement;
-                    const useBtn = item.querySelector('.use-btn') as HTMLButtonElement;
-                    const delBtn = item.querySelector('.del-btn') as HTMLButtonElement;
-                    const previewContainer = item.querySelector('.suggestion-preview-container') as HTMLDivElement;
-                    const mapImg = item.querySelector('.suggestion-map-img') as HTMLImageElement;
-                    const loadingText = item.querySelector('.loading-text') as HTMLParagraphElement;
-
-                    previewBtn.onmouseover = () => {
-                        previewBtn.style.background = 'rgba(167, 139, 250, 0.25)';
-                        previewBtn.style.borderColor = 'rgba(167, 139, 250, 0.5)';
-                        previewBtn.style.color = '#fff';
-                    };
-                    previewBtn.onmouseout = () => {
-                        previewBtn.style.background = 'rgba(167, 139, 250, 0.15)';
-                        previewBtn.style.borderColor = 'rgba(167, 139, 250, 0.3)';
-                        previewBtn.style.color = '#c4b5fd';
-                    };
-
+                    const useBtn = item.querySelector('.use-btn');
+                    const delBtn = item.querySelector('.del-btn');
                     useBtn.onmouseover = () => {
                         useBtn.style.background = 'rgba(96, 165, 250, 0.25)';
                         useBtn.style.borderColor = 'rgba(96, 165, 250, 0.5)';
@@ -1056,7 +1035,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         useBtn.style.borderColor = 'rgba(96, 165, 250, 0.3)';
                         useBtn.style.color = '#93c5fd';
                     };
-
                     delBtn.onmouseover = () => {
                         delBtn.style.background = 'rgba(239, 68, 68, 0.22)';
                         delBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
@@ -1067,102 +1045,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         delBtn.style.borderColor = 'rgba(239, 68, 68, 0.25)';
                         delBtn.style.color = '#f87171';
                     };
-
-                    let previewLoaded = false;
-                    let scale = 1;
-                    let posX = 0;
-                    let posY = 0;
-
-                    const updatePreviewTransform = () => {
-                        mapImg.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`;
-                    };
-
-                    previewBtn.onclick = async () => {
-                        if (previewContainer.style.display === 'none') {
-                            previewContainer.style.display = 'block';
-                            previewBtn.textContent = window.cp_translate('Hide');
-                            
-                            if (!previewLoaded) {
-                                try {
-                                    const pngDataUrl = await drawStaticMapPreview(s.map_data, data.size, data.gamemode, data.environment, data.theme_options);
-                                    mapImg.src = pngDataUrl;
-                                    mapImg.onload = () => {
-                                        loadingText.style.display = 'none';
-                                        mapImg.style.display = 'block';
-                                        mapImg.style.height = '100%';
-                                        
-                                        // Center image
-                                        const cRect = previewContainer.getBoundingClientRect();
-                                        const iRect = mapImg.getBoundingClientRect();
-                                        posX = (cRect.width - iRect.width) / 2;
-                                        posY = 0; // it sets height to 100% so height matches container
-                                        updatePreviewTransform();
-                                    };
-                                    previewLoaded = true;
-                                } catch (e) {
-                                    console.error('Failed to load preview', e);
-                                    loadingText.textContent = window.cp_translate('Error loading preview');
-                                }
-                            }
-                        } else {
-                            previewContainer.style.display = 'none';
-                            previewBtn.textContent = window.cp_translate('Preview');
-                        }
-                    };
-
-                    // Pan and Zoom logic for preview
-                    let isDragging = false;
-                    let lastX = 0, lastY = 0;
-
-                    previewContainer.addEventListener('mousedown', (e) => {
-                        if (e.button !== 0 && e.button !== 2) return; // Allow left or right click panning
-                        e.preventDefault();
-                        isDragging = true;
-                        mapImg.style.cursor = 'grabbing';
-                        lastX = e.clientX;
-                        lastY = e.clientY;
-                        mapImg.style.transition = 'none';
-                    });
-
-                    document.addEventListener('mousemove', (e) => {
-                        if (!isDragging) return;
-                        posX += e.clientX - lastX;
-                        posY += e.clientY - lastY;
-                        lastX = e.clientX;
-                        lastY = e.clientY;
-                        updatePreviewTransform();
-                    });
-
-                    const stopDrag = () => {
-                        if (!isDragging) return;
-                        isDragging = false;
-                        mapImg.style.cursor = 'grab';
-                        mapImg.style.transition = 'transform 0.1s ease-out';
-                    };
-
-                    document.addEventListener('mouseup', stopDrag);
-                    previewContainer.addEventListener('mouseleave', stopDrag); // Also stop if leaving container
-
-                    previewContainer.addEventListener('wheel', (e) => {
-                        e.preventDefault();
-                        const zoomIntensity = 0.1;
-                        if (e.deltaY < 0) {
-                            scale += zoomIntensity;
-                        } else {
-                            scale = Math.max(0.2, scale - zoomIntensity);
-                        }
-                        mapImg.style.transition = 'transform 0.15s ease-out';
-                        updatePreviewTransform();
-                    }, { passive: false });
-
-
                     useBtn.onclick = async () => {
                         const confirmSwap = window.cp_translate("🔄 Are you sure you want to load this version as the primary map? Your current version will be archived below as a backup.");
-                        if (!confirm(confirmSwap)) return;
-
+                        if (!confirm(confirmSwap))
+                            return;
                         useBtn.disabled = true;
                         useBtn.textContent = '...';
-
                         try {
                             const archivePayload = {
                                 map_id: mapId,
@@ -1171,77 +1059,69 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 map_data: data.map_data,
                                 note: 'Auto-archived backup'
                             };
-
                             const { error: archErr } = await supabase
                                 .from('map_suggestions')
                                 .insert([archivePayload]);
-
-                            if (archErr) throw archErr;
-
+                            if (archErr)
+                                throw archErr;
                             const { error: updErr } = await supabase
                                 .from('maps')
                                 .update({ map_data: s.map_data })
                                 .eq('id', mapId);
-
-                            if (updErr) throw updErr;
-
+                            if (updErr)
+                                throw updErr;
                             alert(window.cp_translate("✅ Map successfully updated to selected version! Reloading..."));
                             window.location.reload();
-
-                        } catch (err) {
+                        }
+                        catch (err) {
                             console.error(err);
                             alert(window.cp_translate("❌ Failed to swap versions:") + " " + err.message);
                             useBtn.disabled = false;
                             useBtn.textContent = window.cp_translate('Use this version');
                         }
                     };
-
                     delBtn.onclick = async () => {
                         const confirmDel = window.cp_translate("🗑️ Delete this suggestion permanently?");
-                        if (!confirm(confirmDel)) return;
-
+                        if (!confirm(confirmDel))
+                            return;
                         delBtn.disabled = true;
                         try {
                             const { error: dErr } = await supabase
                                 .from('map_suggestions')
                                 .delete()
                                 .eq('id', s.id);
-
-                            if (dErr) throw dErr;
+                            if (dErr)
+                                throw dErr;
                             await loadSuggestions();
-                        } catch (err) {
+                        }
+                        catch (err) {
                             console.error(err);
                             alert(window.cp_translate("❌ Failed to delete suggestion:") + " " + err.message);
                             delBtn.disabled = false;
                         }
                     };
-
                     sList.appendChild(item);
                 });
-
-            } catch (err) {
+            }
+            catch (err) {
                 console.error(err);
             }
         }
-
         // Set up real-time updates for comments and votes
         supabase
             .channel(`map_comments_realtime_${mapId}`)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'map_comments', filter: `map_id=eq.${mapId}` }, () => {
-                loadComments();
-            })
+            loadComments();
+        })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'map_comment_votes' }, () => {
-                loadComments(); 
-            })
+            loadComments();
+        })
             .subscribe();
-
-
-
-    } catch (err) {
+    }
+    catch (err) {
         console.error('Database load error:', err);
         showError('Oops, it seems you do not have access to this masterpiece 🔒');
     }
-
     function showError(msg) {
         const titleEl = document.getElementById('mapTitle');
         if (titleEl) {
@@ -1253,10 +1133,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         ['mapInfo', 'mapDetails', 'mapCanvas', 'downloadMapBtn', 'shareMapBtn', 'openMapBtn', 'mapImage', 'pageLikeBtn'].forEach(id => {
             const el = document.getElementById(id);
-            if (el) el.style.display = 'none';
+            if (el)
+                el.style.display = 'none';
         });
     }
-
     function format(str) {
         return str ? str.replace(/_/g, ' ') : 'Unknown';
     }
