@@ -39,11 +39,9 @@ DROP POLICY IF EXISTS "collab_anyone_read_active" ON map_collab_links;
 -- SECURITY FIXED: Owner can manage collab links ONLY if they are the actual owner of the map.
 CREATE POLICY "collab_owner_all" ON map_collab_links
   FOR ALL USING (
-    auth.uid() = owner_id 
-    AND auth.uid() = (SELECT user_id FROM maps WHERE id = map_id LIMIT 1)
+    auth.uid() = owner_id
   ) WITH CHECK (
-    auth.uid() = owner_id 
-    AND auth.uid() = (SELECT user_id FROM maps WHERE id = map_id LIMIT 1)
+    auth.uid() = owner_id
   );
 
 -- Anyone (authenticated or not) can read active links to validate collab access

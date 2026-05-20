@@ -44,3 +44,13 @@ USING (
         AND map_collab_links.is_active = true
     )
 );
+
+-- 5. Fix infinite RLS recursion on public.map_collab_links
+DROP POLICY IF EXISTS "collab_owner_all" ON public.map_collab_links;
+CREATE POLICY "collab_owner_all" ON public.map_collab_links
+  FOR ALL USING (
+    auth.uid() = owner_id
+  ) WITH CHECK (
+    auth.uid() = owner_id
+  );
+
