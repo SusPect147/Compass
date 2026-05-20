@@ -252,11 +252,22 @@ export const IOMixin = {
             let savedMapId = null;
             if (this.loadedMapId) {
                 console.info(`[Compass] Attempting database UPDATE on existing Map ID: ${this.loadedMapId}`);
-                const { error } = await supabase
+                let { error } = await supabase
                     .from('maps')
                     .update(payload)
                     .eq('id', this.loadedMapId)
                     .eq('user_id', user.id);
+                if (error && error.code === '42703') {
+                    console.warn('[Compass] tile_authors column is missing in Supabase. Retrying without it.');
+                    const fallbackPayload = { ...payload };
+                    delete fallbackPayload.tile_authors;
+                    const { error: fallbackError } = await supabase
+                        .from('maps')
+                        .update(fallbackPayload)
+                        .eq('id', this.loadedMapId)
+                        .eq('user_id', user.id);
+                    error = fallbackError;
+                }
                 if (error)
                     throw error;
                 savedMapId = this.loadedMapId;
@@ -264,11 +275,23 @@ export const IOMixin = {
             else {
                 console.info(`[Compass] Attempting database INSERT for new map clone.`);
                 // Standardizing to .single() and selecting only 'id' to minimize payload and avoid RLS/PostgREST 400 issues with large columns
-                const { data, error } = await supabase
+                let { data, error } = await supabase
                     .from('maps')
                     .insert(payload)
                     .select('id')
                     .single();
+                if (error && error.code === '42703') {
+                    console.warn('[Compass] tile_authors column is missing in Supabase. Retrying without it.');
+                    const fallbackPayload = { ...payload };
+                    delete fallbackPayload.tile_authors;
+                    const { data: fallbackData, error: fallbackError } = await supabase
+                        .from('maps')
+                        .insert(fallbackPayload)
+                        .select('id')
+                        .single();
+                    data = fallbackData;
+                    error = fallbackError;
+                }
                 if (error)
                     throw error;
                 savedMapId = data?.id;
@@ -662,13 +685,28 @@ export const IOMixin = {
         if (this.autoSaveTimeout) clearTimeout(this.autoSaveTimeout);
         this.autoSaveTimeout = setTimeout(async () => {
             try {
-                await supabase
+                const { error } = await supabase
                     .from('maps')
                     .update({ 
                         map_data: this.tileGrid,
                         tile_authors: this.tileAuthors || {}
                     })
                     .eq('id', this.collabOriginalMapId);
+                if (error) {
+                    if (error.code === '42703') {
+                        console.warn('[Compass] tile_authors column is missing in Supabase. Falling back to map_data only.');
+                        const { error: fallbackError } = await supabase
+                            .from('maps')
+                            .update({ 
+                                map_data: this.tileGrid
+                            })
+                            .eq('id', this.collabOriginalMapId);
+                        if (fallbackError) throw fallbackError;
+                        console.log('[Compass] Auto-saved collab map state (map_data only).');
+                        return;
+                    }
+                    throw error;
+                }
                 console.log('[Compass] Auto-saved collab map state.');
             } catch (e) {
                 console.error('[Compass] Auto-save failed:', e);
@@ -719,11 +757,21 @@ export const IOMixin = {
                 author_name: combinedAuthorName,
             };
             
-            const { error } = await supabase
+            let { error } = await supabase
                 .from('maps')
                 .update(payload)
                 .eq('id', this.collabOriginalMapId);
                 
+            if (error && error.code === '42703') {
+                console.warn('[Compass] tile_authors column is missing in Supabase. Retrying without it.');
+                const fallbackPayload = { ...payload };
+                delete fallbackPayload.tile_authors;
+                const { error: fallbackError } = await supabase
+                    .from('maps')
+                    .update(fallbackPayload)
+                    .eq('id', this.collabOriginalMapId);
+                error = fallbackError;
+            }
             if (error) throw error;
             
             this.broadcastMapUpdate({
@@ -750,7 +798,14 @@ export const IOMixin = {
                 is_public: false // Default private for the guest
             };
             
-            const { error } = await supabase.from('maps').insert([payload]);
+            let { error } = await supabase.from('maps').insert([payload]);
+            if (error && error.code === '42703') {
+                console.warn('[Compass] tile_authors column is missing in Supabase. Retrying without it.');
+                const fallbackPayload = { ...payload };
+                delete fallbackPayload.tile_authors;
+                const { error: fallbackError } = await supabase.from('maps').insert([fallbackPayload]);
+                error = fallbackError;
+            }
             if (error) throw error;
             
             alert(window.cp_translate('Collaboration finished! A copy of this map was saved to your My Maps.'));
