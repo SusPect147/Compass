@@ -569,6 +569,8 @@ export const IOMixin = {
                 event: 'map_update',
                 payload: payload
             }).catch(err => console.error("[Compass] Broadcast failed", err));
+            
+            if (this.triggerAutoSave) this.triggerAutoSave();
         }
     },
 
@@ -605,11 +607,32 @@ export const IOMixin = {
                 }
             }
             this.draw();
+            if (this.triggerAutoSave) this.triggerAutoSave();
         } catch (e) {
             console.error("[Compass] Remote update error", e);
         } finally {
             this.isProcessingRemote = false;
         }
+    },
+    
+    triggerAutoSave() {
+        if (!this.isRealtimeCollab || this.currentUserId !== this.collabMapOwnerId) return;
+
+        if (this.autoSaveTimeout) clearTimeout(this.autoSaveTimeout);
+        this.autoSaveTimeout = setTimeout(async () => {
+            try {
+                await supabase
+                    .from('maps')
+                    .update({ 
+                        map_data: this.tileGrid,
+                        tile_authors: this.tileAuthors || {}
+                    })
+                    .eq('id', this.collabOriginalMapId);
+                console.log('[Compass] Auto-saved collab map state.');
+            } catch (e) {
+                console.error('[Compass] Auto-save failed:', e);
+            }
+        }, 1500);
     },
     
     handleReadyClick() {

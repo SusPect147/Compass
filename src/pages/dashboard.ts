@@ -931,7 +931,7 @@ async function openGlobalCollabModal() {
             
             const { data: newLink, error: insErr } = await supabase
                 .from('map_collab_links')
-                .insert([{ map_id: newMap.id, owner_id: currentUserId, is_active: true }])
+                .insert([{ map_id: newMap.id, owner_id: currentUserId, is_active: true, mode: 'realtime' }])
                 .select('*')
                 .single();
             
