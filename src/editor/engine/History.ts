@@ -118,26 +118,7 @@ export const HistoryMixin = {
         }
     },
 
-    /**
-     * Legacy: строит полный список дельт из текущего tileGrid vs нуля.
-     * Используется в saveState() для обратной совместимости.
-     * По сути это "сохранить весь текущий tileGrid как дельту от предыдущего состояния".
-     */
     _buildFullSnapshotDeltas(this: any): TileDelta[] {
-        // Берём предыдущее состояние из вершины стека (если есть)
-        const prev = this.undoStack.length > 0
-            ? this.undoStack[this.undoStack.length - 1]
-            : null;
-
-        // Строим быстрый lookup: "layer,x,y" → fromValue
-        const prevMap = new Map<string, number>();
-        if (prev) {
-            for (const d of prev.deltas) {
-                // Это дельта предыдущей операции — восстанавливаем `to` как "текущее перед нашим действием"
-                prevMap.set(`${d.layer},${d.x},${d.y}`, d.to);
-            }
-        }
-
         // Полный снапшот текущего состояния
         const snapshot = this.cloneLayeredMap();
         const deltas: TileDelta[] = [];
@@ -147,7 +128,7 @@ export const HistoryMixin = {
             for (let y = 0; y < this.mapHeight; y++) {
                 for (let x = 0; x < this.mapWidth; x++) {
                     const val = snapshot[layer][y]?.[x] ?? 0;
-                    deltas.push({ layer, x, y, from: 0, to: val });
+                    deltas.push({ layer, x, y, from: val, to: val });
                 }
             }
         }

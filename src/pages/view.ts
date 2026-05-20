@@ -979,6 +979,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <span style="font-size:0.75rem; color:rgba(255,255,255,0.4);">${dateStr}</span>
                             </div>
                             <div style="display:flex; gap:8px;">
+                                <button class="collab-action-btn preview-btn" style="
+                                    background: rgba(167, 139, 250, 0.15);
+                                    border: 1px solid rgba(167, 139, 250, 0.3);
+                                    color: #c4b5fd;
+                                    padding: 4px 12px;
+                                    border-radius: 8px;
+                                    font-size: 0.78rem;
+                                    font-weight:700;
+                                    cursor:pointer;
+                                    transition: all 0.2s;
+                                ">
+                                    ${window.cp_translate('Preview')}
+                                </button>
                                 <button class="collab-action-btn use-btn" style="
                                     background: rgba(96, 165, 250, 0.15);
                                     border: 1px solid rgba(96, 165, 250, 0.3);
@@ -1007,10 +1020,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 </button>
                             </div>
                         </div>
+                        <div class="suggestion-preview-container" style="display: none; position: relative; width: 100%; height: 350px; margin-top: 12px; overflow: hidden; border-radius: 8px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1);">
+                            <p class="loading-text" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.6); font-size: 0.9rem;">
+                                ${window.cp_translate('Loading preview...')}
+                            </p>
+                            <img class="suggestion-map-img" style="display: none; position: absolute; transform-origin: center center; cursor: grab;" />
+                        </div>
                     `;
 
+                    const previewBtn = item.querySelector('.preview-btn') as HTMLButtonElement;
                     const useBtn = item.querySelector('.use-btn') as HTMLButtonElement;
                     const delBtn = item.querySelector('.del-btn') as HTMLButtonElement;
+                    const previewContainer = item.querySelector('.suggestion-preview-container') as HTMLDivElement;
+                    const mapImg = item.querySelector('.suggestion-map-img') as HTMLImageElement;
+                    const loadingText = item.querySelector('.loading-text') as HTMLParagraphElement;
+
+                    previewBtn.onmouseover = () => {
+                        previewBtn.style.background = 'rgba(167, 139, 250, 0.25)';
+                        previewBtn.style.borderColor = 'rgba(167, 139, 250, 0.5)';
+                        previewBtn.style.color = '#fff';
+                    };
+                    previewBtn.onmouseout = () => {
+                        previewBtn.style.background = 'rgba(167, 139, 250, 0.15)';
+                        previewBtn.style.borderColor = 'rgba(167, 139, 250, 0.3)';
+                        previewBtn.style.color = '#c4b5fd';
+                    };
 
                     useBtn.onmouseover = () => {
                         useBtn.style.background = 'rgba(96, 165, 250, 0.25)';
@@ -1033,6 +1067,94 @@ document.addEventListener('DOMContentLoaded', async () => {
                         delBtn.style.borderColor = 'rgba(239, 68, 68, 0.25)';
                         delBtn.style.color = '#f87171';
                     };
+
+                    let previewLoaded = false;
+                    let scale = 1;
+                    let posX = 0;
+                    let posY = 0;
+
+                    const updatePreviewTransform = () => {
+                        mapImg.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`;
+                    };
+
+                    previewBtn.onclick = async () => {
+                        if (previewContainer.style.display === 'none') {
+                            previewContainer.style.display = 'block';
+                            previewBtn.textContent = window.cp_translate('Hide');
+                            
+                            if (!previewLoaded) {
+                                try {
+                                    const pngDataUrl = await drawStaticMapPreview(s.map_data, data.size, data.gamemode, data.environment, data.theme_options);
+                                    mapImg.src = pngDataUrl;
+                                    mapImg.onload = () => {
+                                        loadingText.style.display = 'none';
+                                        mapImg.style.display = 'block';
+                                        mapImg.style.height = '100%';
+                                        
+                                        // Center image
+                                        const cRect = previewContainer.getBoundingClientRect();
+                                        const iRect = mapImg.getBoundingClientRect();
+                                        posX = (cRect.width - iRect.width) / 2;
+                                        posY = 0; // it sets height to 100% so height matches container
+                                        updatePreviewTransform();
+                                    };
+                                    previewLoaded = true;
+                                } catch (e) {
+                                    console.error('Failed to load preview', e);
+                                    loadingText.textContent = window.cp_translate('Error loading preview');
+                                }
+                            }
+                        } else {
+                            previewContainer.style.display = 'none';
+                            previewBtn.textContent = window.cp_translate('Preview');
+                        }
+                    };
+
+                    // Pan and Zoom logic for preview
+                    let isDragging = false;
+                    let lastX = 0, lastY = 0;
+
+                    previewContainer.addEventListener('mousedown', (e) => {
+                        if (e.button !== 0 && e.button !== 2) return; // Allow left or right click panning
+                        e.preventDefault();
+                        isDragging = true;
+                        mapImg.style.cursor = 'grabbing';
+                        lastX = e.clientX;
+                        lastY = e.clientY;
+                        mapImg.style.transition = 'none';
+                    });
+
+                    document.addEventListener('mousemove', (e) => {
+                        if (!isDragging) return;
+                        posX += e.clientX - lastX;
+                        posY += e.clientY - lastY;
+                        lastX = e.clientX;
+                        lastY = e.clientY;
+                        updatePreviewTransform();
+                    });
+
+                    const stopDrag = () => {
+                        if (!isDragging) return;
+                        isDragging = false;
+                        mapImg.style.cursor = 'grab';
+                        mapImg.style.transition = 'transform 0.1s ease-out';
+                    };
+
+                    document.addEventListener('mouseup', stopDrag);
+                    previewContainer.addEventListener('mouseleave', stopDrag); // Also stop if leaving container
+
+                    previewContainer.addEventListener('wheel', (e) => {
+                        e.preventDefault();
+                        const zoomIntensity = 0.1;
+                        if (e.deltaY < 0) {
+                            scale += zoomIntensity;
+                        } else {
+                            scale = Math.max(0.2, scale - zoomIntensity);
+                        }
+                        mapImg.style.transition = 'transform 0.15s ease-out';
+                        updatePreviewTransform();
+                    }, { passive: false });
+
 
                     useBtn.onclick = async () => {
                         const confirmSwap = window.cp_translate("🔄 Are you sure you want to load this version as the primary map? Your current version will be archived below as a backup.");
