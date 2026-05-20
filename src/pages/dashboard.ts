@@ -153,7 +153,7 @@ function createOwnerCard(map, image) {
             </div>
             
             <div class="owner-controls" style="display: flex; gap: 8px; flex-shrink:0; align-items: center;">
-                 <button class="collab-btn" data-id="${map.id}" title="${window.cp_translate('Work on Map with a Friend')}" style="
+                 <button class="collab-btn" data-id="${map.id}" title="${window.cp_translate('Generate Suggestion Link')}" style="
                      background: rgba(139, 92, 246, 0.08);
                      border: 1px solid rgba(139, 92, 246, 0.25);
                      color: #c4b5fd;
@@ -290,10 +290,10 @@ async function openCollabModal(map) {
                 transition: color 0.2s;
             ">&times;</button>
             <h3 style="margin-top:0; color:#fff; font-size:1.3rem; font-weight:700; margin-bottom: 0.5rem; display:flex; align-items:center; gap:10px;">
-                👥 ${window.cp_translate('Work on Map with a Friend')}
+                👥 ${window.cp_translate('Generate Suggestion Link')}
             </h3>
             <p style="color: rgba(255,255,255,0.6); font-size:0.88rem; margin-bottom:1.5rem;">
-                ${window.cp_translate('Generate a secure, unique collaboration link. Anyone with this link can edit a copy of your map and submit their suggestions to you.')}
+                ${window.cp_translate('Generate a secure, unique suggestion link. Anyone with this link can edit a copy of your map and submit their suggestions to you.')}
             </p>
             <div id="collabModalBody" style="display:flex; flex-direction:column; gap:1rem;">
                 <div style="text-align:center; padding: 2rem 0; opacity:0.7;">
@@ -344,7 +344,7 @@ async function openCollabModal(map) {
                         transition: all 0.25s;
                         width: 100%;
                     ">
-                        ⚡ ${window.cp_translate('Generate Collaboration Link')}
+                        ⚡ ${window.cp_translate('Generate Suggestion Link')}
                     </button>
                 `;
                 const genBtn = bodyContainer.querySelector('#generateCollabLinkBtn') as HTMLButtonElement;
@@ -364,7 +364,7 @@ async function openCollabModal(map) {
                         console.error(err);
                         alert(window.cp_translate('Failed to generate collab link:') + ' ' + err.message);
                         genBtn.disabled = false;
-                        genBtn.textContent = window.cp_translate('Generate Collaboration Link');
+                        genBtn.textContent = window.cp_translate('Generate Suggestion Link');
                     }
                 };
             } else {
@@ -791,10 +791,224 @@ function injectPremiumCardStyles() {
     document.head.appendChild(style);
 }
 
+async function openGlobalCollabModal() {
+    if (!currentUserId) {
+        alert(window.cp_translate('Please sign in to create a collab map.'));
+        return;
+    }
+
+    let modal = document.getElementById('globalCollabModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'globalCollabModal';
+        modal.style.cssText = `
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    requestAnimationFrame(() => {
+        if (modal) modal.style.opacity = '1';
+    });
+
+    modal.innerHTML = `
+        <div class="collab-modal-card" style="
+            background: rgba(20, 20, 28, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            position: relative;
+        ">
+            <button class="collab-modal-close" style="
+                position: absolute; top: 16px; right: 16px; background: none; border: none;
+                color: rgba(255,255,255,0.4); font-size: 1.5rem; cursor: pointer; transition: color 0.2s;
+            ">&times;</button>
+            <h3 style="margin-top:0; color:#fff; font-size:1.3rem; font-weight:700; margin-bottom: 0.5rem;">
+                🌍 ${window.cp_translate('Create Map Online')}
+            </h3>
+            <p style="color: rgba(255,255,255,0.6); font-size:0.88rem; margin-bottom:1.5rem;">
+                ${window.cp_translate('Choose your map settings. A new blank map will be created, and you will get a link to invite your friend!')}
+            </p>
+            <div id="globalCollabModalBody" style="display:flex; flex-direction:column; gap:1rem;">
+                <div>
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; font-weight:700;">GAMEMODE</label>
+                    <select id="gcGamemode" style="width:100%; padding:0.6rem; border-radius:10px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); margin-top:4px;">
+                        <option value="Showdown">Showdown</option>
+                        <option value="Gem_Grab">Gem Grab</option>
+                        <option value="Brawl_Ball">Brawl Ball</option>
+                        <option value="Bounty">Bounty</option>
+                        <option value="Heist">Heist</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; font-weight:700;">ENVIRONMENT</label>
+                    <select id="gcEnvironment" style="width:100%; padding:0.6rem; border-radius:10px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); margin-top:4px;">
+                        <option value="Desert">Desert</option>
+                        <option value="Grassy_Field">Grassy Field</option>
+                        <option value="Mine">Mine</option>
+                        <option value="Retropolis">Retropolis</option>
+                        <option value="Snowtel">Snowtel</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; font-weight:700;">SIZE</label>
+                    <select id="gcSize" style="width:100%; padding:0.6rem; border-radius:10px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); margin-top:4px;">
+                        <option value="regular">Regular</option>
+                        <option value="showdown">Showdown</option>
+                    </select>
+                </div>
+                
+                <button id="gcCreateBtn" style="
+                    margin-top: 1rem;
+                    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+                    color: #fff;
+                    border: none;
+                    padding: 0.8rem 1.5rem;
+                    border-radius: 12px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    transition: all 0.25s;
+                    width: 100%;
+                ">
+                    ✨ ${window.cp_translate('Create & Get Link')}
+                </button>
+            </div>
+        </div>
+    `;
+
+    const cardEl = modal.querySelector('.collab-modal-card') as HTMLElement;
+    requestAnimationFrame(() => {
+        if (cardEl) cardEl.style.transform = 'scale(1)';
+    });
+
+    const closeBtn = modal.querySelector('.collab-modal-close') as HTMLElement;
+    const closeModal = () => {
+        if (modal) {
+            modal.style.opacity = '0';
+            if (cardEl) cardEl.style.transform = 'scale(0.9)';
+            setTimeout(() => modal?.remove(), 300);
+        }
+    };
+    closeBtn.onclick = closeModal;
+    modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+
+    const createBtn = modal.querySelector('#gcCreateBtn') as HTMLButtonElement;
+    createBtn.onclick = async () => {
+        createBtn.disabled = true;
+        createBtn.textContent = '...';
+        
+        const gamemode = (document.getElementById('gcGamemode') as HTMLSelectElement).value;
+        const environment = (document.getElementById('gcEnvironment') as HTMLSelectElement).value;
+        const size = (document.getElementById('gcSize') as HTMLSelectElement).value;
+        
+        try {
+            const { data: userObj } = await supabase.auth.getUser();
+            const { data: newMap, error: mapErr } = await supabase.from('maps').insert([{
+                user_id: userObj.user.id,
+                name: 'Online Collab Map',
+                gamemode: gamemode,
+                environment: environment,
+                size: size,
+                map_data: '',
+                is_public: false
+            }]).select('*').single();
+            
+            if (mapErr) throw mapErr;
+            
+            const { data: newLink, error: insErr } = await supabase
+                .from('map_collab_links')
+                .insert([{ map_id: newMap.id, owner_id: currentUserId, is_active: true }])
+                .select('*')
+                .single();
+            
+            if (insErr) throw insErr;
+            
+            const collabUrl = `${window.location.origin}${window.location.pathname.replace('dashboard.html', 'editor.html')}?collab=${newLink.id}`;
+            const bodyContainer = document.getElementById('globalCollabModalBody');
+            if (bodyContainer) {
+                bodyContainer.innerHTML = `
+                    <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                        <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; font-weight:700;">${window.cp_translate('COLLABORATION LINK')}</label>
+                        <div style="display:flex; gap:8px;">
+                            <input type="text" readonly value="${collabUrl}" style="
+                                flex: 1;
+                                background: rgba(0,0,0,0.3);
+                                border: 1px solid rgba(255,255,255,0.1);
+                                border-radius: 10px;
+                                padding: 0.6rem;
+                                color: #fff;
+                                font-size: 0.8rem;
+                                outline: none;
+                            ">
+                            <button id="copyCollabLinkBtn" style="
+                                background: rgba(255,255,255,0.08);
+                                border: 1px solid rgba(255,255,255,0.1);
+                                border-radius: 10px;
+                                color: #fff;
+                                font-size:0.8rem;
+                                font-weight:700;
+                                padding: 0 1rem;
+                                cursor: pointer;
+                                transition: all 0.2s;
+                            ">
+                                ${window.cp_translate('Copy')}
+                            </button>
+                        </div>
+                    </div>
+                    <div style="margin-top:1rem; text-align:center;">
+                        <a href="${collabUrl}" style="color:#a78bfa; text-decoration:none; font-weight:700;">${window.cp_translate('Join Editor Now ->')}</a>
+                    </div>
+                `;
+                
+                const copyBtn = bodyContainer.querySelector('#copyCollabLinkBtn') as HTMLButtonElement;
+                copyBtn.onclick = async () => {
+                    try {
+                        await navigator.clipboard.writeText(collabUrl);
+                        copyBtn.textContent = window.cp_translate('Copied!');
+                        copyBtn.style.color = '#34d399';
+                        setTimeout(() => {
+                            copyBtn.textContent = window.cp_translate('Copy');
+                            copyBtn.style.color = '#fff';
+                        }, 2000);
+                    } catch (e) {
+                        alert(collabUrl);
+                    }
+                };
+            }
+            
+            loadMyMaps();
+
+        } catch (err) {
+            console.error(err);
+            alert('Error: ' + err.message);
+            createBtn.disabled = false;
+            createBtn.textContent = window.cp_translate('Create & Get Link');
+        }
+    };
+}
+
 window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('mapSearch')?.addEventListener('input', applyFilters);
     ['gamemodeFilter', 'environmentFilter', 'sizeFilter'].forEach(id => {
         document.getElementById(id)?.addEventListener('change', applyFilters);
+    });
+
+    document.getElementById('globalCollabBtn')?.addEventListener('click', () => {
+        openGlobalCollabModal();
     });
 
     loadMyMaps();
