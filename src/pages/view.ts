@@ -439,7 +439,51 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const tileX = Math.floor(mapPixelX / tileSize);
                     const tileY = Math.floor(mapPixelY / tileSize);
                     
-                    // The user requested not to show the block placed by tooltip anymore
+                    if (tileX >= 0 && tileX < actualWidth && tileY >= 0 && tileY < actualHeight) {
+                        let isFloor = true;
+                        if (data.map_data && Array.isArray(data.map_data)) {
+                            for (let l = 0; l < data.map_data.length; l++) {
+                                if (data.map_data[l] && data.map_data[l][tileY] && data.map_data[l][tileY][tileX] !== 0) {
+                                    isFloor = false;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        let tooltip = document.getElementById('tileAuthorTooltip') as HTMLDivElement & { timeout?: any };
+                        if (isFloor) {
+                            if (tooltip) tooltip.style.opacity = '0';
+                        } else {
+                            const tileAuthors = data.tile_authors || {};
+                            const author = tileAuthors[`${tileY},${tileX}`] || data.author_name || 'Anonymous';
+                            
+                            if (!tooltip) {
+                                tooltip = document.createElement('div') as HTMLDivElement & { timeout?: any };
+                                tooltip.id = 'tileAuthorTooltip';
+                                tooltip.style.position = 'fixed';
+                                tooltip.style.background = 'rgba(20, 20, 28, 0.95)';
+                                tooltip.style.border = '1px solid rgba(139, 92, 246, 0.4)';
+                                tooltip.style.color = '#c4b5fd';
+                                tooltip.style.padding = '6px 12px';
+                                tooltip.style.borderRadius = '8px';
+                                tooltip.style.fontSize = '0.85rem';
+                                tooltip.style.fontWeight = 'bold';
+                                tooltip.style.pointerEvents = 'none';
+                                tooltip.style.zIndex = '99999';
+                                tooltip.style.transition = 'opacity 0.2s';
+                                document.body.appendChild(tooltip);
+                            }
+                            tooltip.textContent = `Block placed by: ${author}`;
+                            tooltip.style.left = `${e.clientX + 15}px`;
+                            tooltip.style.top = `${e.clientY + 15}px`;
+                            tooltip.style.opacity = '1';
+                            
+                            clearTimeout(tooltip.timeout);
+                            tooltip.timeout = setTimeout(() => {
+                                if (tooltip) tooltip.style.opacity = '0';
+                            }, 2500);
+                        }
+                    }
                 }
 
                 if (e.button !== 2)
