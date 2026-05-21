@@ -1096,15 +1096,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                         useBtn.disabled = true;
                         useBtn.textContent = '...';
                         try {
-                            // Use RPC instead of direct insert to bypass COALESCE RLS bug
-                            const { error: archErr } = await supabase.rpc('submit_map_suggestion', {
+                            // Use archive_map_version RPC (owner-only, SECURITY DEFINER)
+                            const { data: archResult, error: archErr } = await supabase.rpc('archive_map_version', {
                                 p_map_id: mapId,
-                                p_contributor_id: currentUserId,
-                                p_contributor_name: window.cp_translate('Previous Version'),
+                                p_owner_id: currentUserId,
+                                p_label: window.cp_translate('Previous Version'),
                                 p_map_data: data.map_data,
                             });
-                            if (archErr)
-                                throw archErr;
+                            if (archErr) throw archErr;
+                            if (archResult && archResult.ok === false) throw new Error(archResult.error);
 
                             const { error: updErr } = await supabase
                                 .from('maps')

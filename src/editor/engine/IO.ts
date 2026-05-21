@@ -233,18 +233,21 @@ export const IOMixin = {
             if (this.collabLinkId && !this.isRealtimeCollab) {
                 console.info(`[Compass] Diverting save logic to Collab Suggestion. Collab Link: ${this.collabLinkId}`);
                 const contributor = user.user_metadata.full_name || user.user_metadata.display_name || user.user_metadata.name || 'Anonymous';
-                // Use an RPC to insert the suggestion — the direct .insert() on map_suggestions
-                // triggers a COALESCE type mismatch in the RLS policy (Supabase bug 42804).
-                // The RPC uses SECURITY DEFINER and validates permissions internally.
-                const { error: sugErr } = await supabase.rpc('submit_map_suggestion', {
+                // RPC uses SECURITY DEFINER to bypass the RLS COALESCE bug.
+                // Returns JSON {ok: true} or {ok: false, error: '...'}
+                const { data: rpcResult, error: sugErr } = await supabase.rpc('submit_map_suggestion', {
                     p_map_id: this.collabOriginalMapId,
                     p_contributor_id: user.id,
                     p_contributor_name: contributor,
                     p_map_data: this.tileGrid,
                 });
                 if (sugErr) {
-                    console.error('[Compass] Suggestion RPC error details:', JSON.stringify(sugErr));
+                    console.error('[Compass] Suggestion RPC transport error:', JSON.stringify(sugErr));
                     throw sugErr;
+                }
+                if (rpcResult && rpcResult.ok === false) {
+                    console.error('[Compass] Suggestion RPC logic error:', rpcResult.error);
+                    throw new Error(rpcResult.error || 'Unknown suggestion error');
                 }
 
                 alert(window.cp_translate("🤝 Suggestion successfully sent to the map owner!"));
