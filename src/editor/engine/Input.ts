@@ -826,6 +826,24 @@ export const InputMixin = {
         if (this.headless) return;
         const container = document.getElementById('tileSelector');
         container.innerHTML = '';
+        
+        const sortToggle = document.getElementById('sortTilesToggle');
+        let isSorted = localStorage.getItem('cp_sort_tiles') !== 'false';
+        if (sortToggle) {
+            sortToggle.checked = isSorted;
+            sortToggle.onchange = (e) => {
+                localStorage.setItem('cp_sort_tiles', e.target.checked);
+                this.initializeTileSelector();
+            };
+        }
+        
+        if (isSorted) {
+            container.classList.remove('unsorted-grid');
+            container.classList.add('sorted-list');
+        } else {
+            container.classList.add('unsorted-grid');
+            container.classList.remove('sorted-list');
+        }
 
         // Define the categories and tiles
         const categories = [
@@ -840,9 +858,8 @@ export const InputMixin = {
             { name: "Teleporters", tiles: ['Teleporter Blue', 'Teleporter Green', 'Teleporter Red', 'Teleporter Yellow'] }
         ];
 
-        categories.forEach(category => {
-            let categoryAdded = false;
-
+        categories.forEach((category, index) => {
+            const validTiles = [];
             category.tiles.forEach(tileName => {
                 const tileEntry = Object.entries(this.tileDefinitions)
                     .find(([_, def]) => def.name === tileName);
@@ -868,7 +885,7 @@ export const InputMixin = {
 
                 if (def.img || def.getImg) {
                     const img = document.createElement('img');
-                    img.parentEnvironment = this.environment; // Bound context for global theme filtering
+                    img.parentEnvironment = this.environment;
                     if (def.img) {
                         img.src = `Resources/${def.img.replace('${env}', this.environment)}`;
                     } else if (def.getImg) {
@@ -882,7 +899,6 @@ export const InputMixin = {
                                 }
                             };
                         } else {
-                            // Skip this tile if it's not valid for current gamemode
                             return;
                         }
                     }
@@ -898,19 +914,47 @@ export const InputMixin = {
                     this.togglePanningMode(false);
                 });
 
-                if (!categoryAdded) {
+                validTiles.push(btn);
+            });
+            
+            if (validTiles.length > 0) {
+                if (isSorted) {
+                    const categoryId = 'cp_cat_' + index;
+                    const isCollapsed = localStorage.getItem(categoryId) === 'true';
+                    
                     const header = document.createElement('div');
                     header.className = 'tile-category-header';
-                    header.textContent = category.name;
+                    const titleText = (typeof TRANSLATIONS !== 'undefined' && TRANSLATIONS[window.appLanguage || 'en'] && TRANSLATIONS[window.appLanguage || 'en'][category.name]) ? TRANSLATIONS[window.appLanguage || 'en'][category.name] : category.name;
+                    header.innerHTML = `<span>${titleText}</span> <svg class="${isCollapsed ? 'collapsed' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+                    
+                    const grid = document.createElement('div');
+                    grid.className = 'tile-category-grid';
+                    if (isCollapsed) grid.style.display = 'none';
+                    
+                    header.onclick = () => {
+                        const currentlyCollapsed = grid.style.display === 'none';
+                        if (currentlyCollapsed) {
+                            grid.style.display = 'grid';
+                            localStorage.setItem(categoryId, 'false');
+                            header.querySelector('svg').classList.remove('collapsed');
+                        } else {
+                            grid.style.display = 'none';
+                            localStorage.setItem(categoryId, 'true');
+                            header.querySelector('svg').classList.add('collapsed');
+                        }
+                    };
+                    
                     container.appendChild(header);
-                    categoryAdded = true;
+                    validTiles.forEach(btn => grid.appendChild(btn));
+                    container.appendChild(grid);
+                } else {
+                    validTiles.forEach(btn => container.appendChild(btn));
                 }
-
-                container.appendChild(btn);
-            });
+            }
         });
 
-        document.getElementById('tileSelector').querySelector(`.tile-btn[id="1"]`).classList.add('selected');
+        const defaultBtn = document.getElementById('tileSelector').querySelector(`.tile-btn[id="1"]`);
+        if (defaultBtn) defaultBtn.classList.add('selected');
     },
 
     getTileCoordinates(event) {

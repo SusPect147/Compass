@@ -111,22 +111,29 @@ async function displayNextBatch() {
 
     const queue = [];
 
-    // 1. RENDER ALL CARDS INSTANTLY: Prevent UI hang and show community maps immediately!
+    // 1. RENDER ALL CARDS INSTANTLY
     batch.forEach(map => {
-        // Use an invisible 1x1 transparent spacer to keep the card empty until loaded
-        const card = createPremiumCard(map, 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+        // Use the pre-rendered thumbnail if available, otherwise use a transparent spacer
+        const initialImage = map.thumbnail_url || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        const card = createPremiumCard(map, initialImage);
         container.appendChild(card);
         
         const img = card.querySelector('.card-image-wrapper img');
         if (img) {
-            img.style.opacity = '0'; // Keep completely invisible until render completes
-            queue.push({ map, img });
+            if (map.thumbnail_url) {
+                // If thumbnail exists, let the browser load it natively
+                img.style.opacity = '0';
+                img.onload = () => img.style.opacity = '1';
+            } else {
+                img.style.opacity = '0'; // Keep completely invisible until render completes
+                queue.push({ map, img });
+            }
         }
     });
 
     updateLoadMoreButton();
 
-    // 2. PROCESS MAP RENDERINGS SEQUENTIALLY: Prevents DOM/Canvas thread race conditions and browser locking
+    // 2. PROCESS LEGACY MAP RENDERINGS SEQUENTIALLY: Prevents DOM/Canvas thread race conditions
     for (const task of queue) {
         try {
             const pngDataUrl = await drawStaticMapPreview(

@@ -272,6 +272,33 @@ export const IOMixin = {
             if (!galleryEnabled && environment.startsWith('CUSTOM_')) {
                 finalEnvironment = 'Desert';
             }
+
+            // --- THUMBNAIL GENERATION ---
+            let thumbnailUrl = null;
+            try {
+                // Generate a 1x (standard size) WebP preview, compressed to save space and upload time
+                const thumbDataUrl = await this.createMapPNG(1, 'image/webp', 0.8);
+                const thumbRes = await fetch(thumbDataUrl);
+                const thumbBlob = await thumbRes.blob();
+                
+                const fileName = `thumb_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.webp`;
+                
+                const { error: uploadError } = await supabase.storage
+                    .from('map_thumbnails')
+                    .upload(fileName, thumbBlob, { contentType: 'image/webp', cacheControl: '3600', upsert: false });
+                    
+                if (uploadError) {
+                    console.warn('[Compass] Thumbnail upload failed, proceeding without it:', uploadError);
+                } else {
+                    const { data: publicUrlData } = supabase.storage
+                        .from('map_thumbnails')
+                        .getPublicUrl(fileName);
+                    thumbnailUrl = publicUrlData.publicUrl;
+                }
+            } catch (thumbErr) {
+                console.warn('[Compass] Thumbnail generation failed, proceeding without it:', thumbErr);
+            }
+            // ------------------------------
             const payload = {
                 name: mapName,
                 size: mapSize,
@@ -287,6 +314,9 @@ export const IOMixin = {
                     download: document.getElementById('showThemeInDownloadToggle')?.checked ?? true
                 }
             };
+            if (thumbnailUrl) {
+                payload.thumbnail_url = thumbnailUrl;
+            }
             let savedMapId = null;
             if (this.loadedMapId) {
                 console.info(`[Compass] Attempting database UPDATE on existing Map ID: ${this.loadedMapId}`);
@@ -353,9 +383,9 @@ export const IOMixin = {
             alert(`${window.cp_translate('Failed to save map:')} ${errorMessage}${detail ? '\n\nDetails: ' + detail : ''}`);
         }
     },
-    async createMapPNG() {
+    async createMapPNG(scale = 4, format = 'image/png', quality = 1.0) {
         // === HD EXPORT: temporarily scale up tileSize/padding for crisp output ===
-        const EXPORT_SCALE = 4; // 4x → tiles render at 128px instead of 32px
+        const EXPORT_SCALE = scale; 
         const originalTileSize = this.tileSize;
         const originalPadding = this.canvasPadding;
         this.tileSize = originalTileSize * EXPORT_SCALE;
@@ -553,7 +583,7 @@ export const IOMixin = {
                     ctx.drawImage(img, goal.x * tileSize + padding + (goal.offsetX || 0) * EXPORT_SCALE, goal.y * tileSize + padding + (goal.offsetY || 0) * EXPORT_SCALE, (goal.w || 1) * tileSize, (goal.h || 1) * tileSize);
                 }
             }
-            return canvas.toDataURL('image/png');
+            return canvas.toDataURL(format, quality);
         }
         finally {
             // Always restore original editor tile size — export must never affect the live canvas

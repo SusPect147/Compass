@@ -98,17 +98,25 @@ function displayNextBatch() {
     const batch = filteredMaps.slice(displayedCount, displayedCount + mapsPerPage);
 
     batch.forEach(map => {
-        drawStaticMapPreview(map.map_data, map.size, map.gamemode, map.environment)
-            .then(png => {
-                const card = createOwnerCard(map, png);
-                container.appendChild(card);
-                loadCardSuggestions(map.id, card);
-            })
-            .catch(() => {
-                const card = createOwnerCard(map, 'Resources/Additional/Icons/compass.png');
-                container.appendChild(card);
-                loadCardSuggestions(map.id, card);
-            });
+        if (map.thumbnail_url) {
+            // Instant render from Supabase Storage
+            const card = createOwnerCard(map, map.thumbnail_url);
+            container.appendChild(card);
+            loadCardSuggestions(map.id, card);
+        } else {
+            // Legacy visual render for maps that haven't been re-saved yet
+            drawStaticMapPreview(map.map_data, map.size, map.gamemode, map.environment)
+                .then(png => {
+                    const card = createOwnerCard(map, png);
+                    container.appendChild(card);
+                    loadCardSuggestions(map.id, card);
+                })
+                .catch(() => {
+                    const card = createOwnerCard(map, 'Resources/Additional/Icons/compass.png');
+                    container.appendChild(card);
+                    loadCardSuggestions(map.id, card);
+                });
+        }
     });
 
     displayedCount += batch.length;
