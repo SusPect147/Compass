@@ -34,11 +34,12 @@
             display: inline-block;
             width: 0.6em;
             height: 1.1em;
-            background-color: var(--accent-glow, #a78bfa);
+            background-color: currentColor;
             vertical-align: middle;
-            margin-left: 4px;
+            margin-left: 2px;
+            margin-right: calc(-0.6em - 2px);
             animation: twBlink 1s step-end infinite;
-            box-shadow: 0 0 8px var(--accent-glow, #a78bfa);
+            box-shadow: 0 0 6px currentColor;
         }
     `;
     document.head.appendChild(style);
@@ -77,12 +78,21 @@
 
         const cursor = document.createElement('span');
         cursor.className = 'tw-cursor';
-        element.appendChild(cursor);
+        // Initially place cursor at the very beginning of the element
+        if (element.firstChild) {
+            element.insertBefore(cursor, element.firstChild);
+        } else {
+            element.appendChild(cursor);
+        }
 
         let index = 0;
         function reveal() {
             if (index < chars.length) {
                 chars[index].style.visibility = 'visible';
+                
+                // Move cursor immediately after the newly revealed character
+                chars[index].parentNode.insertBefore(cursor, chars[index].nextSibling);
+                
                 index++;
                 // Randomize speed slightly for realistic typing
                 const jitter = speedMs + (Math.random() * 20 - 10);
