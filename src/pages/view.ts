@@ -1096,17 +1096,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                         useBtn.disabled = true;
                         useBtn.textContent = '...';
                         try {
-                            const archivePayload = {
-                                map_id: mapId,
-                                contributor_id: currentUserId,
-                                contributor_name: window.cp_translate('Previous Version'),
-                                map_data: data.map_data,
-                            };
-                            const { error: archErr } = await supabase
-                                .from('map_suggestions')
-                                .insert([archivePayload]);
+                            // Use RPC instead of direct insert to bypass COALESCE RLS bug
+                            const { error: archErr } = await supabase.rpc('submit_map_suggestion', {
+                                p_map_id: mapId,
+                                p_contributor_id: currentUserId,
+                                p_contributor_name: window.cp_translate('Previous Version'),
+                                p_map_data: data.map_data,
+                            });
                             if (archErr)
                                 throw archErr;
+
                             const { error: updErr } = await supabase
                                 .from('maps')
                                 .update({ map_data: s.map_data })
