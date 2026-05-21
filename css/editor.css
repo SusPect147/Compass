@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 img {
     -webkit-user-select: none;
     -webkit-user-drag: none;
@@ -2232,3 +2234,97 @@ body.top-bar-hidden .restore-topbar-btn {
 }
 
 
+/* ═══════════════════════════════════════════════════════════
+   DESIGN REFINEMENTS — Flat & Clean (ported from editor_1)
+   ─────────────────────────────────────────────────────────
+   - Inter font
+   - No heavy borders — separation via spacing & opacity
+   - Flat surfaces, minimal shadows
+   - --panel-opacity defaults to 1
+   ═══════════════════════════════════════════════════════════ */
+
+body,
+body * {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+/* Remove heavy borders and shadows from main panels */
+.controls-bar,
+.tiles-section,
+.selections-section,
+.toolbar {
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+    border-radius: 12px !important;
+}
+
+/* Flatten the panel-drag-handle separator */
+.panel-drag-handle {
+    border-bottom: none !important;
+}
+
+/* Flat icon buttons */
+.icon-btn,
+.zoom-btn {
+    border: none !important;
+    background-color: rgba(255, 255, 255, 0.04) !important;
+}
+.icon-btn:hover,
+.zoom-btn:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+/* Panel opacity defaults to 1 */
+:root {
+    --panel-opacity: 1;
+}
+.controls-bar,
+.tiles-section,
+.selections-section,
+.toolbar,
+.below-map,
+.zoom-controls-floating {
+    opacity: var(--panel-opacity, 1) !important;
+    transition: opacity 0.3s ease !important;
+}
+.controls-bar:hover,
+.tiles-section:hover,
+.selections-section:hover,
+.toolbar:hover,
+.below-map:hover,
+.zoom-controls-floating:hover {
+    opacity: 1 !important;
+}
+body.opacity-adjusting .controls-bar,
+body.opacity-adjusting .tiles-section,
+body.opacity-adjusting .selections-section,
+body.opacity-adjusting .toolbar,
+body.opacity-adjusting .below-map,
+body.opacity-adjusting .zoom-controls-floating {
+    opacity: var(--panel-opacity, 1) !important;
+}
+
+/* Flat select / input styling */
+.select-inline select,
+.controls-bar input[type="text"] {
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+    background-color: rgba(255, 255, 255, 0.04) !important;
+    border-radius: 8px !important;
+}
+.select-inline select:hover,
+.controls-bar input[type="text"]:hover,
+.select-inline select:focus,
+.controls-bar input[type="text"]:focus {
+    border-color: var(--primary-color, #6366f1) !important;
+    background-color: rgba(0, 0, 0, 0.3) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-color, #6366f1) 20%, transparent) !important;
+}
+
+/* Flat top-bar */
+.top-bar {
+    border-bottom: none !important;
+    box-shadow: none !important;
+}
