@@ -57,7 +57,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                 envDisplayEl.textContent = format(data.environment);
             }
         }
-        document.getElementById('mapAuthor').textContent = 'By ' + (data.author_name || 'Anonymous');
+        const allAuthors = new Set<string>();
+        if (data.author_name) {
+            data.author_name.split('&').map((a: string) => a.trim()).forEach((a: string) => {
+                const cleanA = a.replace(/^By\s+/i, '').trim();
+                if (cleanA) allAuthors.add(cleanA);
+            });
+        }
+        if (data.tile_authors) {
+            Object.values(data.tile_authors).forEach((author: any) => {
+                if (typeof author === 'string' && author.trim()) {
+                    const cleanA = author.trim().replace(/^By\s+/i, '').trim();
+                    if (cleanA) allAuthors.add(cleanA);
+                }
+            });
+        }
+        let authorsDisplay = Array.from(allAuthors).join(' & ');
+        if (!authorsDisplay) authorsDisplay = 'Anonymous';
+        document.getElementById('mapAuthor').textContent = authorsDisplay;
         const shareBtn = document.getElementById('shareMapBtn');
         // ЗАЩИТА: Если карта приватная, прячем кнопку Поделиться даже от автора
         if (data.is_public === false && shareBtn) {
@@ -422,37 +439,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const tileX = Math.floor(mapPixelX / tileSize);
                     const tileY = Math.floor(mapPixelY / tileSize);
                     
-                    if (tileX >= 0 && tileX < actualWidth && tileY >= 0 && tileY < actualHeight) {
-                        const tileAuthors = data.tile_authors || {};
-                        const author = tileAuthors[`${tileY},${tileX}`] || data.author_name || 'Anonymous';
-                        
-                        let tooltip = document.getElementById('tileAuthorTooltip');
-                        if (!tooltip) {
-                            tooltip = document.createElement('div');
-                            tooltip.id = 'tileAuthorTooltip';
-                            tooltip.style.position = 'fixed';
-                            tooltip.style.background = 'rgba(20, 20, 28, 0.95)';
-                            tooltip.style.border = '1px solid rgba(139, 92, 246, 0.4)';
-                            tooltip.style.color = '#c4b5fd';
-                            tooltip.style.padding = '6px 12px';
-                            tooltip.style.borderRadius = '8px';
-                            tooltip.style.fontSize = '0.85rem';
-                            tooltip.style.fontWeight = 'bold';
-                            tooltip.style.pointerEvents = 'none';
-                            tooltip.style.zIndex = '99999';
-                            tooltip.style.transition = 'opacity 0.2s';
-                            document.body.appendChild(tooltip);
-                        }
-                        tooltip.textContent = `Block placed by: ${author}`;
-                        tooltip.style.left = `${e.clientX + 15}px`;
-                        tooltip.style.top = `${e.clientY + 15}px`;
-                        tooltip.style.opacity = '1';
-                        
-                        clearTimeout(tooltip.timeout);
-                        tooltip.timeout = setTimeout(() => {
-                            tooltip.style.opacity = '0';
-                        }, 2500);
-                    }
+                    // The user requested not to show the block placed by tooltip anymore
                 }
 
                 if (e.button !== 2)
