@@ -397,14 +397,21 @@ function renderMessages(messages) {
         const msgEl = document.createElement('div');
         msgEl.className = 'message-item';
         
+        // Avatar rendering logic
+        const defaultAvatar = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
+        const avatarUrl = msg.author_avatar_url || defaultAvatar;
+
         msgEl.innerHTML = `
-            <div class="message-meta">
-                <div class="message-author-info">
-                    <div>
-                        <span class="message-author ${isMsgAdmin ? 'admin' : ''}">${escapeHTML(msg.author_name || window.cp_translate('Anonymous'))}</span>
-                        ${statusBadgeHTML}
+            <div class="message-meta" style="display: flex; align-items: flex-start; gap: 12px;">
+                <img src="${avatarUrl}" alt="Avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid ${isMsgAdmin ? '#a78bfa' : 'rgba(255,255,255,0.1)'};">
+                <div style="flex: 1;">
+                    <div class="message-author-info" style="margin-bottom: 2px;">
+                        <div>
+                            <span class="message-author ${isMsgAdmin ? 'admin' : ''}">${escapeHTML(msg.author_name || window.cp_translate('Anonymous'))}</span>
+                            ${statusBadgeHTML}
+                        </div>
                     </div>
-                    <span class="message-time">${postDate}</span>
+                    <span class="message-time" style="font-size: 0.75rem; color: rgba(255,255,255,0.4);">${postDate}</span>
                 </div>
                 <div class="message-actions">
                     <button class="delete-msg-btn" data-id="${msg.id}" title="${window.cp_translate('Delete Message')}" style="display: ${isAdmin ? 'block' : 'none'};">
@@ -412,7 +419,7 @@ function renderMessages(messages) {
                     </button>
                 </div>
             </div>
-            <div class="message-content">${escapeHTML(msg.content)}</div>
+            <div class="message-content" style="margin-top: 10px;">${escapeHTML(msg.content)}</div>
             
             ${photosGridHTML}
             ${videosListHTML}
@@ -651,11 +658,13 @@ async function handleSendMessage() {
     try {
         const isAnon = anonCheck.checked;
         let authorName = window.cp_translate('Anonymous');
+        let authorAvatarUrl = null;
         let userId = null;
 
         if (!isAnon && currentSession && currentSession.user) {
             const meta = currentSession.user.user_metadata;
             authorName = meta.global_name || meta.full_name || 'Authenticated User';
+            authorAvatarUrl = meta.avatar_url || null;
             userId = currentSession.user.id;
         }
 
@@ -718,6 +727,7 @@ async function handleSendMessage() {
             .insert([{
                 content: content,
                 author_name: authorName,
+                author_avatar_url: authorAvatarUrl,
                 user_id: userId,
                 photos: uploadedPhotos,
                 videos: uploadedVideos,

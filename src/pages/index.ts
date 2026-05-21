@@ -26,17 +26,32 @@
     const sloganEl = document.getElementById('heroSlogan');
     const descEl = document.getElementById('heroDesc');
     
-    if (descEl) descEl.textContent = pick.desc;
-    
-    if (sloganEl) {
-        sloganEl.innerHTML = pick.html;
+    // Global blinking cursor style
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes twBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        .tw-cursor {
+            display: inline-block;
+            width: 0.6em;
+            height: 1.1em;
+            background-color: var(--accent-glow, #a78bfa);
+            vertical-align: middle;
+            margin-left: 4px;
+            animation: twBlink 1s step-end infinite;
+            box-shadow: 0 0 8px var(--accent-glow, #a78bfa);
+        }
+    `;
+    document.head.appendChild(style);
+
+    function applyTypewriter(element, htmlContent, speedMs, callback) {
+        if (!element) return;
+        element.innerHTML = htmlContent;
         
-        // Typewriter effect
         const textNodes = [];
-        const walker = document.createTreeWalker(sloganEl, NodeFilter.SHOW_TEXT, null, false);
+        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
         let node;
         while ((node = walker.nextNode())) {
-            if (node.nodeValue.trim().length > 0 || node.nodeValue.includes('\n')) {
+            if (node.nodeValue.trim().length > 0 || node.nodeValue.includes('\n') || node.nodeValue.includes(' ')) {
                 textNodes.push(node);
             }
         }
@@ -49,8 +64,10 @@
             for (let i = 0; i < text.length; i++) {
                 const span = document.createElement('span');
                 span.textContent = text[i];
+                span.style.fontFamily = 'inherit';
+                span.style.fontSize = 'inherit';
                 if (text[i].trim() !== '') {
-                    span.style.opacity = '0';
+                    span.style.visibility = 'hidden'; // using visibility avoids layout shifts better than opacity sometimes
                     chars.push(span);
                 }
                 fragment.appendChild(span);
@@ -58,14 +75,35 @@
             parent.replaceChild(fragment, node);
         });
 
+        const cursor = document.createElement('span');
+        cursor.className = 'tw-cursor';
+        element.appendChild(cursor);
+
         let index = 0;
         function reveal() {
             if (index < chars.length) {
-                chars[index].style.opacity = '1';
+                chars[index].style.visibility = 'visible';
                 index++;
-                setTimeout(reveal, 45); // Typewriter speed
+                // Randomize speed slightly for realistic typing
+                const jitter = speedMs + (Math.random() * 20 - 10);
+                setTimeout(reveal, jitter);
+            } else {
+                setTimeout(() => {
+                    if (cursor.parentNode) cursor.parentNode.removeChild(cursor);
+                    if (callback) callback();
+                }, 1000);
             }
         }
         setTimeout(reveal, 200);
+    }
+
+    if (sloganEl) {
+        applyTypewriter(sloganEl, pick.html, 40, () => {
+            if (descEl) {
+                applyTypewriter(descEl, pick.desc, 20);
+            }
+        });
+    } else if (descEl) {
+        applyTypewriter(descEl, pick.desc, 20);
     }
 })();
