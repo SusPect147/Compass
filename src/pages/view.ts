@@ -993,7 +993,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 </span>
                                 <span style="font-size:0.75rem; color:rgba(255,255,255,0.4);">${dateStr}</span>
                             </div>
-                            <div style="display:flex; gap:8px;">
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <button class="collab-action-btn preview-btn" style="
+                                    background: rgba(167, 139, 250, 0.12);
+                                    border: 1px solid rgba(167, 139, 250, 0.3);
+                                    color: #c4b5fd;
+                                    padding: 4px 12px;
+                                    border-radius: 8px;
+                                    font-size: 0.78rem;
+                                    font-weight:700;
+                                    cursor:pointer;
+                                    transition: all 0.2s;
+                                ">
+                                    👁 ${window.cp_translate('Preview')}
+                                </button>
                                 <button class="collab-action-btn use-btn" style="
                                     background: rgba(96, 165, 250, 0.15);
                                     border: 1px solid rgba(96, 165, 250, 0.3);
@@ -1022,9 +1035,40 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 </button>
                             </div>
                         </div>
+                        <div class="suggestion-preview-panel" style="display:none; margin-top:0.5rem; border-top:1px solid rgba(255,255,255,0.06); padding-top:0.75rem;">
+                            <div class="suggestion-preview-inner" style="display:flex; justify-content:center; align-items:center; min-height:80px;">
+                                <span style="opacity:0.5; font-size:0.8rem;">⏳ Loading preview...</span>
+                            </div>
+                        </div>
                     `;
-                    const useBtn = item.querySelector('.use-btn');
-                    const delBtn = item.querySelector('.del-btn');
+                    // Preview toggle
+                    const previewBtn = item.querySelector('.preview-btn') as HTMLButtonElement;
+                    const previewPanel = item.querySelector('.suggestion-preview-panel') as HTMLElement;
+                    const previewInner = item.querySelector('.suggestion-preview-inner') as HTMLElement;
+                    let previewLoaded = false;
+                    let previewOpen = false;
+                    previewBtn.addEventListener('click', async () => {
+                        previewOpen = !previewOpen;
+                        previewPanel.style.display = previewOpen ? 'block' : 'none';
+                        previewBtn.innerHTML = previewOpen
+                            ? `🙈 ${window.cp_translate('Hide')}`
+                            : `👁 ${window.cp_translate('Preview')}`;
+                        if (previewOpen && !previewLoaded) {
+                            previewLoaded = true;
+                            try {
+                                const pngUrl = await drawStaticMapPreview(s.map_data, data.size, data.gamemode, data.environment, data.theme_options);
+                                previewInner.innerHTML = '';
+                                const img = document.createElement('img');
+                                img.src = pngUrl;
+                                img.style.cssText = 'max-width:100%; max-height:320px; border-radius:8px; object-fit:contain;';
+                                previewInner.appendChild(img);
+                            } catch (e) {
+                                previewInner.innerHTML = `<span style="color:#f87171; font-size:0.8rem;">❌ Could not render preview</span>`;
+                            }
+                        }
+                    });
+                    const useBtn = item.querySelector('.use-btn') as HTMLButtonElement;
+                    const delBtn = item.querySelector('.del-btn') as HTMLButtonElement;
                     useBtn.onmouseover = () => {
                         useBtn.style.background = 'rgba(96, 165, 250, 0.25)';
                         useBtn.style.borderColor = 'rgba(96, 165, 250, 0.5)';
@@ -1057,7 +1101,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 contributor_id: currentUserId,
                                 contributor_name: window.cp_translate('Previous Version'),
                                 map_data: data.map_data,
-                                note: 'Auto-archived backup'
                             };
                             const { error: archErr } = await supabase
                                 .from('map_suggestions')
@@ -1102,6 +1145,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     };
                     sList.appendChild(item);
                 });
+
             }
             catch (err) {
                 console.error(err);

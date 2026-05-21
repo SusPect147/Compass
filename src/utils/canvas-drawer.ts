@@ -113,9 +113,14 @@ export async function drawStaticMapPreview(mapData, size = 'regular', gamemode =
   renderer.tileSize = tileSize; // Use scaled tile size
   renderer.canvasPadding = padding; // Set padding to match canvas
   
-  // Store offset for centering
+  // Calculate pixel offsets for centering the scaled map in the preview canvas
+  const pixelOffsetX = Math.round(offsetX * baseTileSize);
+  const pixelOffsetY = Math.round(offsetY * baseTileSize);
+
+  // Store offset for goal image centering (used after draw())
   renderer.previewOffsetX = offsetX;
   renderer.previewOffsetY = offsetY;
+
 
   // Ensure environment cache exists
   if (!sharedResources.tiles[environment]) {
@@ -242,7 +247,20 @@ export async function drawStaticMapPreview(mapData, size = 'regular', gamemode =
   
   await Promise.all(imagePromises);
 
-  // Draw the map
+  // Draw the map — if there's a centering offset (e.g. showdown maps), render to an
+  // offscreen canvas first, then blit it onto the main canvas at the correct position.
+  let drawCanvas = canvas;
+  if (pixelOffsetX > 0 || pixelOffsetY > 0) {
+    // Create a temporary canvas sized for the actual scaled map content
+    drawCanvas = document.createElement('canvas');
+    drawCanvas.width = canvas.width;
+    drawCanvas.height = canvas.height;
+    // Point the renderer at the offscreen canvas
+    const offCtx = drawCanvas.getContext('2d');
+    renderer.canvas = drawCanvas;
+    renderer.ctx = offCtx;
+  }
+
   renderer.draw();
 
   // Wait for any images that might have been loaded during draw
@@ -256,7 +274,6 @@ export async function drawStaticMapPreview(mapData, size = 'regular', gamemode =
   
   if (remainingPromises.length > 0) {
     await Promise.all(remainingPromises);
-    // Redraw if new images were loaded
     renderer.draw();
   }
   
@@ -267,7 +284,13 @@ export async function drawStaticMapPreview(mapData, size = 'regular', gamemode =
   // One final draw to ensure everything is rendered
   renderer.draw();
 
+  // If we used an offscreen canvas, blit it onto the main canvas with centering offset
   const ctx = canvas.getContext('2d');
+  if (drawCanvas !== canvas) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(drawCanvas, pixelOffsetX, pixelOffsetY);
+  }
+
   for (const goal of renderer.goalImages) {
     const img =
       renderer.goalImageCache[`${goal.name}${environment}`] ||

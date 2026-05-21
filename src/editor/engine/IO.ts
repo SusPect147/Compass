@@ -233,18 +233,19 @@ export const IOMixin = {
             if (this.collabLinkId && !this.isRealtimeCollab) {
                 console.info(`[Compass] Diverting save logic to Collab Suggestion. Collab Link: ${this.collabLinkId}`);
                 const contributor = user.user_metadata.full_name || user.user_metadata.display_name || user.user_metadata.name || 'Anonymous';
-                const suggestionPayload = {
+                const suggestionPayload: Record<string, any> = {
                     map_id: this.collabOriginalMapId,
                     contributor_id: user.id,
                     contributor_name: contributor,
                     map_data: this.tileGrid,
-                    note: ''
                 };
                 const { error: sugErr } = await supabase
                     .from('map_suggestions')
                     .insert([suggestionPayload]);
-                if (sugErr)
+                if (sugErr) {
+                    console.error('[Compass] Suggestion insert error details:', JSON.stringify(sugErr));
                     throw sugErr;
+                }
                 alert(window.cp_translate("🤝 Suggestion successfully sent to the map owner!"));
                 return;
             } else if (this.collabLinkId && this.isRealtimeCollab) {
