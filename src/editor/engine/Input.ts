@@ -827,75 +827,87 @@ export const InputMixin = {
         const container = document.getElementById('tileSelector');
         container.innerHTML = '';
 
-        // Define the order of tiles
-        const tileOrder = [
-            'Wall', 'Wall2', 'Crate', 'Barrel', 'Cactus', 'Bush', 'Fence', 'Skull', 'Rope Fence', 'BFence', 'Water', 'Unbreakable', // Environment tiles
-            'Blue Spawn', 'Blue Respawn', 'Red Spawn', 'Red Respawn', 'Trio Spawn', 'Yellow Spawn', // Normal Spawns
-            'BossSpawn', 'KaijuBoss', 'GenericBoss', 'OniHunt', // Boss spawns
-            'Objective', 'Box', 'Box_Loaded', 'Powercube', 'Bumper', 'Bolt', 'TokenBlue', 'GodzillaCity1', 'GodzillaCity2', 'GodzillaCity3', 'GodzillaCity4', 'GodzillaExplosive', 'GodzillaSpawn', 'Escape', 'TokenRed', 'Boss Zone', 'Monster Zone', 'Bot_Zone', 'SubwayRun1', 'SubwayRun2', 'TreasurePad1', 'TreasurePad2', 'Amulet', 'Bomb', // Objectives
-            'Track', 'Base Ike Blue', 'Base Ike Red', 'Small Ike Blue', 'Small Ike Red', // Brawl Arena
-            'TNT', /*'UnbreakableBrick',*/ 'Speed Tile', 'Slow Tile', 'Spikes', 'Heal Pad', 'Smoke', 'IceTile', 'SnowTile', 'Rails', 'RedTrain', 'GreenTrain', 'YellowTrain', // Special Tiles
-            'Jump R', 'Jump L', 'Jump T', 'Jump B', 'Jump BR', 'Jump TL', 'Jump BL', 'Jump TR', //Jump pads
-            'Teleporter Blue', 'Teleporter Green', 'Teleporter Red', 'Teleporter Yellow' // Teleporters
+        // Define the categories and tiles
+        const categories = [
+            { name: "Стены", tiles: ['Wall', 'Wall2', 'Unbreakable'] },
+            { name: "Вода", tiles: ['Water'] },
+            { name: "Кусты", tiles: ['Bush'] },
+            { name: "Заборы и преграды", tiles: ['Crate', 'Barrel', 'Cactus', 'Fence', 'Skull', 'Rope Fence', 'BFence'] },
+            { name: "Спавны", tiles: ['Blue Spawn', 'Blue Respawn', 'Red Spawn', 'Red Respawn', 'Trio Spawn', 'Yellow Spawn', 'BossSpawn', 'KaijuBoss', 'GenericBoss', 'OniHunt', 'GodzillaSpawn'] },
+            { name: "Цели и Объекты", tiles: ['Objective', 'Box', 'Box_Loaded', 'Powercube', 'Bumper', 'Bolt', 'TokenBlue', 'GodzillaCity1', 'GodzillaCity2', 'GodzillaCity3', 'GodzillaCity4', 'GodzillaExplosive', 'Escape', 'TokenRed', 'Boss Zone', 'Monster Zone', 'Bot_Zone', 'SubwayRun1', 'SubwayRun2', 'TreasurePad1', 'TreasurePad2', 'Amulet', 'Bomb', 'Track', 'Base Ike Blue', 'Base Ike Red', 'Small Ike Blue', 'Small Ike Red'] },
+            { name: "Специальные", tiles: ['TNT', 'Speed Tile', 'Slow Tile', 'Spikes', 'Heal Pad', 'Smoke', 'IceTile', 'SnowTile', 'Rails', 'RedTrain', 'GreenTrain', 'YellowTrain'] },
+            { name: "Джампады", tiles: ['Jump R', 'Jump L', 'Jump T', 'Jump B', 'Jump BR', 'Jump TL', 'Jump BL', 'Jump TR'] },
+            { name: "Телепорты", tiles: ['Teleporter Blue', 'Teleporter Green', 'Teleporter Red', 'Teleporter Yellow'] }
         ];
 
-        // Create buttons in the specified order
-        tileOrder.forEach(tileName => {
-            const tileEntry = Object.entries(this.tileDefinitions)
-                .find(([_, def]) => def.name === tileName);
+        categories.forEach(category => {
+            let categoryAdded = false;
 
-            if (!tileEntry) return;
-            const [id, def] = tileEntry;
+            category.tiles.forEach(tileName => {
+                const tileEntry = Object.entries(this.tileDefinitions)
+                    .find(([_, def]) => def.name === tileName);
 
-            if (id === '0' || id === '-1') return; // Skip empty and occupied tiles
+                if (!tileEntry) return;
+                const [id, def] = tileEntry;
 
-            if (def.showInGamemode) {
-                const allowed = Array.isArray(def.showInGamemode) ? def.showInGamemode : [def.showInGamemode];
-                if (!allowed.includes(this.gamemode)) return;
-            }
-            if (def.showInEnvironment) {
-                const allowed = Array.isArray(def.showInEnvironment) ? def.showInEnvironment : [def.showInEnvironment];
-                if (!allowed.includes(this.environment)) return;
-            }
+                if (id === '0' || id === '-1') return; // Skip empty and occupied tiles
 
-            const btn = document.createElement('button');
-            btn.className = 'tile-btn';
-            btn.title = def.name;
-            btn.id = id;
-
-            if (def.img || def.getImg) {
-                const img = document.createElement('img');
-                img.parentEnvironment = this.environment; // Bound context for global theme filtering
-                if (def.img) {
-                    img.src = `Resources/${def.img.replace('${env}', this.environment)}`;
-                } else if (def.getImg) {
-                    const imgData = def.getImg(this.gamemode, 0, this.mapHeight, this.environment);
-                    if (imgData) {
-                        const imgPath = imgData.displayImg || imgData.img;
-                        img.src = `Resources/${imgPath.replace('${env}', this.environment)}`;
-                        img.onerror = () => {
-                            if (this.environment !== 'Desert' && imgPath.includes('${env}')) {
-                                img.src = `Resources/${imgPath.replace('${env}', 'Desert')}`;
-                            }
-                        };
-                    } else {
-                        // Skip this tile if it's not valid for current gamemode
-                        return;
-                    }
+                if (def.showInGamemode) {
+                    const allowed = Array.isArray(def.showInGamemode) ? def.showInGamemode : [def.showInGamemode];
+                    if (!allowed.includes(this.gamemode)) return;
                 }
-                img.alt = def.name;
-                btn.appendChild(img);
-            }
+                if (def.showInEnvironment) {
+                    const allowed = Array.isArray(def.showInEnvironment) ? def.showInEnvironment : [def.showInEnvironment];
+                    if (!allowed.includes(this.environment)) return;
+                }
 
-            btn.addEventListener('click', () => {
-                this.activeToolBrush = { id: parseInt(id), ...def };
-                container.querySelectorAll('.tile-btn').forEach(b => b.classList.remove('selected'));
-                btn.classList.add('selected');
-                this.toggleEraseMode(false);
-                this.togglePanningMode(false);
+                const btn = document.createElement('button');
+                btn.className = 'tile-btn';
+                btn.title = def.name;
+                btn.id = id;
+
+                if (def.img || def.getImg) {
+                    const img = document.createElement('img');
+                    img.parentEnvironment = this.environment; // Bound context for global theme filtering
+                    if (def.img) {
+                        img.src = `Resources/${def.img.replace('${env}', this.environment)}`;
+                    } else if (def.getImg) {
+                        const imgData = def.getImg(this.gamemode, 0, this.mapHeight, this.environment);
+                        if (imgData) {
+                            const imgPath = imgData.displayImg || imgData.img;
+                            img.src = `Resources/${imgPath.replace('${env}', this.environment)}`;
+                            img.onerror = () => {
+                                if (this.environment !== 'Desert' && imgPath.includes('${env}')) {
+                                    img.src = `Resources/${imgPath.replace('${env}', 'Desert')}`;
+                                }
+                            };
+                        } else {
+                            // Skip this tile if it's not valid for current gamemode
+                            return;
+                        }
+                    }
+                    img.alt = def.name;
+                    btn.appendChild(img);
+                }
+
+                btn.addEventListener('click', () => {
+                    this.activeToolBrush = { id: parseInt(id), ...def };
+                    container.querySelectorAll('.tile-btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    this.toggleEraseMode(false);
+                    this.togglePanningMode(false);
+                });
+
+                if (!categoryAdded) {
+                    const header = document.createElement('div');
+                    header.className = 'tile-category-header';
+                    header.textContent = category.name;
+                    container.appendChild(header);
+                    categoryAdded = true;
+                }
+
+                container.appendChild(btn);
             });
-
-            container.appendChild(btn);
         });
 
         document.getElementById('tileSelector').querySelector(`.tile-btn[id="1"]`).classList.add('selected');

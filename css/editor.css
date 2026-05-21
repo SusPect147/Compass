@@ -2328,3 +2328,22 @@ body.opacity-adjusting .zoom-controls-floating {
     border-bottom: none !important;
     box-shadow: none !important;
 }
+
+/* Tile Categories */
+.tile-category-header {
+    width: 100%;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-secondary, #9ca3af);
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    padding-left: 0.25rem;
+    border-bottom: 1px solid var(--border-color, #333);
+    padding-bottom: 0.25rem;
+    grid-column: 1 / -1;
+}
+
+.tile-category-header:first-child {
+    margin-top: 0;
+}
