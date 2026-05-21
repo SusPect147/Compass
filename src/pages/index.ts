@@ -26,6 +26,46 @@
     const sloganEl = document.getElementById('heroSlogan');
     const descEl = document.getElementById('heroDesc');
     
-    if (sloganEl) sloganEl.innerHTML = pick.html;
     if (descEl) descEl.textContent = pick.desc;
+    
+    if (sloganEl) {
+        sloganEl.innerHTML = pick.html;
+        
+        // Typewriter effect
+        const textNodes = [];
+        const walker = document.createTreeWalker(sloganEl, NodeFilter.SHOW_TEXT, null, false);
+        let node;
+        while ((node = walker.nextNode())) {
+            if (node.nodeValue.trim().length > 0 || node.nodeValue.includes('\n')) {
+                textNodes.push(node);
+            }
+        }
+        
+        const chars = [];
+        textNodes.forEach(node => {
+            const parent = node.parentNode;
+            const text = node.nodeValue;
+            const fragment = document.createDocumentFragment();
+            for (let i = 0; i < text.length; i++) {
+                const span = document.createElement('span');
+                span.textContent = text[i];
+                if (text[i].trim() !== '') {
+                    span.style.opacity = '0';
+                    chars.push(span);
+                }
+                fragment.appendChild(span);
+            }
+            parent.replaceChild(fragment, node);
+        });
+
+        let index = 0;
+        function reveal() {
+            if (index < chars.length) {
+                chars[index].style.opacity = '1';
+                index++;
+                setTimeout(reveal, 45); // Typewriter speed
+            }
+        }
+        setTimeout(reveal, 200);
+    }
 })();
