@@ -664,7 +664,7 @@ async function handleSendMessage() {
         if (!isAnon && currentSession && currentSession.user) {
             const meta = currentSession.user.user_metadata;
             authorName = meta.global_name || meta.full_name || 'Authenticated User';
-            authorAvatarUrl = meta.avatar_url || null;
+            authorAvatarUrl = meta.avatar_url || meta.picture || null;
             userId = currentSession.user.id;
         }
 
