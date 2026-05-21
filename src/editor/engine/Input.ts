@@ -829,15 +829,15 @@ export const InputMixin = {
 
         // Define the categories and tiles
         const categories = [
-            { name: "Стены", tiles: ['Wall', 'Wall2', 'Unbreakable'] },
-            { name: "Вода", tiles: ['Water'] },
-            { name: "Кусты", tiles: ['Bush'] },
-            { name: "Заборы и преграды", tiles: ['Crate', 'Barrel', 'Cactus', 'Fence', 'Skull', 'Rope Fence', 'BFence'] },
-            { name: "Спавны", tiles: ['Blue Spawn', 'Blue Respawn', 'Red Spawn', 'Red Respawn', 'Trio Spawn', 'Yellow Spawn', 'BossSpawn', 'KaijuBoss', 'GenericBoss', 'OniHunt', 'GodzillaSpawn'] },
-            { name: "Цели и Объекты", tiles: ['Objective', 'Box', 'Box_Loaded', 'Powercube', 'Bumper', 'Bolt', 'TokenBlue', 'GodzillaCity1', 'GodzillaCity2', 'GodzillaCity3', 'GodzillaCity4', 'GodzillaExplosive', 'Escape', 'TokenRed', 'Boss Zone', 'Monster Zone', 'Bot_Zone', 'SubwayRun1', 'SubwayRun2', 'TreasurePad1', 'TreasurePad2', 'Amulet', 'Bomb', 'Track', 'Base Ike Blue', 'Base Ike Red', 'Small Ike Blue', 'Small Ike Red'] },
-            { name: "Специальные", tiles: ['TNT', 'Speed Tile', 'Slow Tile', 'Spikes', 'Heal Pad', 'Smoke', 'IceTile', 'SnowTile', 'Rails', 'RedTrain', 'GreenTrain', 'YellowTrain'] },
-            { name: "Джампады", tiles: ['Jump R', 'Jump L', 'Jump T', 'Jump B', 'Jump BR', 'Jump TL', 'Jump BL', 'Jump TR'] },
-            { name: "Телепорты", tiles: ['Teleporter Blue', 'Teleporter Green', 'Teleporter Red', 'Teleporter Yellow'] }
+            { name: "Walls", tiles: ['Wall', 'Wall2', 'Unbreakable'] },
+            { name: "Water", tiles: ['Water'] },
+            { name: "Bushes", tiles: ['Bush'] },
+            { name: "Fences & Obstacles", tiles: ['Crate', 'Barrel', 'Cactus', 'Fence', 'Skull', 'Rope Fence', 'BFence'] },
+            { name: "Spawns", tiles: ['Blue Spawn', 'Blue Respawn', 'Red Spawn', 'Red Respawn', 'Trio Spawn', 'Yellow Spawn', 'BossSpawn', 'KaijuBoss', 'GenericBoss', 'OniHunt', 'GodzillaSpawn'] },
+            { name: "Objectives & Items", tiles: ['Objective', 'Box', 'Box_Loaded', 'Powercube', 'Bumper', 'Bolt', 'TokenBlue', 'GodzillaCity1', 'GodzillaCity2', 'GodzillaCity3', 'GodzillaCity4', 'GodzillaExplosive', 'Escape', 'TokenRed', 'Boss Zone', 'Monster Zone', 'Bot_Zone', 'SubwayRun1', 'SubwayRun2', 'TreasurePad1', 'TreasurePad2', 'Amulet', 'Bomb', 'Track', 'Base Ike Blue', 'Base Ike Red', 'Small Ike Blue', 'Small Ike Red'] },
+            { name: "Special", tiles: ['TNT', 'Speed Tile', 'Slow Tile', 'Spikes', 'Heal Pad', 'Smoke', 'IceTile', 'SnowTile', 'Rails', 'RedTrain', 'GreenTrain', 'YellowTrain'] },
+            { name: "Jump Pads", tiles: ['Jump R', 'Jump L', 'Jump T', 'Jump B', 'Jump BR', 'Jump TL', 'Jump BL', 'Jump TR'] },
+            { name: "Teleporters", tiles: ['Teleporter Blue', 'Teleporter Green', 'Teleporter Red', 'Teleporter Yellow'] }
         ];
 
         categories.forEach(category => {

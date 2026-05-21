@@ -92,7 +92,7 @@
     text-decoration: none;
     font-size: 0.88rem;
     font-weight: 600;
-    font-family: 'Inter', Arial, sans-serif;
+    font-family: 'JetBrains Mono', Arial, sans-serif;
     cursor: pointer;
     border: 1px solid var(--border-bright);
     background-color: transparent;

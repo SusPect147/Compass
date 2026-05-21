@@ -3,7 +3,7 @@
    Deep-space monochrome aesthetic В· Premium UI
    в•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap');
 
 :root {
     /* ── COLOUR TOKENS ───────────────────────────────────── */
@@ -65,7 +65,7 @@ html, body {
 }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont,
+    font-family: 'JetBrains Mono', -apple-system, BlinkMacSystemFont,
                  'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
     letter-spacing: 0.01em;
     font-weight: 400;
@@ -549,7 +549,7 @@ nav {
 }
 
 .tooltip-floating:not(:has(img)) {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'JetBrains Mono', -apple-system, BlinkMacSystemFont, sans-serif;
     font-weight: 700;
 }
 
@@ -575,7 +575,7 @@ web { display: none; }
 
 
 /* ── BAN SYSTEM OVERLAY ── */
-#banOverlay { position: fixed; inset: 0; background: #000; z-index: 999999; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem; color: #ff4d4d; font-family: 'Inter', sans-serif; opacity: 0; visibility: hidden; transition: opacity 0.5s ease; }
+#banOverlay { position: fixed; inset: 0; background: #000; z-index: 999999; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem; color: #ff4d4d; font-family: 'JetBrains Mono', sans-serif; opacity: 0; visibility: hidden; transition: opacity 0.5s ease; }
 #banOverlay.active { opacity: 1; visibility: visible; }
 .ban-skull { font-size: 5rem; margin-bottom: 1rem; filter: drop-shadow(0 0 20px rgba(255,0,0,0.5)); }
 .ban-title { font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem; color: #fff; }

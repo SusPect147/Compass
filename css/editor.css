@@ -724,7 +724,7 @@ input[type="checkbox"][style*="border-color: rgb(255, 68, 68)"] {
     overflow-wrap: break-word;
     white-space: normal;
     max-width: 100%;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'JetBrains Mono', -apple-system, BlinkMacSystemFont, sans-serif;
     font-weight: 400;
     color: var(--text-primary);
     text-decoration: none;
@@ -841,7 +841,7 @@ input[type="checkbox"][style*="border-color: rgb(255, 68, 68)"] {
     align-items: center;
     justify-content: center;
     font-size: 13px;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'JetBrains Mono', -apple-system, BlinkMacSystemFont, sans-serif;
     font-weight: 500;
     min-height: 44px;
 }
@@ -875,7 +875,7 @@ label:has(input[type="checkbox"]) {
     border: 1px solid rgba(255,255,255,0.08);
     border-radius: 7px;
     padding: 0.5rem;
-    font-family: 'Inter', Arial, Helvetica, sans-serif;
+    font-family: 'JetBrains Mono', Arial, Helvetica, sans-serif;
     font-size: 13px;
     transition: all 0.15s;
 }
@@ -900,7 +900,7 @@ input[type="text"] {
     background-color: rgba(255,255,255,0.04);
     color: var(--text-color);
     transition: border-color 0.2s, background-color 0.2s;
-    font-family: 'Inter', sans-serif;
+    font-family: 'JetBrains Mono', sans-serif;
 }
 
 .selections-container {
@@ -981,7 +981,7 @@ label:has(input[type="radio"]:checked) {
     right: 0;
     white-space: nowrap;
     font-size: 0.85rem;
-    font-family: 'Inter', Arial, Helvetica, sans-serif;
+    font-family: 'JetBrains Mono', Arial, Helvetica, sans-serif;
     z-index: 1001;
     transition: opacity 0.25s ease;
     box-shadow: 0 4px 20px rgba(0,0,0,0.5);
@@ -1058,7 +1058,7 @@ label:has(input[type="radio"]:checked) {
     border-radius: 4px;
     padding: 2px 6px;
     font-size: 0.8rem;
-    font-family: 'Inter', monospace;
+    font-family: 'JetBrains Mono', monospace;
     min-width: 20px;
     text-align: center;
     color: var(--text-color);
@@ -1511,7 +1511,7 @@ label[for='correctMirroringBtn'], label[for='hideZoomBtn'] {
     border-radius: 10px;
     color: #fff;
     font-size: 0.82rem;
-    font-family: 'Inter', sans-serif;
+    font-family: 'JetBrains Mono', sans-serif;
     font-weight: 500;
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     appearance: none;
@@ -1678,7 +1678,7 @@ body.opacity-adjusting .zoom-controls-floating {
     cursor: pointer;
     backdrop-filter: blur(12px);
     transition: all 0.3s;
-    font-family: 'Inter', sans-serif;
+    font-family: 'JetBrains Mono', sans-serif;
     display: none;
 }
 .reset-panels-btn:hover {
@@ -1873,7 +1873,7 @@ body.top-bar-hidden .mapmaker-container {
     cursor: pointer;
     backdrop-filter: blur(12px);
     transition: all 0.3s;
-    font-family: 'Inter', sans-serif;
+    font-family: 'JetBrains Mono', sans-serif;
     display: none;
 }
 .reset-panels-btn:hover {
@@ -2214,7 +2214,7 @@ body.top-bar-hidden .restore-topbar-btn {
     font-weight: 700 !important;
     margin-left: 12px !important;
     cursor: pointer !important;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    font-family: 'JetBrains Mono', -apple-system, BlinkMacSystemFont, sans-serif !important;
     font-size: 0.78rem !important;
     transition: all var(--transition, 220ms ease-smooth) !important;
     display: inline-flex !important;
@@ -2245,7 +2245,7 @@ body.top-bar-hidden .restore-topbar-btn {
 
 body,
 body * {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    font-family: 'JetBrains Mono', -apple-system, BlinkMacSystemFont, sans-serif !important;
 }
 
 /* Remove heavy borders and shadows from main panels */

@@ -276,7 +276,22 @@ const TRANSLATIONS = {
         'All Sizes': 'Все размеры',
         'Sort By...': 'Сортировать...',
         'Best Rating': 'Лучший рейтинг',
-        'Most Votes': 'Больше голосов'
+        'Most Votes': 'Больше голосов',
+
+        // TILE CATEGORIES
+        'Walls': 'Стены',
+        'Water': 'Вода',
+        'Bushes': 'Кусты',
+        'Fences & Obstacles': 'Заборы и преграды',
+        'Spawns': 'Спавны',
+        'Objectives & Items': 'Цели и Объекты',
+        'Special': 'Специальные',
+        'Jump Pads': 'Джампады',
+        'Teleporters': 'Телепорты',
+
+        // EDITOR MISC
+        'Hide Top Bar': 'Скрыть верхнюю панель',
+        'Show Top Bar': 'Показать верхнюю панель'
     }
 };
 
