@@ -478,24 +478,7 @@ export const RendererMixin = {
         // Draw the background grid
         for (let y = 0; y < this.mapHeight; y++) {
             for (let x = 0; x < this.mapWidth; x++) {
-                // Check if this tile should have no background in Brawl Ball mode
-                let skipBackground = false;
-                // in draw(), before drawing the checker background:
-                if ((this.gamemode === 'Brawl_Ball' || this.gamemode === 'Hockey') && this.mapSize === this.mapSizes.regular) {
-                    // rows <4 or > mapHeight-5, cols <7 or > mapWidth-8
-                    const atTop = y < 4;
-                    const atBottom = y >= this.mapHeight - 4;
-                    const atLeft = x < 7;
-                    const atRight = x >= this.mapWidth - 7;
-
-                    if ((atTop || atBottom) &&
-                        (atLeft || atRight)) {
-                        skipBackground = true;
-                    }
-                }
-
-
-                if (!skipBackground) {
+                if (true) {
                     const isDark = (x + y) % 2 === 0;
                     const bgImg = isDark ? this.bgDark : this.bgLight;
 
@@ -792,25 +775,12 @@ export const RendererMixin = {
     drawSelection() {
         if (!this.selectionStart || !this.selectionEnd) return;
 
-        // Create a separate canvas for the selection overlay if it doesn't exist
-        if (!this.selectionCanvas) {
-            this.selectionCanvas = document.createElement('canvas');
-            this.selectionCanvas.width = this.canvas.width;
-            this.selectionCanvas.height = this.canvas.height;
-            this.selectionCtx = this.selectionCanvas.getContext('2d');
-        } else if (this.selectionCanvas.width !== this.canvas.width || this.selectionCanvas.height !== this.canvas.height) {
-            this.selectionCanvas.width = this.canvas.width;
-            this.selectionCanvas.height = this.canvas.height;
-        }
-
-        // Clear the selection canvas
-        this.selectionCtx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
         // Selection highlight
         const useRed = this.isErasing && this.selectionMode !== 'select';
-        this.selectionCtx.fillStyle = useRed ? 'rgba(255, 0, 0, 0.5)' : 'rgba(255, 240, 0, 0.7)';
-        this.selectionCtx.strokeStyle = useRed ? 'rgba(255, 0, 0, 0.95)' : 'rgba(255, 240, 0, 0.95)';
-        this.selectionCtx.lineWidth = 2.5;
+        this.ctx.save();
+        this.ctx.fillStyle = useRed ? 'rgba(255, 0, 0, 0.5)' : 'rgba(255, 240, 0, 0.7)';
+        this.ctx.strokeStyle = useRed ? 'rgba(255, 0, 0, 0.95)' : 'rgba(255, 240, 0, 0.95)';
+        this.ctx.lineWidth = 2.5;
 
         // If still drawing, show full rectangle/area as before
         if (this.isDrawing && (this.selectionMode === 'rectangle' || this.selectionMode === 'select')) {
@@ -822,8 +792,8 @@ export const RendererMixin = {
                 for (let x = startX; x <= endX; x++) {
                     const rx = x * this.tileSize + this.canvasPadding;
                     const ry = y * this.tileSize + this.canvasPadding;
-                    this.selectionCtx.fillRect(rx, ry, this.tileSize, this.tileSize);
-                    this.selectionCtx.strokeRect(rx + 1, ry + 1, this.tileSize - 2, this.tileSize - 2);
+                    this.ctx.fillRect(rx, ry, this.tileSize, this.tileSize);
+                    this.ctx.strokeRect(rx + 1, ry + 1, this.tileSize - 2, this.tileSize - 2);
                 }
             }
         } else if (this.selectionMode === 'select' && this.activeToolBrushs.length > 0) {
@@ -911,8 +881,8 @@ export const RendererMixin = {
                     drawY = centerY - height / 2;
                 }
 
-                this.selectionCtx.fillRect(drawX, drawY, width, height);
-                this.selectionCtx.strokeRect(drawX + 1, drawY + 1, width - 2, height - 2);
+                this.ctx.fillRect(drawX, drawY, width, height);
+                this.ctx.strokeRect(drawX + 1, drawY + 1, width - 2, height - 2);
             }
         } else if (this.selectionMode === 'rectangle') {
             const startX = Math.min(this.selectionStart.x, this.selectionEnd.x);
@@ -923,8 +893,8 @@ export const RendererMixin = {
                 for (let x = startX; x <= endX; x++) {
                     const rx = x * this.tileSize + this.canvasPadding;
                     const ry = y * this.tileSize + this.canvasPadding;
-                    this.selectionCtx.fillRect(rx, ry, this.tileSize, this.tileSize);
-                    this.selectionCtx.strokeRect(rx + 1, ry + 1, this.tileSize - 2, this.tileSize - 2);
+                    this.ctx.fillRect(rx, ry, this.tileSize, this.tileSize);
+                    this.ctx.strokeRect(rx + 1, ry + 1, this.tileSize - 2, this.tileSize - 2);
                 }
             }
         } else if (this.selectionMode === 'line') {
@@ -932,18 +902,17 @@ export const RendererMixin = {
                 const [x, y] = tilePos.split(',').map(Number);
                 const rx = x * this.tileSize + this.canvasPadding;
                 const ry = y * this.tileSize + this.canvasPadding;
-                this.selectionCtx.fillRect(rx, ry, this.tileSize, this.tileSize);
-                this.selectionCtx.strokeRect(rx + 1, ry + 1, this.tileSize - 2, this.tileSize - 2);
+                this.ctx.fillRect(rx, ry, this.tileSize, this.tileSize);
+                this.ctx.strokeRect(rx + 1, ry + 1, this.tileSize - 2, this.tileSize - 2);
             }
         } else if (this.selectionMode === 'single' || this.selectionMode === 'fill') {
             const rx = this.selectionEnd.x * this.tileSize + this.canvasPadding;
             const ry = this.selectionEnd.y * this.tileSize + this.canvasPadding;
-            this.selectionCtx.fillRect(rx, ry, this.tileSize, this.tileSize);
-            this.selectionCtx.strokeRect(rx + 1, ry + 1, this.tileSize - 2, this.tileSize - 2);
+            this.ctx.fillRect(rx, ry, this.tileSize, this.tileSize);
+            this.ctx.strokeRect(rx + 1, ry + 1, this.tileSize - 2, this.tileSize - 2);
         }
 
-        // Draw the selection overlay on top of the main canvas
-        this.ctx.drawImage(this.selectionCanvas, 0, 0);
+        this.ctx.restore();
     },
 
     placeTilesInSelection() {

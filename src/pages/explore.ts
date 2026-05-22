@@ -74,7 +74,11 @@ function applyFilters() {
     const sizeFilter = document.getElementById('sizeFilter')?.value || '';
     const sortFilter = document.getElementById('sortFilter')?.value || '';
 
+    const urlParams = new URLSearchParams(window.location.search);
+    const authorIdFilter = urlParams.get('author_id');
+
     filteredMaps = allMaps.filter(map => {
+        if (authorIdFilter && map.user_id !== authorIdFilter) return false;
         if (searchTerm && !(map.name || 'unnamed').toLowerCase().includes(searchTerm)) return false;
         if (gamemodeFilter && map.gamemode !== gamemodeFilter) return false;
         if (environmentFilter && map.environment !== environmentFilter) return false;

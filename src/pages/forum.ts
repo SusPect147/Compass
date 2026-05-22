@@ -401,13 +401,19 @@ function renderMessages(messages) {
         const defaultAvatar = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
         const avatarUrl = msg.author_avatar_url || defaultAvatar;
 
+        const authorLink = msg.user_id ? `./explore.html?author_id=${msg.user_id}` : '#';
+
         msgEl.innerHTML = `
             <div class="message-meta" style="display: flex; align-items: flex-start; gap: 12px;">
-                <img src="${avatarUrl}" alt="Avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid ${isMsgAdmin ? '#a78bfa' : 'rgba(255,255,255,0.1)'};">
+                <a href="${authorLink}" style="text-decoration: none; display: block;">
+                    <img src="${avatarUrl}" alt="Avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid ${isMsgAdmin ? '#a78bfa' : 'rgba(255,255,255,0.1)'};">
+                </a>
                 <div style="flex: 1;">
                     <div class="message-author-info" style="margin-bottom: 2px;">
                         <div>
-                            <span class="message-author ${isMsgAdmin ? 'admin' : ''}">${escapeHTML(msg.author_name || window.cp_translate('Anonymous'))}</span>
+                            <a href="${authorLink}" style="text-decoration: none; color: inherit;">
+                                <span class="message-author ${isMsgAdmin ? 'admin' : ''}">${escapeHTML(msg.author_name || window.cp_translate('Anonymous'))}</span>
+                            </a>
                             ${statusBadgeHTML}
                         </div>
                     </div>
