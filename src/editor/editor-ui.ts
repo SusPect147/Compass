@@ -71,21 +71,35 @@
     }
 
     // =============================================================
-    // 3. DRAGGABLE PANEL SYSTEM
+    // 3. DRAGGABLE PANEL SYSTEM WITH PERSISTENCE
     // =============================================================
     const panels = document.querySelectorAll('.draggable-panel');
     const resetBtn = document.getElementById('resetPanelsBtn');
     const offsets = new Map();
     let anyDragged = false;
 
+    const savedLayout = JSON.parse(localStorage.getItem('cp_panel_layout') || '{}');
+
     panels.forEach(panel => {
         const handle = panel.querySelector('.panel-drag-handle');
         if (!handle) return;
+        
+        const panelId = panel.getAttribute('data-panel');
+        let initialOffset = { x: 0, y: 0 };
+        
+        if (panelId && savedLayout[panelId]) {
+            initialOffset = savedLayout[panelId];
+            if (initialOffset.x !== 0 || initialOffset.y !== 0) {
+                panel.style.transform = `translate(${initialOffset.x}px, ${initialOffset.y}px)`;
+                anyDragged = true;
+                if (resetBtn) resetBtn.classList.add('visible');
+            }
+        }
 
         let isDragging = false;
         let startX, startY, startOffsetX, startOffsetY;
 
-        offsets.set(panel, { x: 0, y: 0 });
+        offsets.set(panel, initialOffset);
 
         handle.addEventListener('mousedown', e => {
             if (e.button !== 0) return;
@@ -119,6 +133,13 @@
                 panel.classList.remove('is-dragging');
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup', onUp);
+                
+                // Save layout on drop
+                if (panelId) {
+                    const currentLayout = JSON.parse(localStorage.getItem('cp_panel_layout') || '{}');
+                    currentLayout[panelId] = offsets.get(panel);
+                    localStorage.setItem('cp_panel_layout', JSON.stringify(currentLayout));
+                }
             };
 
             document.addEventListener('mousemove', onMove);
@@ -139,6 +160,7 @@
             });
             anyDragged = false;
             resetBtn.classList.remove('visible');
+            localStorage.removeItem('cp_panel_layout');
         });
     }
 

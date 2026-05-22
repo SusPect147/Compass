@@ -320,6 +320,30 @@ export const IOMixin = {
             let savedMapId = null;
             if (this.loadedMapId) {
                 console.info(`[Compass] Attempting database UPDATE on existing Map ID: ${this.loadedMapId}`);
+                
+                // --- COMPACT OLD VERSION ARCHIVE ---
+                try {
+                    const { data: oldMap } = await supabase.from('maps').select('map_data').eq('id', this.loadedMapId).single();
+                    if (oldMap && oldMap.map_data) {
+                        // Delete previous 'old version' to prevent DB overload (do it smartly)
+                        await supabase.from('map_suggestions').delete()
+                            .eq('map_id', this.loadedMapId)
+                            .eq('contributor_id', user.id)
+                            .eq('contributor_name', 'старая версия');
+                        
+                        // Archive the old map data
+                        await supabase.rpc('archive_map_version', {
+                            p_map_id: this.loadedMapId,
+                            p_owner_id: user.id,
+                            p_label: 'старая версия',
+                            p_map_data: oldMap.map_data
+                        });
+                    }
+                } catch(e) {
+                    console.warn('[Compass] Failed to archive old version:', e);
+                }
+                // ------------------------------------
+
                 let { error } = await supabase
                     .from('maps')
                     .update(payload)

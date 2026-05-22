@@ -951,13 +951,19 @@ html[data-theme="breeze"] pc h6 {
 
 html[data-theme="crystal"] .save-export-buttons label,
 html[data-theme="sunset"] .save-export-buttons label,
-html[data-theme="breeze"] .save-export-buttons label {
+html[data-theme="breeze"] .save-export-buttons label,
+html[data-theme="crystal"] .e1-vis-toggle,
+html[data-theme="sunset"] .e1-vis-toggle,
+html[data-theme="breeze"] .e1-vis-toggle {
     color: #1f2937 !important;
 }
 
 html[data-theme="crystal"] .save-export-buttons .text-btn,
 html[data-theme="sunset"] .save-export-buttons .text-btn,
-html[data-theme="breeze"] .save-export-buttons .text-btn {
+html[data-theme="breeze"] .save-export-buttons .text-btn,
+html[data-theme="crystal"] .e1-statusbar-center .text-btn,
+html[data-theme="sunset"] .e1-statusbar-center .text-btn,
+html[data-theme="breeze"] .e1-statusbar-center .text-btn {
     background: rgba(0,0,0,0.04) !important;
     border-color: rgba(0,0,0,0.1) !important;
     color: #1f2937 !important;
@@ -965,7 +971,10 @@ html[data-theme="breeze"] .save-export-buttons .text-btn {
 
 html[data-theme="crystal"] .save-export-buttons .text-btn:hover,
 html[data-theme="sunset"] .save-export-buttons .text-btn:hover,
-html[data-theme="breeze"] .save-export-buttons .text-btn:hover {
+html[data-theme="breeze"] .save-export-buttons .text-btn:hover,
+html[data-theme="crystal"] .e1-statusbar-center .text-btn:hover,
+html[data-theme="sunset"] .e1-statusbar-center .text-btn:hover,
+html[data-theme="breeze"] .e1-statusbar-center .text-btn:hover {
     background: rgba(0,0,0,0.08) !important;
 }
 
