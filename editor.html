@@ -385,12 +385,20 @@
                 height: 220px !important;
                 padding: 0.75rem 0.75rem 0 0.75rem;
                 z-index: 10;
+                display: flex !important;
+                flex-direction: column !important;
             }
             .e1-main .e1-tiles-panel {
                 resize: none !important;
                 width: 100% !important;
                 max-width: 100% !important;
-                height: 100% !important;
+                height: auto !important;
+                flex: 1 1 0 !important;
+            }
+            .e1-main .e1-tiles-panel .tiles-grid {
+                flex: 1 1 auto !important;
+                height: auto !important;
+                min-height: 60px !important;
             }
             
             .reset-panels-btn { display: none !important; }
