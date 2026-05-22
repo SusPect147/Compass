@@ -405,6 +405,55 @@ async function initGlobalAuth() {
 
         navContainer.appendChild(profileBlock);
 
+        // --- SYNC LOCAL MAPS ---
+        try {
+            const localMapsStr = localStorage.getItem('compass_local_maps');
+            if (localMapsStr) {
+                const localMaps = JSON.parse(localMapsStr);
+                if (Array.isArray(localMaps) && localMaps.length > 0) {
+                    console.log(`[Compass] Found ${localMaps.length} local maps to sync.`);
+                    const syncPromises = localMaps.map(async (localMap) => {
+                        const payload = {
+                            name: localMap.name,
+                            size: localMap.size,
+                            gamemode: localMap.gamemode,
+                            environment: localMap.environment,
+                            map_data: localMap.map_data,
+                            tile_authors: localMap.tile_authors,
+                            author_name: name,
+                            user_id: user.id,
+                            is_public: localMap.is_public,
+                            theme_options: localMap.theme_options
+                        };
+                        let { error } = await supabase
+                            .from('maps')
+                            .insert(payload)
+                            .select('id')
+                            .single();
+                        if (error && error.code === '42703') {
+                            const fallbackPayload = { ...payload };
+                            delete fallbackPayload.tile_authors;
+                            await supabase.from('maps').insert(fallbackPayload).select('id').single();
+                        } else if (error) {
+                            throw error;
+                        }
+                    });
+                    
+                    // Run sync in background
+                    Promise.allSettled(syncPromises).then((results) => {
+                        const successCount = results.filter(r => r.status === 'fulfilled').length;
+                        if (successCount > 0) {
+                            alert(window.cp_translate ? window.cp_translate(`Successfully synced ${successCount} local map(s) to your account!`) : `Успешно синхронизировано ${successCount} локальных карт(ы)!`);
+                            localStorage.removeItem('compass_local_maps');
+                        }
+                    });
+                }
+            }
+        } catch (e) {
+            console.error('[Compass] Failed to sync local maps:', e);
+        }
+        // ------------------------
+
     } else {
         // === ПОЛЬЗОВАТЕЛЬ НЕ ВОШЕЛ ===
         localStorage.removeItem('user');

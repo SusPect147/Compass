@@ -226,7 +226,49 @@ export const IOMixin = {
         try {
             const { data: { user }, error: userError } = await supabase.auth.getUser();
             if (userError || !user) {
-                alert(window.cp_translate("❌ You must be logged in with Discord to save maps! Go to the Home page to log in."));
+                try {
+                    const mapName = document.getElementById('mapName').value.trim() || 'Untitled Map';
+                    const mapSize = document.getElementById('mapSize').value;
+                    const gamemode = document.getElementById('gamemode').value;
+                    const environment = document.getElementById('environment').value;
+                    const isPublic = document.getElementById('isPublicToggle')?.checked ?? false;
+                    
+                    let finalEnvironment = environment;
+                    const galleryToggle = document.getElementById('showThemeInGalleryToggle');
+                    const galleryEnabled = galleryToggle?.checked ?? true;
+                    if (!galleryEnabled && environment.startsWith('CUSTOM_')) {
+                        finalEnvironment = 'Desert';
+                    }
+
+                    const localMapPayload = {
+                        name: mapName,
+                        size: mapSize,
+                        gamemode: gamemode,
+                        environment: finalEnvironment,
+                        map_data: this.tileGrid,
+                        tile_authors: this.tileAuthors || {},
+                        is_public: isPublic,
+                        theme_options: {
+                            gallery: galleryEnabled,
+                            download: document.getElementById('showThemeInDownloadToggle')?.checked ?? true
+                        },
+                        saved_at: new Date().toISOString()
+                    };
+
+                    let localMaps = [];
+                    try {
+                        const existing = localStorage.getItem('compass_local_maps');
+                        if (existing) localMaps = JSON.parse(existing);
+                    } catch(e) {}
+                    
+                    localMaps.push(localMapPayload);
+                    localStorage.setItem('compass_local_maps', JSON.stringify(localMaps));
+                    
+                    alert(window.cp_translate ? window.cp_translate("Map saved locally! Log in with Discord to sync it to the database.") : "Карта сохранена локально! Войдите через Discord, чтобы сохранить её в базу данных.");
+                } catch(localErr) {
+                    console.error('[Compass] Failed to save locally:', localErr);
+                    alert("Failed to save map locally.");
+                }
                 return;
             }
             // COLLAB REDIRECT ROUTING
