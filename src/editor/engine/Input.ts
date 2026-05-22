@@ -34,9 +34,11 @@ export const InputMixin = {
         // Selection mode radio buttons
         document.querySelectorAll('input[name="selectionMode"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
-                this.selectionMode = e.target.value;
-                document.getElementById('selectedAreaToolsDiv').style.display = 'none';
-                document.getElementById('lastDivider').style.display = 'none';
+                this.selectionMode = (e.target as HTMLInputElement).value;
+                const toolsDiv = document.getElementById('selectedAreaToolsDiv');
+                if (toolsDiv) toolsDiv.style.display = 'none';
+                const lastDiv = document.getElementById('lastDivider');
+                if (lastDiv) lastDiv.style.display = 'none';
 
                 if (this.selectionMode === 'select' && this.isErasing) {
                     this.toggleEraseMode(false);
