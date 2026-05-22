@@ -353,7 +353,7 @@ function renderMessages(messages) {
                 <div class="message-photos-grid count-${msg.photos.length}">
                     ${msg.photos.map(url => `
                         <div class="photo-thumbnail">
-                            <img src="${url}" class="forum-zoomable-img" alt="Attachment Image" data-url="${url}">
+                            <img src="${url}" class="forum-zoomable-img" loading="lazy" decoding="async" alt="Attachment Image" data-url="${url}">
                         </div>
                     `).join('')}
                 </div>
@@ -367,7 +367,7 @@ function renderMessages(messages) {
                 <div class="message-videos-list">
                     ${msg.videos.map(url => `
                         <div class="video-container">
-                            <video src="${url}" controls preload="metadata"></video>
+                            <video src="${url}" controls preload="none"></video>
                         </div>
                     `).join('')}
                 </div>
@@ -406,7 +406,7 @@ function renderMessages(messages) {
         msgEl.innerHTML = `
             <div class="message-meta" style="display: flex; align-items: flex-start; gap: 12px;">
                 <a href="${authorLink}" style="text-decoration: none; display: block;">
-                    <img src="${avatarUrl}" alt="Avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid ${isMsgAdmin ? '#a78bfa' : 'rgba(255,255,255,0.1)'};">
+                    <img src="${avatarUrl}" alt="Avatar" loading="lazy" decoding="async" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid ${isMsgAdmin ? '#a78bfa' : 'rgba(255,255,255,0.1)'};">
                 </a>
                 <div style="flex: 1;">
                     <div class="message-author-info" style="margin-bottom: 2px;">
