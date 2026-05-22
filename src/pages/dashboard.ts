@@ -13,45 +13,74 @@ injectPremiumCardStyles();
 async function loadMyMaps() {
     try {
         const grid = document.getElementById('mapsGrid');
-        if (grid) grid.innerHTML = `<div style="padding:2rem; text-align:center; opacity:0.7;">${window.cp_translate('Accessing your vault...')}</div>`;
+        if (grid) grid.innerHTML = `<div style="padding:2rem; text-align:center; opacity:0.7;">${window.cp_translate ? window.cp_translate('Accessing your vault...') : 'Accessing your vault...'}</div>`;
 
         const { data: { session } } = await supabase.auth.getSession();
         
-        if (!session || !session.user) {
-            showEmptyState(window.cp_translate('Please sign in via Discord to view your private maps.'), '🔒');
-            return;
+        let dbMaps = [];
+        let likedMapIds = new Set();
+
+        if (session && session.user) {
+            currentUserId = session.user.id;
+            const { data, error } = await supabase
+                .from('maps')
+                .select('*, map_likes(count)')
+                .eq('user_id', currentUserId)
+                .order('created_at', { ascending: false });
+
+            if (!error && data) {
+                dbMaps = data;
+                const { data: myLikes } = await supabase
+                    .from('map_likes')
+                    .select('map_id')
+                    .eq('user_id', currentUserId);
+                likedMapIds = new Set((myLikes || []).map(l => l.map_id));
+            }
         }
-        currentUserId = session.user.id;
 
-        // Получаем ВСЕ карты созданные текущим пользователем, 
-        // включая количество лайков на каждой!
-        const { data, error } = await supabase
-            .from('maps')
-            .select('*, map_likes(count)')
-            .eq('user_id', currentUserId)
-            .order('created_at', { ascending: false });
+        let localMaps = [];
+        let modifiedLocalMaps = false;
+        try {
+            const localStr = localStorage.getItem('compass_local_maps');
+            if (localStr) {
+                localMaps = JSON.parse(localStr);
+                if (!Array.isArray(localMaps)) localMaps = [];
+                
+                localMaps.forEach(m => {
+                    if (!m.id) {
+                        m.id = 'local_' + Math.random().toString(36).substring(2, 9);
+                        modifiedLocalMaps = true;
+                    }
+                });
+                if (modifiedLocalMaps) {
+                    localStorage.setItem('compass_local_maps', JSON.stringify(localMaps));
+                }
+            }
+        } catch(e) {}
 
-        if (error) throw error;
+        const mappedLocalMaps = localMaps.map(m => ({
+            ...m,
+            isLocalOnly: true,
+            likesCount: 0,
+            isLikedByUser: false
+        }));
 
-        // Получаем ID карт, которые УЖЕ лайкнул текущий пользователь
-        const { data: myLikes } = await supabase
-            .from('map_likes')
-            .select('map_id')
-            .eq('user_id', currentUserId);
-        
-        const likedMapIds = new Set((myLikes || []).map(l => l.map_id));
-
-        allMaps = data.map(m => ({
+        allMaps = [...mappedLocalMaps, ...dbMaps.map(m => ({
             ...m,
             likesCount: m.map_likes?.[0]?.count || 0,
             isLikedByUser: likedMapIds.has(m.id)
-        })) || [];
+        }))];
+
+        if (allMaps.length === 0 && (!session || !session.user)) {
+             showEmptyState(window.cp_translate ? window.cp_translate('Please sign in via Discord to view your private maps.') : 'Please sign in via Discord to view your private maps.', '🔒');
+             return;
+        }
 
         applyFilters();
 
     } catch (err) {
         console.error('Error loading your maps:', err);
-        showEmptyState(window.cp_translate('Connection lost.'), '📡');
+        showEmptyState(window.cp_translate ? window.cp_translate('Connection lost.') : 'Connection lost.', '📡');
     }
 }
 
@@ -141,15 +170,19 @@ function createOwnerCard(map, image) {
     const isPublic = map.is_public ?? true;
 
     const safeName = escapeHTML(map.name || 'Untitled');
+    
+    const imageWrapperClick = map.isLocalOnly ? 
+        `onclick="alert('${window.cp_translate ? window.cp_translate('Please sign in to sync this map before viewing it.') : 'Пожалуйста, войдите в аккаунт, чтобы синхронизировать эту карту перед просмотром.'}')"` : 
+        `onclick="window.location.href = './view.html?id=${encodeURIComponent(map.id)}'"`;
 
     card.innerHTML = `
-        <div class="card-image-wrapper" onclick="window.location.href = './view.html?id=${encodeURIComponent(map.id)}'">
+        <div class="card-image-wrapper" ${imageWrapperClick}>
             <img src="${image}" alt="Map" loading="lazy">
-            <div class="card-overlay"><span>${window.cp_translate('Edit Details')}</span></div>
+            <div class="card-overlay"><span>${window.cp_translate ? window.cp_translate('Edit Details') : 'Edit Details'}</span></div>
         </div>
         <div class="card-content">
             <div class="card-meta">
-                <h3 class="card-title">${safeName}</h3>
+                <h3 class="card-title">${safeName} ${map.isLocalOnly ? `<span style="color:#ff4c4c; font-size:0.7em; margin-left: 5px;">(Local)</span>` : ''}</h3>
                 <div class="card-stats">
                      <button class="likes-btn ${map.isLikedByUser ? 'liked' : ''}" data-id="${map.id}">
                         <svg class="heart-icon small" viewBox="0 0 24 24" fill="${map.isLikedByUser ? '#ff3e5c' : 'none'}" stroke="currentColor">
@@ -161,7 +194,7 @@ function createOwnerCard(map, image) {
             </div>
             
             <div class="owner-controls" style="display: flex; gap: 8px; flex-shrink:0; align-items: center;">
-                 <button class="collab-btn" data-id="${map.id}" title="${window.cp_translate('Generate Suggestion Link')}" style="
+                 <button class="collab-btn" data-id="${map.id}" title="${window.cp_translate ? window.cp_translate('Generate Suggestion Link') : 'Generate Suggestion Link'}" style="
                      background: var(--accent-glow, rgba(139, 92, 246, 0.08));
                      border: 1px solid var(--border-color, rgba(139, 92, 246, 0.25));
                      color: var(--primary-color, #c4b5fd);
@@ -178,7 +211,7 @@ function createOwnerCard(map, image) {
                       👥
                  </button>
                  <button class="visibility-btn ${isPublic ? 'pub' : 'priv'}" data-id="${map.id}" data-public="${isPublic}">
-                     ${isPublic ? window.cp_translate('🌍 Public') : window.cp_translate('🔒 Private')}
+                     ${isPublic ? (window.cp_translate ? window.cp_translate('🌍 Public') : '🌍 Public') : (window.cp_translate ? window.cp_translate('🔒 Private') : '🔒 Private')}
                  </button>
                  <button class="delete-card-btn" title="Delete Map Permanently">
                      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -186,6 +219,11 @@ function createOwnerCard(map, image) {
             </div>
         </div>
     `;
+
+    if (map.isLocalOnly) {
+        card.style.border = '2px solid rgba(255, 76, 76, 0.6)';
+        card.style.boxShadow = '0 0 15px rgba(255, 76, 76, 0.15)';
+    }
 
     // Вешаем логику переключения видимости
     const toggleBtn = card.querySelector('.visibility-btn');
@@ -419,17 +457,26 @@ async function openCollabModal(map) {
 }
 
 async function triggerMapDeletion(mapId, card) {
-    const confirmMsg = window.cp_translate("🗑️ Are you absolutely sure you want to delete this map forever?\n\nThis action CANNOT be undone.");
+    const confirmMsg = window.cp_translate ? window.cp_translate("🗑️ Are you absolutely sure you want to delete this map forever?\n\nThis action CANNOT be undone.") : "🗑️ Are you absolutely sure you want to delete this map forever?\n\nThis action CANNOT be undone.";
     if (!confirm(confirmMsg)) return;
 
     try {
-        const { error } = await supabase
-            .from('maps')
-            .delete()
-            .eq('id', mapId)
-            .eq('user_id', currentUserId); // BUG-11 fix: scope deletion to owner only
+        if (mapId.toString().startsWith('local_')) {
+            let localMaps = [];
+            try {
+                localMaps = JSON.parse(localStorage.getItem('compass_local_maps') || '[]');
+            } catch(e) {}
+            localMaps = localMaps.filter(m => m.id !== mapId);
+            localStorage.setItem('compass_local_maps', JSON.stringify(localMaps));
+        } else {
+            const { error } = await supabase
+                .from('maps')
+                .delete()
+                .eq('id', mapId)
+                .eq('user_id', currentUserId); // BUG-11 fix: scope deletion to owner only
 
-        if (error) throw error;
+            if (error) throw error;
+        }
 
         // Animate & Remove from grid
         card.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
@@ -451,7 +498,7 @@ async function triggerMapDeletion(mapId, card) {
 
     } catch (err) {
         console.error("Map deletion error:", err);
-        alert(window.cp_translate("Delete operation failed:") + " " + (err.message || "Unknown error."));
+        alert((window.cp_translate ? window.cp_translate("Delete operation failed:") : "Delete operation failed:") + " " + (err.message || "Unknown error."));
     }
 }
 
