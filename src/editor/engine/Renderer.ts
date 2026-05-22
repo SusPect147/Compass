@@ -478,7 +478,20 @@ export const RendererMixin = {
         // Draw the background grid
         for (let y = 0; y < this.mapHeight; y++) {
             for (let x = 0; x < this.mapWidth; x++) {
-                if (true) {
+                // Check if this tile should have no background in Brawl Ball mode
+                let skipBackground = false;
+                if ((this.gamemode === 'Brawl_Ball' || this.gamemode === 'Hockey') && this.mapSize === this.mapSizes.regular) {
+                    const atTop = y < 4;
+                    const atBottom = y >= this.mapHeight - 4;
+                    const atLeft = x < 7;
+                    const atRight = x >= this.mapWidth - 7;
+
+                    if ((atTop || atBottom) && (atLeft || atRight)) {
+                        skipBackground = true;
+                    }
+                }
+
+                if (!skipBackground) {
                     const isDark = (x + y) % 2 === 0;
                     const bgImg = isDark ? this.bgDark : this.bgLight;
 

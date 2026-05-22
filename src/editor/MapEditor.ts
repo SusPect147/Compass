@@ -38,7 +38,7 @@ export class MapEditor {
         this.existingMap = existingMap;
         this.ctx = this.canvas.getContext('2d');
         this.tileSize = 32;
-        this.canvasPadding = 16;  // Add padding for the canvas
+        this.canvasPadding = 64;  // Increased padding so large goals with negative offsets don't get cut off
 
         this.layerCount = 5;
         this.defaultTileLayer = 2;
