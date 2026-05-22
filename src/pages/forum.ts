@@ -271,7 +271,9 @@ async function loadMessages() {
     try {
         const { data, error } = await supabase
             .from('forum_messages')
-            .select('*, forum_message_votes(*)');
+            .select('*, forum_message_votes(*)')
+            .order('created_at', { ascending: false })
+            .limit(50);
 
         if (error) throw error;
         allMessages = data || [];
