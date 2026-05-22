@@ -2353,7 +2353,7 @@ body.opacity-adjusting .zoom-controls-floating {
 /* TILE SELECTOR SORT & COLLAPSE LOGIC */
 #tileSelector.unsorted-grid {
     display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)) !important;
+    grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)) !important;
     gap: 5px !important;
     padding: 6px !important;
     align-content: flex-start !important;
@@ -2368,7 +2368,7 @@ body.opacity-adjusting .zoom-controls-floating {
 
 .tile-category-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
     gap: 5px;
     padding: 6px;
 }

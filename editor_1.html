@@ -337,8 +337,6 @@
         /* ══════════ MISC ══════════ */
         #collabBanner { flex: 0 0 auto; }
         .tooltip-floating { bottom: 3rem; }
-        .disclaimer-tooltip { right: 1rem; }
-        .shortcuts-tooltip { right: 4rem; }
         .reset-panels-btn { display: none; }
         .reset-panels-btn.visible { display: block; }
 
@@ -750,13 +748,32 @@
                 <div class="link-container">
                     <span>Link:</span><a id="mapLink" class="map-link-text">./view.html</a>
                     <button id="copyLinkBtn" class="copy-btn" title="Copy link to clipboard"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                    <div class="tooltip-floating" style="position: relative; bottom: auto; right: auto; width: 36px; height: 36px; box-shadow: none;">
+                        <img src="./Resources/Additional/Icons/Key.png" alt="Keyboard Shortcuts" style="width: 20px; height: 20px;">
+                        <div class="tooltip-text shortcuts-text" style="bottom: 120%; right: 50%; transform: translateX(50%);">
+                            <h4>Keyboard Shortcuts</h4>
+                            <ul style="text-align: left; padding-left: 10px; margin: 5px 0;">
+                                <li><kbd>1-4</kbd> Tools</li>
+                                <li><kbd>E</kbd> Erase</li>
+                                <li><kbd>R</kbd> Replace</li>
+                                <li><kbd>M</kbd> Mirroring</li>
+                                <li><kbd>N</kbd> Mirror Colors</li>
+                                <li><kbd>Q</kbd> Check Errors</li>
+                                <li><kbd>W</kbd> Guides</li>
+                                <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> Undo</li>
+                                <li><kbd>Ctrl</kbd>+<kbd>Y</kbd> Redo</li>
+                                <li><kbd>Ctrl</kbd>+<kbd>Del</kbd> Clear</li>
+                                <li><kbd>Wheel</kbd> Zoom</li>
+                                <li><kbd>Right Click</kbd> Pan</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="tooltip-floating disclaimer-tooltip">?<div class="tooltip-text">This site is not affiliated with or endorsed by Supercell.</div></div>
-    <div class="tooltip-floating shortcuts-tooltip"><img src="./Resources/Additional/Icons/Key.png" alt="Keyboard Shortcuts"><div class="tooltip-text shortcuts-text"><h4>Keyboard Shortcuts</h4></div></div>
+
     <button class="reset-panels-btn" id="resetPanelsBtn" title="Reset all panels to original positions">⟲ Reset Layout</button>
 
     <script>
