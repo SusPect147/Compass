@@ -915,10 +915,22 @@ html[data-theme="breeze"] .controls-bar label {
 
 html[data-theme="crystal"] .panel-drag-handle h3,
 html[data-theme="crystal"] .panel-drag-handle .panel-title,
+html[data-theme="crystal"] .tile-category-header,
+html[data-theme="crystal"] .scroll-lane-text,
+html[data-theme="crystal"] .map-link-text,
+html[data-theme="crystal"] .link-container span,
 html[data-theme="sunset"] .panel-drag-handle h3,
 html[data-theme="sunset"] .panel-drag-handle .panel-title,
+html[data-theme="sunset"] .tile-category-header,
+html[data-theme="sunset"] .scroll-lane-text,
+html[data-theme="sunset"] .map-link-text,
+html[data-theme="sunset"] .link-container span,
 html[data-theme="breeze"] .panel-drag-handle h3,
-html[data-theme="breeze"] .panel-drag-handle .panel-title {
+html[data-theme="breeze"] .panel-drag-handle .panel-title,
+html[data-theme="breeze"] .tile-category-header,
+html[data-theme="breeze"] .scroll-lane-text,
+html[data-theme="breeze"] .map-link-text,
+html[data-theme="breeze"] .link-container span {
     color: rgba(0,0,0,0.6) !important;
 }
 
