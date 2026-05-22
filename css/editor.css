@@ -1336,10 +1336,11 @@ label[for='correctMirroringBtn'], label[for='hideZoomBtn'] {
     }
 
     .toolbar-section label.mirror-btn {
-        padding: 0.6rem 0.9rem !important;
-        font-size: 0.8rem !important;
-        flex: 1 1 calc(33.33% - 0.75rem) !important;
+        padding: 0.6rem 0.5rem !important;
+        font-size: 0.75rem !important;
+        flex: 1 1 0 !important;
         justify-content: center;
+        white-space: nowrap;
     }
 
     .icon-btn {

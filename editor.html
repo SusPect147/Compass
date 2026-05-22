@@ -382,23 +382,20 @@
                 position: relative !important;
                 top: auto !important; left: auto !important;
                 width: 100% !important;
-                height: 220px !important;
+                height: auto !important;
                 padding: 0.75rem 0.75rem 0 0.75rem;
                 z-index: 10;
-                display: flex !important;
-                flex-direction: column !important;
             }
             .e1-main .e1-tiles-panel {
                 resize: none !important;
                 width: 100% !important;
                 max-width: 100% !important;
                 height: auto !important;
-                flex: 1 1 0 !important;
             }
             .e1-main .e1-tiles-panel .tiles-grid {
-                flex: 1 1 auto !important;
-                height: auto !important;
-                min-height: 60px !important;
+                height: 200px !important;
+                min-height: 200px !important;
+                flex: none !important;
             }
             
             .reset-panels-btn { display: none !important; }
@@ -415,11 +412,16 @@
             }
             
             .e1-tiles-float {
-                height: 150px !important;
+                height: auto !important;
             }
             
             .e1-tiles-panel #tileSelector {
                 grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)) !important;
+            }
+
+            .e1-main .e1-tiles-panel .tiles-grid {
+                height: 150px !important;
+                min-height: 150px !important;
             }
             
             /* Status Bar Mobile */
