@@ -93,13 +93,22 @@ async function initForum() {
     checkCooldown();
 
     // Subscribe to real-time updates to keep feed live (messages + votes)
+    // Use debounce to prevent rapid-fire DOM rebuilds when multiple events arrive
+    let realtimeDebounceTimer = null;
+    const debouncedLoadMessages = () => {
+        clearTimeout(realtimeDebounceTimer);
+        realtimeDebounceTimer = setTimeout(() => {
+            loadMessages();
+        }, 500);
+    };
+
     supabase
         .channel('forum_realtime_events')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'forum_messages' }, () => {
-            loadMessages(); 
+            debouncedLoadMessages(); 
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'forum_message_votes' }, () => {
-            loadMessages(); // Refresh UI when votes are cast
+            debouncedLoadMessages(); // Debounced refresh when votes are cast
         })
         .subscribe();
 }

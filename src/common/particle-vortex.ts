@@ -15,13 +15,23 @@
     const MIN_ZOOM = 0.3;
     const MAX_ZOOM = 3.0;
 
-    const PARTICLE_COUNT  = 1200;
+    // Adaptive particle count based on device capability
+    function getAdaptiveParticleCount() {
+        const cores = navigator.hardwareConcurrency || 2;
+        const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+        if (isMobile || cores <= 2) return 200;
+        if (cores <= 4) return 400;
+        return 500;
+    }
+
+    const PARTICLE_COUNT  = getAdaptiveParticleCount();
     const GRID_TILE_COUNT = 40;
     const VORTEX_CX_RATIO = 0.55;
     const VORTEX_CY_RATIO = 0.48;
 
     const particles  = [];
     const gridTiles  = [];
+    let isPageVisible = true; // Page Visibility tracking
 
     function resize() {
         W = canvas.width  = window.innerWidth;
@@ -74,6 +84,7 @@
     }
 
     function draw() {
+        if (!isPageVisible) return; // Stop rendering when tab is hidden
         frame++;
         const time = frame * 16;
         ctx.clearRect(0, 0, W, H);
@@ -193,6 +204,16 @@
     document.addEventListener('mousemove', e => {
         mouseX = e.clientX / window.innerWidth;
         mouseY = e.clientY / window.innerHeight;
+    });
+
+    // Page Visibility API: pause animation when tab is hidden to save CPU/GPU
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            isPageVisible = false;
+        } else {
+            isPageVisible = true;
+            requestAnimationFrame(draw); // Resume rendering
+        }
     });
 
     // Scroll wheel zoom - ONLY if explicitly enabled by the HTML element

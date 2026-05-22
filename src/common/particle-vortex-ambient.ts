@@ -9,12 +9,13 @@
     const ctx = canvas.getContext('2d');
     let W, H, frame = 0;
     const particles = [];
+    let isPageVisible = true; // Page Visibility tracking
     
     function resize() {
         W = canvas.width = window.innerWidth;
         H = canvas.height = window.innerHeight;
         particles.length = 0;
-        for (let i = 0; i < 400; i++) {
+        for (let i = 0; i < 150; i++) {
             particles.push({
                 angle: Math.random() * Math.PI * 2,
                 radius: 20 + Math.random() * Math.max(W, H) * 0.6,
@@ -27,6 +28,7 @@
     }
 
     function draw() {
+        if (!isPageVisible) return; // Stop rendering when tab is hidden
         frame++;
         ctx.clearRect(0, 0, W, H);
         const cx = W * 0.5, cy = H * 0.5;
@@ -52,6 +54,18 @@
     }
     
     window.addEventListener('resize', resize);
+
+    // Page Visibility API: pause animation when tab is hidden
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            isPageVisible = false;
+        } else {
+            isPageVisible = true;
+            requestAnimationFrame(draw); // Resume rendering
+        }
+    });
+
     resize();
     draw();
 })();
+

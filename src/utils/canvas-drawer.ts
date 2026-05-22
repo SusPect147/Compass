@@ -277,9 +277,9 @@ export async function drawStaticMapPreview(mapData, size = 'regular', gamemode =
     renderer.draw();
   }
   
-  // Final check - wait a bit more for any last-minute image loads
-  // This is especially important for dynamically loaded images
-  await new Promise(resolve => setTimeout(resolve, 100));
+  // Final check - wait one animation frame for any last-minute image loads
+  // This is sufficient for dynamically loaded images to settle
+  await new Promise(resolve => requestAnimationFrame(resolve));
   
   // One final draw to ensure everything is rendered
   renderer.draw();

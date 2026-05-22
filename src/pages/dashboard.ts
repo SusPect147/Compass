@@ -125,31 +125,35 @@ function displayNextBatch() {
     if (!container) return;
 
     const batch = filteredMaps.slice(displayedCount, displayedCount + mapsPerPage);
+    const renderedCards = []; // Collect {mapId, card} for batch suggestion loading
 
     batch.forEach(map => {
         if (map.thumbnail_url) {
             // Instant render from Supabase Storage
             const card = createOwnerCard(map, map.thumbnail_url);
             container.appendChild(card);
-            loadCardSuggestions(map.id, card);
+            renderedCards.push({ mapId: map.id, card });
         } else {
             // Legacy visual render for maps that haven't been re-saved yet
             drawStaticMapPreview(map.map_data, map.size, map.gamemode, map.environment)
                 .then(png => {
                     const card = createOwnerCard(map, png);
                     container.appendChild(card);
-                    loadCardSuggestions(map.id, card);
+                    renderedCards.push({ mapId: map.id, card });
                 })
                 .catch(() => {
                     const card = createOwnerCard(map, 'Resources/Additional/Icons/compass.png');
                     container.appendChild(card);
-                    loadCardSuggestions(map.id, card);
+                    renderedCards.push({ mapId: map.id, card });
                 });
         }
     });
 
     displayedCount += batch.length;
     updateLoadMore();
+
+    // Batch-load all suggestion counts in ONE query instead of N+1
+    loadBatchSuggestions(renderedCards);
 }
 
 function escapeHTML(str) {
@@ -256,34 +260,52 @@ function createOwnerCard(map, image) {
     return card;
 }
 
-async function loadCardSuggestions(mapId, card) {
+// Batch-load suggestion counts in ONE Supabase query to avoid N+1 problem
+async function loadBatchSuggestions(renderedCards) {
+    if (!renderedCards || renderedCards.length === 0) return;
     try {
-        const { count, error } = await supabase
+        // Filter out local-only maps (they can't have suggestions)
+        const dbCards = renderedCards.filter(rc => !String(rc.mapId).startsWith('local_'));
+        if (dbCards.length === 0) return;
+
+        const mapIds = dbCards.map(rc => rc.mapId);
+        const { data, error } = await supabase
             .from('map_suggestions')
-            .select('*', { count: 'exact', head: true })
-            .eq('map_id', mapId);
+            .select('map_id')
+            .in('map_id', mapIds);
         
-        if (error) return;
-        if (count && count > 0) {
-            const metaDiv = card.querySelector('.card-meta');
-            if (metaDiv) {
-                const badge = document.createElement('div');
-                badge.className = 'suggestion-badge';
-                badge.style.cssText = `
-                    display: inline-block;
-                    margin-top: 6px;
-                    font-size: 0.75rem;
-                    background: rgba(139, 92, 246, 0.15);
-                    border: 1px solid rgba(139, 92, 246, 0.35);
-                    color: #c4b5fd;
-                    padding: 2px 8px;
-                    border-radius: 12px;
-                    font-weight: 600;
-                `;
-                badge.textContent = `👥 ${window.cp_translate('Suggestions')}: ${count}`;
-                metaDiv.appendChild(badge);
+        if (error || !data) return;
+
+        // Count suggestions per map_id
+        const countsMap = {};
+        data.forEach(row => {
+            countsMap[row.map_id] = (countsMap[row.map_id] || 0) + 1;
+        });
+
+        // Apply badges to cards that have suggestions
+        dbCards.forEach(({ mapId, card }) => {
+            const count = countsMap[mapId];
+            if (count && count > 0) {
+                const metaDiv = card.querySelector('.card-meta');
+                if (metaDiv) {
+                    const badge = document.createElement('div');
+                    badge.className = 'suggestion-badge';
+                    badge.style.cssText = `
+                        display: inline-block;
+                        margin-top: 6px;
+                        font-size: 0.75rem;
+                        background: rgba(139, 92, 246, 0.15);
+                        border: 1px solid rgba(139, 92, 246, 0.35);
+                        color: #c4b5fd;
+                        padding: 2px 8px;
+                        border-radius: 12px;
+                        font-weight: 600;
+                    `;
+                    badge.textContent = `👥 ${window.cp_translate('Suggestions')}: ${count}`;
+                    metaDiv.appendChild(badge);
+                }
             }
-        }
+        });
     } catch(e) {}
 }
 
@@ -621,7 +643,6 @@ function injectPremiumCardStyles() {
             border-radius: 16px;
             overflow: hidden;
             transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-            backdrop-filter: blur(15px);
             display: flex;
             flex-direction: column;
             box-shadow: 0 8px 32px rgba(0,0,0,0.2);

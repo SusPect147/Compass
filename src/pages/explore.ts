@@ -8,6 +8,9 @@ let displayedCount = 0;
 const mapsPerPage = 16;
 let currentUserId = null;
 let likedMapIds = new Set(); // Храним ID карт, которые лайкнул ТЕКУЩИЙ пользователь
+let serverOffset = 0; // Track how many maps we've fetched from server
+const serverPageSize = 64; // How many maps to fetch per server request
+let serverHasMore = true; // Whether server has more maps to load
 
 // Подтягиваем кастомные стили для ВАУ-карточек
 injectPremiumCardStyles();
@@ -35,13 +38,19 @@ async function initializeGallery() {
 
         // 3. Загружаем карты (фильтруем по is_public=true на стороне сервера для экономии)
         // Так же вытягиваем количество лайков через агрегат
+        // SERVER-SIDE PAGINATION: load only first batch to speed up initial load
         const { data, error } = await supabase
             .from('maps')
             .select('*, map_likes(count)')
             .eq('is_public', true) // ЗАЩИТА: В галерею попадают ТОЛЬКО публичные
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .range(0, serverPageSize - 1);
 
         if (error) throw error;
+
+        // Track server pagination state
+        serverOffset = data ? data.length : 0;
+        serverHasMore = data ? data.length >= serverPageSize : false;
 
         // Форматируем данные, чтобы likes был числом
         allMaps = data.map(m => ({
@@ -260,11 +269,46 @@ function updateLoadMoreButton() {
     if (!loadMoreContainer) return;
     loadMoreContainer.innerHTML = '';
 
-    if (displayedCount < filteredMaps.length) {
+    // Show Load More if there are more filtered maps to display OR server has more data
+    if (displayedCount < filteredMaps.length || serverHasMore) {
         const btn = document.createElement('button');
         btn.textContent = window.cp_translate('Load More');
         btn.classList.add('load-more-btn');
-        btn.onclick = displayNextBatch;
+        btn.onclick = async () => {
+            // If we've shown all locally loaded maps but server has more, fetch next batch
+            if (displayedCount >= filteredMaps.length && serverHasMore) {
+                btn.textContent = '...';
+                btn.disabled = true;
+                try {
+                    const { data, error } = await supabase
+                        .from('maps')
+                        .select('*, map_likes(count)')
+                        .eq('is_public', true)
+                        .order('created_at', { ascending: false })
+                        .range(serverOffset, serverOffset + serverPageSize - 1);
+                    
+                    if (!error && data && data.length > 0) {
+                        const newMaps = data.map(m => ({
+                            ...m,
+                            likesCount: m.map_likes?.[0]?.count || 0
+                        }));
+                        allMaps = [...allMaps, ...newMaps];
+                        serverOffset += data.length;
+                        serverHasMore = data.length >= serverPageSize;
+                        applyFilters(); // Re-apply filters to include new maps
+                    } else {
+                        serverHasMore = false;
+                        updateLoadMoreButton();
+                    }
+                } catch(e) {
+                    console.error('Failed to load more maps:', e);
+                    btn.textContent = window.cp_translate('Load More');
+                    btn.disabled = false;
+                }
+            } else {
+                displayNextBatch();
+            }
+        };
         loadMoreContainer.appendChild(btn);
     }
 }
@@ -282,7 +326,6 @@ function injectPremiumCardStyles() {
             border-radius: 16px;
             overflow: hidden;
             transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-            backdrop-filter: blur(10px);
             display: flex;
             flex-direction: column;
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
