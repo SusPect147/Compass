@@ -1343,6 +1343,10 @@ label[for='correctMirroringBtn'], label[for='hideZoomBtn'] {
         white-space: nowrap;
     }
 
+    .tile-category-header {
+        position: static !important;
+    }
+
     .icon-btn {
         width: 46px !important;
         height: 46px !important;

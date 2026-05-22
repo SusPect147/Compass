@@ -387,15 +387,19 @@
                 z-index: 10;
             }
             .e1-main .e1-tiles-panel {
-                resize: none !important;
+                resize: vertical !important;
+                overflow: hidden !important;
                 width: 100% !important;
                 max-width: 100% !important;
-                height: auto !important;
+                height: 250px !important;
+                min-height: 150px !important;
+                display: flex !important;
+                flex-direction: column !important;
             }
             .e1-main .e1-tiles-panel .tiles-grid {
-                height: 200px !important;
-                min-height: 200px !important;
-                flex: none !important;
+                flex: 1 1 0 !important;
+                height: auto !important;
+                min-height: 0 !important;
             }
             
             .reset-panels-btn { display: none !important; }
@@ -418,10 +422,9 @@
             .e1-tiles-panel #tileSelector {
                 grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)) !important;
             }
-
-            .e1-main .e1-tiles-panel .tiles-grid {
-                height: 150px !important;
-                min-height: 150px !important;
+            
+            .e1-tiles-panel #tileSelector.unsorted-grid {
+                grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)) !important;
             }
             
             /* Status Bar Mobile */
