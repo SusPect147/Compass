@@ -932,7 +932,7 @@ export const IOMixin = {
                                 // Get image data
                                 const imgData = exCtx.getImageData(0, 0, img.width, img.height);
                                 
-                                // Perform 3x3 convolve in JS (highly optimized)
+                                // Perform 3x3 convolve in JS (highly optimized) with dynamic stride
                                 const convolveSharpness = (imageData: ImageData, sharpnessIntensity: number) => {
                                     const src = imageData.data;
                                     const w = imageData.width;
@@ -944,16 +944,20 @@ export const IOMixin = {
                                     const centerVal = 1 + 4 * coeff;
                                     const edgeVal = -coeff;
                                     
+                                    // Scale the sharpening radius (stride) based on image width to make it visible on huge exports
+                                    // Base width is around 1920px. For an 8000px image, stride will be ~4.
+                                    const stride = Math.max(1, Math.round(w / 1920));
+                                    
                                     for (let y = 0; y < h; y++) {
-                                        const yTop = y > 0 ? y - 1 : 0;
-                                        const yBottom = y < h - 1 ? y + 1 : h - 1;
+                                        const yTop = y >= stride ? y - stride : 0;
+                                        const yBottom = y < h - stride ? y + stride : h - 1;
                                         const yIdx = y * w;
                                         const yTopIdx = yTop * w;
                                         const yBottomIdx = yBottom * w;
                                         
                                         for (let x = 0; x < w; x++) {
-                                            const xLeft = x > 0 ? x - 1 : 0;
-                                            const xRight = x < w - 1 ? x + 1 : w - 1;
+                                            const xLeft = x >= stride ? x - stride : 0;
+                                            const xRight = x < w - stride ? x + stride : w - 1;
                                             
                                             const idxCenter = (yIdx + x) * 4;
                                             const idxTop = (yTopIdx + x) * 4;
