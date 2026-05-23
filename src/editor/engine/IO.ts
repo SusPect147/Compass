@@ -702,17 +702,111 @@ export const IOMixin = {
                 ]);
                 this.preloadWaterTiles(); // Preload water, ice, and snow tiles!
             }
-            // Use fetch+blob to trigger download without holding a large base64 string in memory
-            const blob = await fetch(dataUrl).then(r => r.blob());
-            const blobUrl = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.download = `${mapName}.png`;
-            link.href = blobUrl;
-            link.click();
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+            
+            // Revert bypass immediately since we have the dataUrl
+            window.cp_bypassTheme = false;
+
+            const triggerDownload = async (url) => {
+                const blob = await fetch(url).then(r => r.blob());
+                const blobUrl = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.download = `${mapName}.png`;
+                link.href = blobUrl;
+                link.click();
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+            };
+
+            const modal = document.getElementById('sharpnessModal');
+            const previewCanvas = document.getElementById('sharpnessPreviewCanvas');
+            const slider = document.getElementById('sharpnessSlider');
+            const display = document.getElementById('sharpnessValueDisplay');
+            const cancelBtn = document.getElementById('cancelSharpnessBtn');
+            const downloadBtn = document.getElementById('downloadSharpnessBtn');
+            const closeBtn = document.getElementById('closeSharpnessBtn');
+
+            if (!modal || !previewCanvas) {
+                // Fallback to direct download
+                triggerDownload(dataUrl);
+                return;
+            }
+
+            modal.style.display = 'flex';
+            slider.value = '0';
+            display.textContent = '0';
+
+            const img = new Image();
+            img.onload = () => {
+                previewCanvas.width = img.width;
+                previewCanvas.height = img.height;
+                const ctx = previewCanvas.getContext('2d');
+                // Ensure image isn't smoothed unnecessarily for crisp pixel art preview
+                ctx.imageSmoothingEnabled = false;
+                ctx.drawImage(img, 0, 0);
+                
+                const originalImageData = ctx.getImageData(0, 0, img.width, img.height);
+                
+                const updatePreview = () => {
+                    const intensity = parseInt(slider.value, 10);
+                    display.textContent = intensity.toString();
+                    
+                    if (intensity === 0) {
+                        ctx.putImageData(originalImageData, 0, 0);
+                        return;
+                    }
+                    
+                    const a = intensity / 100;
+                    const center = 1 + 4 * a;
+                    const edge = -a;
+                    
+                    const newImageData = ctx.createImageData(img.width, img.height);
+                    const data = newImageData.data;
+                    const tempData = originalImageData.data;
+                    const width = img.width;
+                    const height = img.height;
+                    
+                    for (let i = 0; i < data.length; i++) {
+                         data[i] = tempData[i];
+                    }
+                    
+                    for (let y = 1; y < height - 1; y++) {
+                        for (let x = 1; x < width - 1; x++) {
+                            const i = (y * width + x) * 4;
+                            for (let c = 0; c < 3; c++) {
+                                const val = 
+                                    tempData[i + c] * center +
+                                    tempData[i - 4 + c] * edge +
+                                    tempData[i + 4 + c] * edge +
+                                    tempData[(i - width * 4) + c] * edge +
+                                    tempData[(i + width * 4) + c] * edge;
+                                data[i + c] = val;
+                            }
+                        }
+                    }
+                    ctx.putImageData(newImageData, 0, 0);
+                };
+                
+                slider.oninput = updatePreview;
+                
+                const cleanup = () => {
+                    modal.style.display = 'none';
+                    cancelBtn.onclick = null;
+                    closeBtn.onclick = null;
+                    downloadBtn.onclick = null;
+                };
+                
+                cancelBtn.onclick = cleanup;
+                closeBtn.onclick = cleanup;
+                
+                downloadBtn.onclick = () => {
+                    const finalDataUrl = previewCanvas.toDataURL('image/png');
+                    triggerDownload(finalDataUrl);
+                    cleanup();
+                };
+            };
+            img.src = dataUrl;
         }
         finally {
-            window.cp_bypassTheme = false;
+            // Already handled above, just safety
         }
     },
 
