@@ -154,8 +154,19 @@ export const MapDataMixin = {
             return;
         }
         // Check if we're placing on an existing tile or empty tile
-        const topmostTile = this.getTopmostTileAt(x, y);
-        const targetTileId = topmostTile ? topmostTile.tileId : 0;
+        let topmostTile = this.getTopmostTileAt(x, y);
+        let targetTileId = topmostTile ? topmostTile.tileId : 0;
+
+        // Overwrite mode logic
+        if (this.overwriteMode && targetTileId !== 0 && targetTileId !== id) {
+            // Check if placeable on empty first, so we don't accidentally erase something we can't replace
+            if (this.canPlaceTileOn(id, 0)) {
+                this.eraseTile(x, y, false);
+                topmostTile = this.getTopmostTileAt(x, y);
+                targetTileId = topmostTile ? topmostTile.tileId : 0;
+            }
+        }
+
         const canPlace = this.canPlaceTileOn(id, targetTileId);
         if (!canPlace) {
             // Cannot place this tile here

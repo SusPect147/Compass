@@ -18,6 +18,8 @@ export interface EditorState {
     selectionMode: 'single' | 'line' | 'rectangle' | 'fill' | 'select';
     /** Активен ли режим замены тайла */
     replaceMode: boolean;
+    /** Активен ли режим перерисовки тайла */
+    overwriteMode: boolean;
 
     // ── Зеркальность ──────────────────────────────────────────────────
     mirrorVertical: boolean;
@@ -52,6 +54,7 @@ export function createDefaultEditorState(): EditorState {
         viewPanActive:    false,
         selectionMode:    'single',
         replaceMode:      false,
+        overwriteMode:    false,
 
         mirrorVertical:   false,
         mirrorHorizontal: false,

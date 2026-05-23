@@ -135,8 +135,9 @@ export const InputMixin = {
         document.getElementById('undoBtn')?.addEventListener('click', () => this.undo());
         document.getElementById('redoBtn')?.addEventListener('click', () => this.redo());
 
-        // Replace button
+        // Replace and Overwrite buttons
         document.getElementById('replaceBtn')?.addEventListener('click', () => this.toggleReplaceMode());
+        document.getElementById('overwriteBtn')?.addEventListener('click', () => this.toggleOverwriteMode());
 
         // Rotate button
         document.getElementById('rotateBtn')?.addEventListener('click', () => this.rotateSelectedTiles());
@@ -977,5 +978,31 @@ export const InputMixin = {
         const y = Math.floor(mapY / this.tileSize);
 
         return { x, y };
+    },
+
+    toggleReplaceMode(forceState?: boolean) {
+        if (typeof forceState !== 'undefined') {
+            this.replaceMode = forceState;
+        } else {
+            this.replaceMode = !this.replaceMode;
+        }
+        
+        const btn = document.getElementById('replaceBtn') as HTMLInputElement;
+        if (btn) btn.checked = this.replaceMode;
+    },
+
+    toggleOverwriteMode(forceState?: boolean) {
+        if (typeof forceState !== 'undefined') {
+            this.overwriteMode = forceState;
+        } else {
+            this.overwriteMode = !this.overwriteMode;
+        }
+        
+        const btn = document.getElementById('overwriteBtn') as HTMLInputElement;
+        if (btn) btn.checked = this.overwriteMode;
+        
+        if (this.overwriteMode && this.isErasing) {
+            this.toggleEraseMode(false);
+        }
     }
 };
