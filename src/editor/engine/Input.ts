@@ -988,7 +988,12 @@ export const InputMixin = {
         }
         
         const btn = document.getElementById('replaceBtn') as HTMLInputElement;
-        if (btn) btn.checked = this.replaceMode;
+        if (btn) {
+            btn.checked = this.replaceMode;
+            if (btn.parentElement) {
+                btn.parentElement.classList.toggle('active', this.replaceMode);
+            }
+        }
     },
 
     toggleOverwriteMode(forceState?: boolean) {
@@ -999,7 +1004,12 @@ export const InputMixin = {
         }
         
         const btn = document.getElementById('overwriteBtn') as HTMLInputElement;
-        if (btn) btn.checked = this.overwriteMode;
+        if (btn) {
+            btn.checked = this.overwriteMode;
+            if (btn.parentElement) {
+                btn.parentElement.classList.toggle('active', this.overwriteMode);
+            }
+        }
         
         if (this.overwriteMode && this.isErasing) {
             this.toggleEraseMode(false);
