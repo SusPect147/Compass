@@ -739,11 +739,6 @@ export const IOMixin = {
             // If the modal isn't found in the DOM (e.g. cached HTML), inject it dynamically
             if (!modal) {
                 const modalHtml = `
-                    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
-                        <filter id="sharpnessFilter">
-                            <feConvolveMatrix id="sharpnessMatrix" order="3 3" preserveAlpha="true" kernelMatrix="0 0 0 0 1 0 0 0 0"/>
-                        </filter>
-                    </svg>
                     <div class="modal-overlay" id="sharpnessModal" style="z-index: 9999; display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); align-items: center; justify-content: center;">
                         <div class="modal-container" style="background: #1e1e24; border-radius: 12px; width: 90%; max-width: 500px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);">
                             <header class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; background: rgba(0,0,0,0.2); border-bottom: 1px solid rgba(255,255,255,0.05);">
@@ -779,7 +774,6 @@ export const IOMixin = {
             const cancelBtn = document.getElementById('cancelSharpnessBtn') as HTMLButtonElement;
             const downloadBtn = document.getElementById('downloadSharpnessBtn') as HTMLButtonElement;
             const closeBtn = document.getElementById('closeSharpnessBtn') as HTMLButtonElement;
-            const matrixEl = document.getElementById('sharpnessMatrix');
 
             if (!modal || !previewCanvas) {
                 console.error('[Compass] Failed to create sharpness modal components');
@@ -790,9 +784,45 @@ export const IOMixin = {
             modal.style.display = 'flex';
             slider.value = '0';
             if (display) display.textContent = '0';
-            if (matrixEl) matrixEl.setAttribute('kernelMatrix', '0 0 0 0 1 0 0 0 0');
-            previewCanvas.style.filter = 'none';
             previewCanvas.style.transform = 'none';
+
+            // JS convolution function shared by both preview and download
+            const convolveSharpness = (imageData: ImageData, sharpnessIntensity: number): ImageData => {
+                const src = imageData.data;
+                const w = imageData.width;
+                const h = imageData.height;
+                const output = new ImageData(w, h);
+                const dst = output.data;
+                const coeff = sharpnessIntensity / 100;
+                const centerVal = 1 + 4 * coeff;
+                const edgeVal = -coeff;
+                // Use stride=1 for preview (correct sharpening at preview resolution)
+                const stride = 1;
+                for (let y = 0; y < h; y++) {
+                    const yTop = y >= stride ? y - stride : 0;
+                    const yBottom = y < h - stride ? y + stride : h - 1;
+                    const yIdx = y * w;
+                    const yTopIdx = yTop * w;
+                    const yBottomIdx = yBottom * w;
+                    for (let x = 0; x < w; x++) {
+                        const xLeft = x >= stride ? x - stride : 0;
+                        const xRight = x < w - stride ? x + stride : w - 1;
+                        const idxCenter = (yIdx + x) * 4;
+                        const idxTop = (yTopIdx + x) * 4;
+                        const idxBottom = (yBottomIdx + x) * 4;
+                        const idxLeft = (yIdx + xLeft) * 4;
+                        const idxRight = (yIdx + xRight) * 4;
+                        const r = src[idxCenter] * centerVal + (src[idxTop] + src[idxBottom] + src[idxLeft] + src[idxRight]) * edgeVal;
+                        const g = src[idxCenter + 1] * centerVal + (src[idxTop + 1] + src[idxBottom + 1] + src[idxLeft + 1] + src[idxRight + 1]) * edgeVal;
+                        const b = src[idxCenter + 2] * centerVal + (src[idxTop + 2] + src[idxBottom + 2] + src[idxLeft + 2] + src[idxRight + 2]) * edgeVal;
+                        dst[idxCenter]     = r < 0 ? 0 : (r > 255 ? 255 : r);
+                        dst[idxCenter + 1] = g < 0 ? 0 : (g > 255 ? 255 : g);
+                        dst[idxCenter + 2] = b < 0 ? 0 : (b > 255 ? 255 : b);
+                        dst[idxCenter + 3] = src[idxCenter + 3]; // preserve alpha
+                    }
+                }
+                return output;
+            };
 
             const img = new Image();
             img.onload = () => {
@@ -807,24 +837,23 @@ export const IOMixin = {
                 const updatePreview = () => {
                     const intensity = parseInt(slider.value, 10);
                     if (display) display.textContent = intensity.toString();
-                    
-                    if (intensity === 0) {
-                        previewCanvas.style.filter = 'none';
-                        return;
-                    }
-                    
-                    const a = intensity / 100;
-                    const center = 1 + 4 * a;
-                    const edge = -a;
-                    
-                    const matrix = `0 ${edge} 0 ${edge} ${center} ${edge} 0 ${edge} 0`;
-                    if (matrixEl) {
-                        matrixEl.setAttribute('kernelMatrix', matrix);
-                        previewCanvas.style.filter = 'url(#sharpnessFilter)';
+                    const ctx2 = previewCanvas.getContext('2d');
+                    if (!ctx2) return;
+                    // Always redraw from original first
+                    ctx2.imageSmoothingEnabled = false;
+                    ctx2.drawImage(img, 0, 0);
+                    if (intensity === 0) return;
+                    // Apply JS convolution so preview exactly matches the download
+                    try {
+                        const imgData = ctx2.getImageData(0, 0, previewCanvas.width, previewCanvas.height);
+                        const filtered = convolveSharpness(imgData, intensity);
+                        ctx2.putImageData(filtered, 0, 0);
+                    } catch (e) {
+                        console.warn('[Compass] Preview convolution failed:', e);
                     }
                 };
                 
-                // Use onchange or oninput, oninput is fine since SVG filter is instant
+                // oninput fires on every slider move for real-time preview
                 slider.oninput = updatePreview;
 
                 // Zoom & Pan state variables
@@ -898,7 +927,6 @@ export const IOMixin = {
                     cancelBtn.onclick = null;
                     closeBtn.onclick = null;
                     downloadBtn.onclick = null;
-                    previewCanvas.style.filter = 'none';
                     previewCanvas.style.transform = 'none';
 
                     if (previewContainer) {
@@ -919,76 +947,48 @@ export const IOMixin = {
                     if (intensity === 0) {
                         triggerDownload(dataUrl);
                     } else {
-                        // Apply JS convolve matrix to temporary canvas to bake it into the exported PNG
+                        // Apply JS convolution on a full-res export canvas (same algorithm as preview)
                         const exportCanvas = document.createElement('canvas');
                         exportCanvas.width = img.width;
                         exportCanvas.height = img.height;
                         const exCtx = exportCanvas.getContext('2d');
                         if (exCtx) {
-                            // Draw original image first
+                            exCtx.imageSmoothingEnabled = false;
                             exCtx.drawImage(img, 0, 0);
-                            
                             try {
-                                // Get image data
                                 const imgData = exCtx.getImageData(0, 0, img.width, img.height);
-                                
-                                // Perform 3x3 convolve in JS (highly optimized) with dynamic stride
-                                const convolveSharpness = (imageData: ImageData, sharpnessIntensity: number) => {
-                                    const src = imageData.data;
-                                    const w = imageData.width;
-                                    const h = imageData.height;
-                                    const output = new ImageData(w, h);
-                                    const dst = output.data;
-                                    
-                                    const coeff = sharpnessIntensity / 100;
-                                    const centerVal = 1 + 4 * coeff;
-                                    const edgeVal = -coeff;
-                                    
-                                    // Scale the sharpening radius (stride) based on image width to make it visible on huge exports
-                                    // Base width is around 1920px. For an 8000px image, stride will be ~4.
-                                    const stride = Math.max(1, Math.round(w / 1920));
-                                    
-                                    for (let y = 0; y < h; y++) {
-                                        const yTop = y >= stride ? y - stride : 0;
-                                        const yBottom = y < h - stride ? y + stride : h - 1;
-                                        const yIdx = y * w;
-                                        const yTopIdx = yTop * w;
-                                        const yBottomIdx = yBottom * w;
-                                        
-                                        for (let x = 0; x < w; x++) {
-                                            const xLeft = x >= stride ? x - stride : 0;
-                                            const xRight = x < w - stride ? x + stride : w - 1;
-                                            
-                                            const idxCenter = (yIdx + x) * 4;
-                                            const idxTop = (yTopIdx + x) * 4;
-                                            const idxBottom = (yBottomIdx + x) * 4;
-                                            const idxLeft = (yIdx + xLeft) * 4;
-                                            const idxRight = (yIdx + xRight) * 4;
-                                            
-                                            // Red channel
-                                            const r = src[idxCenter] * centerVal +
-                                                      (src[idxTop] + src[idxBottom] + src[idxLeft] + src[idxRight]) * edgeVal;
-                                                      
-                                            // Green channel
-                                            const g = src[idxCenter + 1] * centerVal +
-                                                      (src[idxTop + 1] + src[idxBottom + 1] + src[idxLeft + 1] + src[idxRight + 1]) * edgeVal;
-                                                      
-                                            // Blue channel
-                                            const b = src[idxCenter + 2] * centerVal +
-                                                      (src[idxTop + 2] + src[idxBottom + 2] + src[idxLeft + 2] + src[idxRight + 2]) * edgeVal;
-                                            
-                                            dst[idxCenter] = r < 0 ? 0 : (r > 255 ? 255 : r);
-                                            dst[idxCenter + 1] = g < 0 ? 0 : (g > 255 ? 255 : g);
-                                            dst[idxCenter + 2] = b < 0 ? 0 : (b > 255 ? 255 : b);
-                                            dst[idxCenter + 3] = src[idxCenter + 3]; // Preserve original alpha completely!
-                                        }
+                                // Use dynamic stride for full-res (scale to image width)
+                                const exportStride = Math.max(1, Math.round(img.width / 1920));
+                                const src = imgData.data;
+                                const w = imgData.width;
+                                const h = imgData.height;
+                                const output = new ImageData(w, h);
+                                const dst = output.data;
+                                const coeff = intensity / 100;
+                                const centerVal = 1 + 4 * coeff;
+                                const edgeVal = -coeff;
+                                for (let y = 0; y < h; y++) {
+                                    const yTop = y >= exportStride ? y - exportStride : 0;
+                                    const yBottom = y < h - exportStride ? y + exportStride : h - 1;
+                                    const yIdx = y * w;
+                                    for (let x = 0; x < w; x++) {
+                                        const xLeft = x >= exportStride ? x - exportStride : 0;
+                                        const xRight = x < w - exportStride ? x + exportStride : w - 1;
+                                        const idxCenter = (yIdx + x) * 4;
+                                        const idxTop = (yTop * w + x) * 4;
+                                        const idxBottom = (yBottom * w + x) * 4;
+                                        const idxLeft = (yIdx + xLeft) * 4;
+                                        const idxRight = (yIdx + xRight) * 4;
+                                        const r = src[idxCenter] * centerVal + (src[idxTop] + src[idxBottom] + src[idxLeft] + src[idxRight]) * edgeVal;
+                                        const g = src[idxCenter+1] * centerVal + (src[idxTop+1] + src[idxBottom+1] + src[idxLeft+1] + src[idxRight+1]) * edgeVal;
+                                        const b = src[idxCenter+2] * centerVal + (src[idxTop+2] + src[idxBottom+2] + src[idxLeft+2] + src[idxRight+2]) * edgeVal;
+                                        dst[idxCenter]   = r < 0 ? 0 : (r > 255 ? 255 : r);
+                                        dst[idxCenter+1] = g < 0 ? 0 : (g > 255 ? 255 : g);
+                                        dst[idxCenter+2] = b < 0 ? 0 : (b > 255 ? 255 : b);
+                                        dst[idxCenter+3] = src[idxCenter+3];
                                     }
-                                    return output;
-                                };
-
-                                const filteredData = convolveSharpness(imgData, intensity);
-                                // Put image data back to bake changes
-                                exCtx.putImageData(filteredData, 0, 0);
+                                }
+                                exCtx.putImageData(output, 0, 0);
                                 triggerDownload(exportCanvas.toDataURL('image/png'));
                             } catch (e) {
                                 console.error('[Compass] JS convolve failed, falling back to original URL', e);
