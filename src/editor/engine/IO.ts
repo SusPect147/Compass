@@ -19,14 +19,14 @@ export const IOMixin = {
                 this.currentUsername = 'Anonymous';
             }
 
-            // 🔧 ИСПРАВЛЕНИЕ: используем maybeSingle вместо single для безопасной обработки
+            // ЁЯФз ╨Ш╨б╨Я╨а╨Р╨Т╨Ы╨Х╨Э╨Ш╨Х: ╨╕╤Б╨┐╨╛╨╗╤М╨╖╤Г╨╡╨╝ maybeSingle ╨▓╨╝╨╡╤Б╤В╨╛ single ╨┤╨╗╤П ╨▒╨╡╨╖╨╛╨┐╨░╤Б╨╜╨╛╨╣ ╨╛╨▒╤А╨░╨▒╨╛╤В╨║╨╕
             const { data: link, error: linkError } = await supabase
                 .from('map_collab_links')
                 .select('*')
                 .eq('id', collabLinkId)
-                .maybeSingle();  // ← maybeSingle вернёт null вместо ошибки, если записи нет
+                .maybeSingle();  // тЖР maybeSingle ╨▓╨╡╤А╨╜╤С╤В null ╨▓╨╝╨╡╤Б╤В╨╛ ╨╛╤И╨╕╨▒╨║╨╕, ╨╡╤Б╨╗╨╕ ╨╖╨░╨┐╨╕╤Б╨╕ ╨╜╨╡╤В
             
-            // 🔧 ИСПРАВЛЕНИЕ: правильная обработка ошибок и отсутствия данных
+            // ЁЯФз ╨Ш╨б╨Я╨а╨Р╨Т╨Ы╨Х╨Э╨Ш╨Х: ╨┐╤А╨░╨▓╨╕╨╗╤М╨╜╨░╤П ╨╛╨▒╤А╨░╨▒╨╛╤В╨║╨░ ╨╛╤И╨╕╨▒╨╛╨║ ╨╕ ╨╛╤В╤Б╤Г╤В╤Б╤В╨▓╨╕╤П ╨┤╨░╨╜╨╜╤Л╤Е
             if (linkError) {
                 console.error('[Compass] Database error while fetching collab link:', linkError);
                 throw new Error(`Database error: ${linkError.message}`);
@@ -40,7 +40,7 @@ export const IOMixin = {
             if (!link.is_active)
                 throw new Error('This collaboration link has been revoked by the owner.');
                 
-            // Проверка срока действия ссылки (если поле expires_at существует)
+            // ╨Я╤А╨╛╨▓╨╡╤А╨║╨░ ╤Б╤А╨╛╨║╨░ ╨┤╨╡╨╣╤Б╤В╨▓╨╕╤П ╤Б╤Б╤Л╨╗╨║╨╕ (╨╡╤Б╨╗╨╕ ╨┐╨╛╨╗╨╡ expires_at ╤Б╤Г╤Й╨╡╤Б╤В╨▓╤Г╨╡╤В)
             if (link.expires_at && new Date(link.expires_at) < new Date()) {
                 throw new Error('This collaboration link has expired.');
             }
@@ -65,7 +65,7 @@ export const IOMixin = {
                 setTimeout(() => {
                     const collabBanner = document.getElementById('collabBanner');
                     if (collabBanner) {
-                        collabBanner.innerHTML = `🌐 ${window.cp_translate('Live Real-time Collaboration Active')} <button id="collabReadyBtn" class="collab-ready-btn">${window.cp_translate('Ready')}</button>`;
+                        collabBanner.innerHTML = `ЁЯМР ${window.cp_translate('Live Real-time Collaboration Active')} <button id="collabReadyBtn" class="collab-ready-btn">${window.cp_translate('Ready')}</button>`;
                         collabBanner.className = 'collab-banner-active';
                         collabBanner.style.background = '';
                         collabBanner.style.border = '';
@@ -86,25 +86,25 @@ export const IOMixin = {
             if (nameInput) {
                 nameInput.value = data.name || 'Untitled Map';
                 nameInput.disabled = true;
-                nameInput.title = window.cp_translate("🔒 Name is locked in Collaboration mode");
+                nameInput.title = window.cp_translate("ЁЯФТ Name is locked in Collaboration mode");
             }
             const sizeSelect = document.getElementById('mapSize');
             if (sizeSelect) {
                 sizeSelect.value = data.size || 'regular';
                 sizeSelect.disabled = true;
-                sizeSelect.title = window.cp_translate("🔒 Size is locked in Collaboration mode");
+                sizeSelect.title = window.cp_translate("ЁЯФТ Size is locked in Collaboration mode");
             }
             const gamemodeSelect = document.getElementById('gamemode');
             if (gamemodeSelect) {
                 gamemodeSelect.value = data.gamemode || 'Gem_Grab';
                 gamemodeSelect.disabled = true;
-                gamemodeSelect.title = window.cp_translate("🔒 Gamemode is locked in Collaboration mode");
+                gamemodeSelect.title = window.cp_translate("ЁЯФТ Gamemode is locked in Collaboration mode");
             }
             const environmentSelect = document.getElementById('environment');
             if (environmentSelect) {
                 environmentSelect.value = data.environment || 'Desert';
                 environmentSelect.disabled = true;
-                environmentSelect.title = window.cp_translate("🔒 Environment is locked in Collaboration mode");
+                environmentSelect.title = window.cp_translate("ЁЯФТ Environment is locked in Collaboration mode");
             }
             const collabBanner = document.getElementById('collabBanner');
             if (collabBanner)
@@ -118,15 +118,15 @@ export const IOMixin = {
                 this.readyUsers = new Set();
                 this.collabMapOwnerId = data.user_id;
                 await this.setEnvironment(this.environment);
-                // setEnvironment internally calls setGamemode(false) — preserves our loaded grid
+                // setEnvironment internally calls setGamemode(false) тАФ preserves our loaded grid
             } else {
-                // map_data is empty or invalid — render default spawns and objectives
+                // map_data is empty or invalid тАФ render default spawns and objectives
                 console.log('[Compass] map_data is empty, applying default layout...');
                 this.tileAuthors = {};
                 this.readyUsers = new Set();
                 this.collabMapOwnerId = data.user_id;
                 await this.setEnvironment(this.environment);
-                // setEnvironment calls setGamemode(false), so tileGrid is valid — now apply defaults
+                // setEnvironment calls setGamemode(false), so tileGrid is valid тАФ now apply defaults
                 this.applyDefaultLayoutIfEmpty();
             }
             this._errorsDirty = true;
@@ -138,7 +138,7 @@ export const IOMixin = {
         }
         catch (error) {
             console.error('[Compass] Critical failure loading collab map:', error);
-            alert(`${window.cp_translate('❌ Collaboration Access Failed:')} ${error.message}`);
+            alert(`${window.cp_translate('тЭМ Collaboration Access Failed:')} ${error.message}`);
         }
     },
     async loadMap(mapId) {
@@ -200,13 +200,13 @@ export const IOMixin = {
                 this.tileAuthors = data.tile_authors || {};
                 // Pull and parse standard visual assets
                 await this.setEnvironment(this.environment);
-                // setEnvironment internally calls setGamemode(false) — preserves our loaded grid
+                // setEnvironment internally calls setGamemode(false) тАФ preserves our loaded grid
             } else {
-                // map_data is empty — render default spawns and objectives
+                // map_data is empty тАФ render default spawns and objectives
                 console.log('[Compass] map_data is empty, applying default layout...');
                 this.tileAuthors = {};
                 await this.setEnvironment(this.environment);
-                // setEnvironment calls setGamemode(false), so tileGrid is valid — now apply defaults
+                // setEnvironment calls setGamemode(false), so tileGrid is valid тАФ now apply defaults
                 this.applyDefaultLayoutIfEmpty();
             }
             this._errorsDirty = true;
@@ -219,7 +219,7 @@ export const IOMixin = {
         }
         catch (error) {
             console.error('[Compass] Critical failure loading map payload:', error);
-            alert(`${window.cp_translate('❌ Critical Failure: Could not retrieve map from secure database!')} (${error.message})`);
+            alert(`${window.cp_translate('тЭМ Critical Failure: Could not retrieve map from secure database!')} (${error.message})`);
         }
     },
     async saveMap() {
@@ -264,7 +264,7 @@ export const IOMixin = {
                     localMaps.push(localMapPayload);
                     localStorage.setItem('compass_local_maps', JSON.stringify(localMaps));
                     
-                    alert(window.cp_translate ? window.cp_translate("Map saved locally! Log in with Discord to sync it to the database.") : "Карта сохранена локально! Войдите через Discord, чтобы сохранить её в базу данных.");
+                    alert(window.cp_translate ? window.cp_translate("Map saved locally! Log in with Discord to sync it to the database.") : "╨Ъ╨░╤А╤В╨░ ╤Б╨╛╤Е╤А╨░╨╜╨╡╨╜╨░ ╨╗╨╛╨║╨░╨╗╤М╨╜╨╛! ╨Т╨╛╨╣╨┤╨╕╤В╨╡ ╤З╨╡╤А╨╡╨╖ Discord, ╤З╤В╨╛╨▒╤Л ╤Б╨╛╤Е╤А╨░╨╜╨╕╤В╤М ╨╡╤С ╨▓ ╨▒╨░╨╖╤Г ╨┤╨░╨╜╨╜╤Л╤Е.");
                 } catch(localErr) {
                     console.error('[Compass] Failed to save locally:', localErr);
                     alert("Failed to save map locally.");
@@ -292,7 +292,7 @@ export const IOMixin = {
                     throw new Error(rpcResult.error || 'Unknown suggestion error');
                 }
 
-                alert(window.cp_translate("🤝 Suggestion successfully sent to the map owner!"));
+                alert(window.cp_translate("ЁЯдЭ Suggestion successfully sent to the map owner!"));
                 return;
             } else if (this.collabLinkId && this.isRealtimeCollab) {
                 // In realtime mode, only owner can actually save the DB.
@@ -371,13 +371,13 @@ export const IOMixin = {
                         await supabase.from('map_suggestions').delete()
                             .eq('map_id', this.loadedMapId)
                             .eq('contributor_id', user.id)
-                            .eq('contributor_name', 'старая версия');
+                            .eq('contributor_name', '╤Б╤В╨░╤А╨░╤П ╨▓╨╡╤А╤Б╨╕╤П');
                         
                         // Archive the old map data
                         await supabase.rpc('archive_map_version', {
                             p_map_id: this.loadedMapId,
                             p_owner_id: user.id,
-                            p_label: 'старая версия',
+                            p_label: '╤Б╤В╨░╤А╨░╤П ╨▓╨╡╤А╤Б╨╕╤П',
                             p_map_data: oldMap.map_data
                         });
                     }
@@ -628,7 +628,7 @@ export const IOMixin = {
                     rowTiles.forEach(({ x, y, tileId }) => {
                         const tile = getTileAt(layerKey, x, y);
                         const red = tile?.red ?? false;
-                        // drawTile reads this.tileSize internally → renders at 128px/tile
+                        // drawTile reads this.tileSize internally тЖТ renders at 128px/tile
                         this.drawTile(ctx, tileId, x, y, red);
                     });
                 });
@@ -639,7 +639,7 @@ export const IOMixin = {
                 }
             }
             // Draw goal images if any
-            // offsetX/offsetY are absolute pixels tuned for 32px tiles → scale them proportionally
+            // offsetX/offsetY are absolute pixels tuned for 32px tiles тЖТ scale them proportionally
             if (this.goalImages?.length) {
                 for (const goal of this.goalImages) {
                     const img = this.goalImageCache[`${goal.name}${this.environment}`] ||
@@ -652,7 +652,7 @@ export const IOMixin = {
             return canvas.toDataURL(format, quality);
         }
         finally {
-            // Always restore original editor tile size — export must never affect the live canvas
+            // Always restore original editor tile size тАФ export must never affect the live canvas
             this.tileSize = originalTileSize;
             this.canvasPadding = originalPadding;
         }
@@ -734,7 +734,45 @@ export const IOMixin = {
                 }
             };
 
-            const modal = document.getElementById('sharpnessModal');
+            let modal = document.getElementById('sharpnessModal');
+            
+            // If the modal isn't found in the DOM (e.g. cached HTML), inject it dynamically
+            if (!modal) {
+                const modalHtml = `
+                    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+                        <filter id="sharpnessFilter">
+                            <feConvolveMatrix id="sharpnessMatrix" order="3 3" preserveAlpha="true" kernelMatrix="0 0 0 0 1 0 0 0 0"/>
+                        </filter>
+                    </svg>
+                    <div class="modal-overlay" id="sharpnessModal" style="z-index: 9999; display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); align-items: center; justify-content: center;">
+                        <div class="modal-container" style="background: #1e1e24; border-radius: 12px; width: 90%; max-width: 500px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);">
+                            <header class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; background: rgba(0,0,0,0.2); border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                <h2 style="margin: 0; font-size: 1.2rem; font-weight: 600; color: #fff;">Enhance Image Sharpness</h2>
+                                <button class="close-modal-btn" id="closeSharpnessBtn" style="background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer;">&times;</button>
+                            </header>
+                            <div class="modal-body" style="display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem; text-align: center;">
+                                <p style="font-size: 0.9rem; color: rgba(255,255,255,0.7); margin: 0;">Adjust the slider to increase the sharpness of your downloaded map for better quality.</p>
+                                <div style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px; min-height: 200px; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative;">
+                                    <canvas id="sharpnessPreviewCanvas" style="max-width: 100%; max-height: 300px; object-fit: contain; box-shadow: 0 4px 12px rgba(0,0,0,0.5);"></canvas>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 0.5rem; text-align: left;">
+                                    <label for="sharpnessSlider" style="font-size: 0.8rem; font-weight: 600; color: #a78bfa;">Sharpness Intensity: <span id="sharpnessValueDisplay">0</span>%</label>
+                                    <input type="range" id="sharpnessSlider" min="0" max="100" value="0" style="width: 100%; cursor: pointer;">
+                                </div>
+                            </div>
+                            <footer class="modal-footer" style="display: flex; gap: 1rem; padding: 1.2rem; background: rgba(0,0,0,0.1); border-top: 1px solid rgba(255,255,255,0.05);">
+                                <button class="cancel-btn" id="cancelSharpnessBtn" style="flex: 1; padding: 0.8rem; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; color: #fff; cursor: pointer;">Cancel</button>
+                                <button class="save-pack-btn" id="downloadSharpnessBtn" style="flex: 1; padding: 0.8rem; background: #8b5cf6; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-weight: 600;">Download PNG</button>
+                            </footer>
+                        </div>
+                    </div>
+                `;
+                const div = document.createElement('div');
+                div.innerHTML = modalHtml;
+                document.body.appendChild(div);
+                modal = document.getElementById('sharpnessModal');
+            }
+
             const previewCanvas = document.getElementById('sharpnessPreviewCanvas');
             const slider = document.getElementById('sharpnessSlider');
             const display = document.getElementById('sharpnessValueDisplay');
@@ -744,6 +782,7 @@ export const IOMixin = {
             const matrixEl = document.getElementById('sharpnessMatrix');
 
             if (!modal || !previewCanvas) {
+                console.error('[Compass] Failed to create sharpness modal components');
                 triggerDownload(dataUrl);
                 return;
             }
@@ -834,7 +873,7 @@ export const IOMixin = {
                     
                     if (this.currentUserId === this.collabMapOwnerId) {
                         // Owner broadcasts 'owner_join' so guests know to send their current grid
-                        console.log('[Compass] Owner joined — broadcasting owner_join event...');
+                        console.log('[Compass] Owner joined тАФ broadcasting owner_join event...');
                         this.realtimeChannel.send({
                             type: 'broadcast',
                             event: 'map_update',
@@ -846,7 +885,7 @@ export const IOMixin = {
                         }).catch(err => console.error('[Compass] owner_join broadcast failed', err));
                     } else {
                         // Guest broadcasts 'join' to sync state from the owner's active session memory
-                        console.log('[Compass] Guest joined — broadcasting join event...');
+                        console.log('[Compass] Guest joined тАФ broadcasting join event...');
                         this.broadcastMapUpdate({
                             type: 'join',
                             user: this.currentUsername || 'Anonymous',
@@ -884,7 +923,7 @@ export const IOMixin = {
                     });
                 }
             } else if (payload.type === 'owner_join') {
-                // Owner reconnected — guests respond with their current grid
+                // Owner reconnected тАФ guests respond with their current grid
                 if (this.currentUserId !== this.collabMapOwnerId) {
                     console.log('[Compass] Received owner_join. Guest sending guest_sync to owner...');
                     this.realtimeChannel.send({
