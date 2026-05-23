@@ -464,6 +464,9 @@ function createPackCard(pack, isOwner = false) {
                                 title="Click to change privacy">
                             ${pack.is_public ? '🌍' : '🔒'}
                         </button>
+                        <button class="pack-edit-btn" style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); color: #3b82f6; padding: 0.4rem 0.5rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-size: 0.75rem;" title="Edit Tile Pack">
+                            ✏️
+                        </button>
                         <button class="pack-delete-btn" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; padding: 0.4rem 0.5rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-size: 0.75rem;" title="Delete Tile Pack">
                             🗑️
                         </button>
@@ -487,13 +490,21 @@ function createPackCard(pack, isOwner = false) {
     };
     
     if (isOwner) {
-        const privBtn = div.querySelector('.privacy-toggle') as HTMLButtonElement;
+        const privBtn = div.querySelector('.privacy-toggle') as HTMLElement;
         privBtn.onclick = (e) => {
             e.stopPropagation();
             togglePrivacy(pack.id, pack.is_public, privBtn);
         };
-
-        const delBtn = div.querySelector('.pack-delete-btn') as HTMLButtonElement;
+        const editBtn = div.querySelector('.pack-edit-btn') as HTMLElement;
+        if (editBtn) {
+            editBtn.onmouseenter = () => editBtn.style.background = 'rgba(59, 130, 246, 0.3)';
+            editBtn.onmouseleave = () => editBtn.style.background = 'rgba(59, 130, 246, 0.15)';
+            editBtn.onclick = (e) => {
+                e.stopPropagation();
+                (window as any).handleEditPack(pack);
+            };
+        }
+        const delBtn = div.querySelector('.pack-delete-btn') as HTMLElement;
         if (delBtn) {
             delBtn.onmouseenter = () => delBtn.style.background = 'rgba(239, 68, 68, 0.3)';
             delBtn.onmouseleave = () => delBtn.style.background = 'rgba(239, 68, 68, 0.15)';
@@ -653,6 +664,37 @@ async function handleLikeClick(packId, button) {
 /* ==========================================
    EDITOR STUDIO & MODAL HANDLERS
    ========================================== */
+
+let currentEditingPackId = null;
+let currentEditingPackData = {};
+
+(window as any).handleEditPack = function(pack) {
+    resetStudio();
+    currentEditingPackId = pack.id;
+    currentEditingPackData = pack.tile_data || {};
+    
+    const nameInput = document.getElementById('packNameInput') as HTMLInputElement;
+    if (nameInput) nameInput.value = pack.name || '';
+    const publicCheck = document.getElementById('packPublicCheck') as HTMLInputElement;
+    if (publicCheck) publicCheck.checked = pack.is_public;
+    
+    // update grid with existing images
+    Object.keys(currentEditingPackData).forEach(key => {
+        const cell = document.querySelector(`.tile-edit-cell[data-id="${key}"]`);
+        if (cell) {
+            const img = cell.querySelector('.tile-cell-img') as HTMLImageElement;
+            if (img) img.src = (currentEditingPackData as any)[key];
+            cell.classList.add('customized');
+            if (!cell.querySelector('.customized-badge')) {
+                const b = document.createElement('div');
+                b.className = 'customized-badge';
+                cell.appendChild(b);
+            }
+        }
+    });
+    
+    document.getElementById('studioModal')?.classList.add('active');
+};
 
 function initStudioControls() {
     const modal = document.getElementById('studioModal');
@@ -1178,6 +1220,8 @@ function initStudioControls() {
 function resetStudio() {
     editedTileFiles = {};
     selectedTileKey = null;
+    currentEditingPackId = null;
+    currentEditingPackData = {};
     const nameInput = document.getElementById('packNameInput') as HTMLInputElement;
     const publicCheck = document.getElementById('packPublicCheck') as HTMLInputElement;
     if (nameInput) nameInput.value = '';
@@ -1213,7 +1257,9 @@ async function handleStudioSubmit() {
         return;
     }
     const modifiedCount = Object.keys(editedTileFiles).length;
-    if (modifiedCount === 0) {
+    const isUpdate = !!currentEditingPackId;
+    
+    if (!isUpdate && modifiedCount === 0) {
         alert((window as any).cp_translate('Customize at least one tile before saving!'));
         return;
     }
@@ -1231,7 +1277,7 @@ async function handleStudioSubmit() {
         const sanitizedName = nameInput.replace(/[^a-z0-9]/gi, '_').toLowerCase();
         if (loaderText) loaderText.textContent = `Preparing uploads (0/${modifiedCount})...`;
         
-        const finalTileData = {};
+        const finalTileData = { ...currentEditingPackData };
         let uploadIdx = 0;
         
         for (const [tileId, fileObj] of Object.entries(editedTileFiles)) {
@@ -1248,19 +1294,34 @@ async function handleStudioSubmit() {
             const { data: { publicUrl } } = (supabase as any).storage
                 .from('custom_tiles')
                 .getPublicUrl(uploadPath);
-            finalTileData[tileId] = publicUrl;
+            (finalTileData as any)[tileId] = publicUrl;
         }
         
         if (loaderText) loaderText.textContent = 'Saving metadata to cloud DB...';
-        const { error: dbError } = await (supabase as any)
-            .from('custom_tile_packs')
-            .insert({
-                user_id: currentUserId,
-                user_name: currentUserName,
-                name: nameInput,
-                is_public: isPublic,
-                tile_data: finalTileData
-            });
+        
+        let dbError;
+        if (isUpdate) {
+            const { error } = await (supabase as any)
+                .from('custom_tile_packs')
+                .update({
+                    name: nameInput,
+                    is_public: isPublic,
+                    tile_data: finalTileData
+                })
+                .eq('id', currentEditingPackId);
+            dbError = error;
+        } else {
+            const { error } = await (supabase as any)
+                .from('custom_tile_packs')
+                .insert({
+                    user_id: currentUserId,
+                    user_name: currentUserName,
+                    name: nameInput,
+                    is_public: isPublic,
+                    tile_data: finalTileData
+                });
+            dbError = error;
+        }
             
         if (dbError) throw dbError;
         

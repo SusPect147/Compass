@@ -706,14 +706,32 @@ export const IOMixin = {
             // Revert bypass immediately since we have the dataUrl
             window.cp_bypassTheme = false;
 
-            const triggerDownload = async (url) => {
-                const blob = await fetch(url).then(r => r.blob());
-                const blobUrl = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.download = `${mapName}.png`;
-                link.href = blobUrl;
-                link.click();
-                setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+            const triggerDownload = (url) => {
+                try {
+                    // Safe Data URI to Blob conversion without fetch()
+                    const parts = url.split(',');
+                    const mime = parts[0].match(/:(.*?);/)[1];
+                    const bstr = atob(parts[1]);
+                    let n = bstr.length;
+                    const u8arr = new Uint8Array(n);
+                    while(n--) {
+                        u8arr[n] = bstr.charCodeAt(n);
+                    }
+                    const blob = new Blob([u8arr], {type: mime});
+                    const blobUrl = URL.createObjectURL(blob);
+                    
+                    const link = document.createElement('a');
+                    link.download = `${mapName}.png`;
+                    link.href = blobUrl;
+                    link.click();
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+                } catch(e) {
+                    console.error('[Compass] Blob conversion failed, falling back to direct URL', e);
+                    const link = document.createElement('a');
+                    link.download = `${mapName}.png`;
+                    link.href = url;
+                    link.click();
+                }
             };
 
             const modal = document.getElementById('sharpnessModal');
@@ -723,9 +741,9 @@ export const IOMixin = {
             const cancelBtn = document.getElementById('cancelSharpnessBtn');
             const downloadBtn = document.getElementById('downloadSharpnessBtn');
             const closeBtn = document.getElementById('closeSharpnessBtn');
+            const matrixEl = document.getElementById('sharpnessMatrix');
 
             if (!modal || !previewCanvas) {
-                // Fallback to direct download
                 triggerDownload(dataUrl);
                 return;
             }
@@ -733,24 +751,23 @@ export const IOMixin = {
             modal.style.display = 'flex';
             slider.value = '0';
             display.textContent = '0';
+            if (matrixEl) matrixEl.setAttribute('kernelMatrix', '0 0 0 0 1 0 0 0 0');
+            previewCanvas.style.filter = 'none';
 
             const img = new Image();
             img.onload = () => {
                 previewCanvas.width = img.width;
                 previewCanvas.height = img.height;
                 const ctx = previewCanvas.getContext('2d');
-                // Ensure image isn't smoothed unnecessarily for crisp pixel art preview
                 ctx.imageSmoothingEnabled = false;
                 ctx.drawImage(img, 0, 0);
-                
-                const originalImageData = ctx.getImageData(0, 0, img.width, img.height);
                 
                 const updatePreview = () => {
                     const intensity = parseInt(slider.value, 10);
                     display.textContent = intensity.toString();
                     
                     if (intensity === 0) {
-                        ctx.putImageData(originalImageData, 0, 0);
+                        previewCanvas.style.filter = 'none';
                         return;
                     }
                     
@@ -758,33 +775,14 @@ export const IOMixin = {
                     const center = 1 + 4 * a;
                     const edge = -a;
                     
-                    const newImageData = ctx.createImageData(img.width, img.height);
-                    const data = newImageData.data;
-                    const tempData = originalImageData.data;
-                    const width = img.width;
-                    const height = img.height;
-                    
-                    for (let i = 0; i < data.length; i++) {
-                         data[i] = tempData[i];
+                    const matrix = `0 ${edge} 0 ${edge} ${center} ${edge} 0 ${edge} 0`;
+                    if (matrixEl) {
+                        matrixEl.setAttribute('kernelMatrix', matrix);
+                        previewCanvas.style.filter = 'url(#sharpnessFilter)';
                     }
-                    
-                    for (let y = 1; y < height - 1; y++) {
-                        for (let x = 1; x < width - 1; x++) {
-                            const i = (y * width + x) * 4;
-                            for (let c = 0; c < 3; c++) {
-                                const val = 
-                                    tempData[i + c] * center +
-                                    tempData[i - 4 + c] * edge +
-                                    tempData[i + 4 + c] * edge +
-                                    tempData[(i - width * 4) + c] * edge +
-                                    tempData[(i + width * 4) + c] * edge;
-                                data[i + c] = val;
-                            }
-                        }
-                    }
-                    ctx.putImageData(newImageData, 0, 0);
                 };
                 
+                // Use onchange or oninput, oninput is fine since SVG filter is instant
                 slider.oninput = updatePreview;
                 
                 const cleanup = () => {
@@ -792,14 +790,26 @@ export const IOMixin = {
                     cancelBtn.onclick = null;
                     closeBtn.onclick = null;
                     downloadBtn.onclick = null;
+                    previewCanvas.style.filter = 'none';
                 };
                 
                 cancelBtn.onclick = cleanup;
                 closeBtn.onclick = cleanup;
                 
                 downloadBtn.onclick = () => {
-                    const finalDataUrl = previewCanvas.toDataURL('image/png');
-                    triggerDownload(finalDataUrl);
+                    const intensity = parseInt(slider.value, 10);
+                    if (intensity === 0) {
+                        triggerDownload(dataUrl);
+                    } else {
+                        // Apply filter to a temporary canvas to bake it into the exported PNG
+                        const exportCanvas = document.createElement('canvas');
+                        exportCanvas.width = img.width;
+                        exportCanvas.height = img.height;
+                        const exCtx = exportCanvas.getContext('2d');
+                        exCtx.filter = 'url(#sharpnessFilter)';
+                        exCtx.drawImage(img, 0, 0);
+                        triggerDownload(exportCanvas.toDataURL('image/png'));
+                    }
                     cleanup();
                 };
             };

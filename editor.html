@@ -776,6 +776,11 @@
     <!-- ==========================================
          SHARPNESS FILTER MODAL
          ========================================== -->
+    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+        <filter id="sharpnessFilter">
+            <feConvolveMatrix id="sharpnessMatrix" order="3 3" preserveAlpha="true" kernelMatrix="0 0 0 0 1 0 0 0 0"/>
+        </filter>
+    </svg>
     <div class="modal-overlay" id="sharpnessModal" style="z-index: 3000; display: none;">
         <div class="modal-container" style="max-width: 500px; display: flex; flex-direction: column;">
             <header class="modal-header">
