@@ -826,27 +826,41 @@ export const IOMixin = {
 
             const img = new Image();
             img.onload = () => {
-                previewCanvas.width = img.width;
-                previewCanvas.height = img.height;
-                const ctx = previewCanvas.getContext('2d');
+                // Create a small downscaled copy for fast preview convolution (max 600px wide)
+                const MAX_PREVIEW = 600;
+                const previewScale = img.width > MAX_PREVIEW ? MAX_PREVIEW / img.width : 1;
+                const pw = Math.round(img.width * previewScale);
+                const ph = Math.round(img.height * previewScale);
+                previewCanvas.width = pw;
+                previewCanvas.height = ph;
+                // willReadFrequently=true speeds up repeated getImageData calls
+                const ctx = previewCanvas.getContext('2d', { willReadFrequently: true });
                 if (ctx) {
-                    ctx.imageSmoothingEnabled = false;
-                    ctx.drawImage(img, 0, 0);
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    ctx.drawImage(img, 0, 0, pw, ph);
                 }
-                
+                // Snapshot of the downscaled original pixels for fast redraws
+                const origCanvas = document.createElement('canvas');
+                origCanvas.width = pw;
+                origCanvas.height = ph;
+                const origCtx = origCanvas.getContext('2d', { willReadFrequently: true } as any);
+                origCtx.drawImage(img, 0, 0, pw, ph);
+                const origImageData = origCtx.getImageData(0, 0, pw, ph);
+
                 const updatePreview = () => {
                     const intensity = parseInt(slider.value, 10);
                     if (display) display.textContent = intensity.toString();
-                    const ctx2 = previewCanvas.getContext('2d');
+                    const ctx2 = previewCanvas.getContext('2d', { willReadFrequently: true } as any);
                     if (!ctx2) return;
-                    // Always redraw from original first
-                    ctx2.imageSmoothingEnabled = false;
-                    ctx2.drawImage(img, 0, 0);
-                    if (intensity === 0) return;
-                    // Apply JS convolution so preview exactly matches the download
+                    if (intensity === 0) {
+                        // Restore original pixels directly — no convolution needed
+                        ctx2.putImageData(origImageData, 0, 0);
+                        return;
+                    }
+                    // Run convolution on the small preview copy — very fast
                     try {
-                        const imgData = ctx2.getImageData(0, 0, previewCanvas.width, previewCanvas.height);
-                        const filtered = convolveSharpness(imgData, intensity);
+                        const filtered = convolveSharpness(origImageData, intensity);
                         ctx2.putImageData(filtered, 0, 0);
                     } catch (e) {
                         console.warn('[Compass] Preview convolution failed:', e);
