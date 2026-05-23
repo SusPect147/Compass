@@ -776,6 +776,12 @@ html[data-theme="breeze"] .logo-mark svg {
     fill: #ffffff !important;
 }
 
+html[data-theme="crystal"] .icon-btn:not(.active) svg,
+html[data-theme="sunset"] .icon-btn:not(.active) svg,
+html[data-theme="breeze"] .icon-btn:not(.active) svg {
+    stroke: #1a1a1a !important;
+}
+
 html[data-theme="crystal"] .top-bar .logo,
 html[data-theme="crystal"] .top-bar-right a,
 html[data-theme="crystal"] .nav-links a,

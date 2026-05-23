@@ -334,7 +334,7 @@ pc {
     min-height: 44px;
 }
 
-.icon-btn img, .zoom-btn img, .select-btn img {
+.icon-btn img, .zoom-btn img, .select-btn img, .icon-btn svg, .zoom-btn svg, .select-btn svg {
     width: 20px;
     height: 20px;
     object-fit: contain;
@@ -371,8 +371,13 @@ pc {
     filter: brightness(0) invert(1) brightness(200%);
 }
 
+.icon-btn svg, .zoom-btn svg, .select-btn svg {
+    stroke: rgba(255,255,255,0.85);
+    transition: stroke 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .icon-btn.active svg {
-    stroke: #1a1a1a !important;
+    stroke: #ffffff !important;
 }
 
 .icon-btn:hover svg {
