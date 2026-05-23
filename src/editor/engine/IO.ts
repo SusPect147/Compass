@@ -752,8 +752,8 @@ export const IOMixin = {
                             </header>
                             <div class="modal-body" style="display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem; text-align: center;">
                                 <p style="font-size: 0.9rem; color: rgba(255,255,255,0.7); margin: 0;">Adjust the slider to increase the sharpness of your downloaded map for better quality.</p>
-                                <div style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px; min-height: 200px; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative;">
-                                    <canvas id="sharpnessPreviewCanvas" style="max-width: 100%; max-height: 300px; object-fit: contain; box-shadow: 0 4px 12px rgba(0,0,0,0.5);"></canvas>
+                                <div id="sharpnessPreviewContainer" style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px; height: 300px; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; cursor: grab; user-select: none;">
+                                    <canvas id="sharpnessPreviewCanvas" style="max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 4px 12px rgba(0,0,0,0.5); transform-origin: center; transition: none; pointer-events: none;"></canvas>
                                 </div>
                                 <div style="display: flex; flex-direction: column; gap: 0.5rem; text-align: left;">
                                     <label for="sharpnessSlider" style="font-size: 0.8rem; font-weight: 600; color: #a78bfa;">Sharpness Intensity: <span id="sharpnessValueDisplay">0</span>%</label>
@@ -773,12 +773,12 @@ export const IOMixin = {
                 modal = document.getElementById('sharpnessModal');
             }
 
-            const previewCanvas = document.getElementById('sharpnessPreviewCanvas');
-            const slider = document.getElementById('sharpnessSlider');
+            const previewCanvas = document.getElementById('sharpnessPreviewCanvas') as HTMLCanvasElement;
+            const slider = document.getElementById('sharpnessSlider') as HTMLInputElement;
             const display = document.getElementById('sharpnessValueDisplay');
-            const cancelBtn = document.getElementById('cancelSharpnessBtn');
-            const downloadBtn = document.getElementById('downloadSharpnessBtn');
-            const closeBtn = document.getElementById('closeSharpnessBtn');
+            const cancelBtn = document.getElementById('cancelSharpnessBtn') as HTMLButtonElement;
+            const downloadBtn = document.getElementById('downloadSharpnessBtn') as HTMLButtonElement;
+            const closeBtn = document.getElementById('closeSharpnessBtn') as HTMLButtonElement;
             const matrixEl = document.getElementById('sharpnessMatrix');
 
             if (!modal || !previewCanvas) {
@@ -789,21 +789,24 @@ export const IOMixin = {
 
             modal.style.display = 'flex';
             slider.value = '0';
-            display.textContent = '0';
+            if (display) display.textContent = '0';
             if (matrixEl) matrixEl.setAttribute('kernelMatrix', '0 0 0 0 1 0 0 0 0');
             previewCanvas.style.filter = 'none';
+            previewCanvas.style.transform = 'none';
 
             const img = new Image();
             img.onload = () => {
                 previewCanvas.width = img.width;
                 previewCanvas.height = img.height;
                 const ctx = previewCanvas.getContext('2d');
-                ctx.imageSmoothingEnabled = false;
-                ctx.drawImage(img, 0, 0);
+                if (ctx) {
+                    ctx.imageSmoothingEnabled = false;
+                    ctx.drawImage(img, 0, 0);
+                }
                 
                 const updatePreview = () => {
                     const intensity = parseInt(slider.value, 10);
-                    display.textContent = intensity.toString();
+                    if (display) display.textContent = intensity.toString();
                     
                     if (intensity === 0) {
                         previewCanvas.style.filter = 'none';
@@ -823,13 +826,89 @@ export const IOMixin = {
                 
                 // Use onchange or oninput, oninput is fine since SVG filter is instant
                 slider.oninput = updatePreview;
+
+                // Zoom & Pan state variables
+                let zoomLevel = 1.0;
+                let panX = 0;
+                let panY = 0;
+                let isPanning = false;
+                let startX = 0;
+                let startY = 0;
+
+                const previewContainer = document.getElementById('sharpnessPreviewContainer');
+
+                const applyTransform = () => {
+                    previewCanvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
+                };
+
+                const onWheel = (e: WheelEvent) => {
+                    e.preventDefault();
+                    const zoomFactor = 1.15;
+                    if (e.deltaY < 0) {
+                        zoomLevel = Math.min(zoomLevel * zoomFactor, 15);
+                    } else {
+                        zoomLevel = Math.max(zoomLevel / zoomFactor, 0.25);
+                    }
+                    applyTransform();
+                };
+
+                const onContextMenu = (e: MouseEvent) => {
+                    e.preventDefault();
+                };
+
+                const onMouseDown = (e: MouseEvent) => {
+                    // Right mouse button (2)
+                    if (e.button === 2) {
+                        e.preventDefault();
+                        isPanning = true;
+                        startX = e.clientX;
+                        startY = e.clientY;
+                        if (previewContainer) previewContainer.style.cursor = 'grabbing';
+                    }
+                };
+
+                const onMouseMove = (e: MouseEvent) => {
+                    if (!isPanning) return;
+                    const dx = e.clientX - startX;
+                    const dy = e.clientY - startY;
+                    panX += dx;
+                    panY += dy;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    applyTransform();
+                };
+
+                const onMouseUp = () => {
+                    if (isPanning) {
+                        isPanning = false;
+                        if (previewContainer) previewContainer.style.cursor = 'grab';
+                    }
+                };
+
+                if (previewContainer) {
+                    previewContainer.addEventListener('wheel', onWheel, { passive: false });
+                    previewContainer.addEventListener('contextmenu', onContextMenu);
+                    previewContainer.addEventListener('mousedown', onMouseDown);
+                    window.addEventListener('mousemove', onMouseMove);
+                    window.addEventListener('mouseup', onMouseUp);
+                }
                 
                 const cleanup = () => {
-                    modal.style.display = 'none';
+                    if (modal) modal.style.display = 'none';
                     cancelBtn.onclick = null;
                     closeBtn.onclick = null;
                     downloadBtn.onclick = null;
                     previewCanvas.style.filter = 'none';
+                    previewCanvas.style.transform = 'none';
+
+                    if (previewContainer) {
+                        previewContainer.removeEventListener('wheel', onWheel);
+                        previewContainer.removeEventListener('contextmenu', onContextMenu);
+                        previewContainer.removeEventListener('mousedown', onMouseDown);
+                        previewContainer.style.cursor = 'grab';
+                    }
+                    window.removeEventListener('mousemove', onMouseMove);
+                    window.removeEventListener('mouseup', onMouseUp);
                 };
                 
                 cancelBtn.onclick = cleanup;
@@ -845,9 +924,13 @@ export const IOMixin = {
                         exportCanvas.width = img.width;
                         exportCanvas.height = img.height;
                         const exCtx = exportCanvas.getContext('2d');
-                        exCtx.filter = 'url(#sharpnessFilter)';
-                        exCtx.drawImage(img, 0, 0);
-                        triggerDownload(exportCanvas.toDataURL('image/png'));
+                        if (exCtx) {
+                            exCtx.filter = 'url(#sharpnessFilter)';
+                            exCtx.drawImage(img, 0, 0);
+                            triggerDownload(exportCanvas.toDataURL('image/png'));
+                        } else {
+                            triggerDownload(dataUrl);
+                        }
                     }
                     cleanup();
                 };
