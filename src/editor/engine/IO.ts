@@ -919,15 +919,77 @@ export const IOMixin = {
                     if (intensity === 0) {
                         triggerDownload(dataUrl);
                     } else {
-                        // Apply filter to a temporary canvas to bake it into the exported PNG
+                        // Apply JS convolve matrix to temporary canvas to bake it into the exported PNG
                         const exportCanvas = document.createElement('canvas');
                         exportCanvas.width = img.width;
                         exportCanvas.height = img.height;
                         const exCtx = exportCanvas.getContext('2d');
                         if (exCtx) {
-                            exCtx.filter = 'url(#sharpnessFilter)';
+                            // Draw original image first
                             exCtx.drawImage(img, 0, 0);
-                            triggerDownload(exportCanvas.toDataURL('image/png'));
+                            
+                            try {
+                                // Get image data
+                                const imgData = exCtx.getImageData(0, 0, img.width, img.height);
+                                
+                                // Perform 3x3 convolve in JS (highly optimized)
+                                const convolveSharpness = (imageData: ImageData, sharpnessIntensity: number) => {
+                                    const src = imageData.data;
+                                    const w = imageData.width;
+                                    const h = imageData.height;
+                                    const output = new ImageData(w, h);
+                                    const dst = output.data;
+                                    
+                                    const coeff = sharpnessIntensity / 100;
+                                    const centerVal = 1 + 4 * coeff;
+                                    const edgeVal = -coeff;
+                                    
+                                    for (let y = 0; y < h; y++) {
+                                        const yTop = y > 0 ? y - 1 : 0;
+                                        const yBottom = y < h - 1 ? y + 1 : h - 1;
+                                        const yIdx = y * w;
+                                        const yTopIdx = yTop * w;
+                                        const yBottomIdx = yBottom * w;
+                                        
+                                        for (let x = 0; x < w; x++) {
+                                            const xLeft = x > 0 ? x - 1 : 0;
+                                            const xRight = x < w - 1 ? x + 1 : w - 1;
+                                            
+                                            const idxCenter = (yIdx + x) * 4;
+                                            const idxTop = (yTopIdx + x) * 4;
+                                            const idxBottom = (yBottomIdx + x) * 4;
+                                            const idxLeft = (yIdx + xLeft) * 4;
+                                            const idxRight = (yIdx + xRight) * 4;
+                                            
+                                            // Red channel
+                                            const r = src[idxCenter] * centerVal +
+                                                      (src[idxTop] + src[idxBottom] + src[idxLeft] + src[idxRight]) * edgeVal;
+                                                      
+                                            // Green channel
+                                            const g = src[idxCenter + 1] * centerVal +
+                                                      (src[idxTop + 1] + src[idxBottom + 1] + src[idxLeft + 1] + src[idxRight + 1]) * edgeVal;
+                                                      
+                                            // Blue channel
+                                            const b = src[idxCenter + 2] * centerVal +
+                                                      (src[idxTop + 2] + src[idxBottom + 2] + src[idxLeft + 2] + src[idxRight + 2]) * edgeVal;
+                                            
+                                            dst[idxCenter] = r < 0 ? 0 : (r > 255 ? 255 : r);
+                                            dst[idxCenter + 1] = g < 0 ? 0 : (g > 255 ? 255 : g);
+                                            dst[idxCenter + 2] = b < 0 ? 0 : (b > 255 ? 255 : b);
+                                            dst[idxCenter + 3] = src[idxCenter + 3]; // Preserve original alpha completely!
+                                        }
+                                    }
+                                    return output;
+                                };
+
+                                const filteredData = convolveSharpness(imgData, intensity);
+                                // Put image data back to bake changes
+                                exCtx.putImageData(filteredData, 0, 0);
+                                triggerDownload(exportCanvas.toDataURL('image/png'));
+                            } catch (e) {
+                                console.error('[Compass] JS convolve failed, falling back to original URL', e);
+                                triggerDownload(dataUrl);
+                            }
                         } else {
                             triggerDownload(dataUrl);
                         }
