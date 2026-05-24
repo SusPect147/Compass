@@ -202,7 +202,7 @@
         .e1-map-area {
             flex: 1 1 0;
             position: relative;
-            z-index: 1; /* below left col */
+            /* z-index removed so it doesn't create a stacking context, allowing .e1-tiles-float (z-index 70) to go above .e1-left-col (z-index 60) */
             overflow: hidden;
             min-width: 0;
         }

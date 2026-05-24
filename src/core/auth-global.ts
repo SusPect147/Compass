@@ -187,6 +187,15 @@ window.getThemedAsset = function(standardPath, parentEnvironment = null, forceBy
             assetKey = extractionPath.substring(extractionPath.lastIndexOf('/') + 1).replace('.png', '');
         } else if (extractionPath.includes('/Gamemode_Specifics/')) {
             assetKey = extractionPath.substring(extractionPath.lastIndexOf('/') + 1).replace('.png', '');
+        } else if (extractionPath.includes('/Global/Goals/')) {
+            const fname = extractionPath.substring(extractionPath.lastIndexOf('/') + 1).replace('.png', '');
+            const gms = ['Heist', 'Gem_Grab', 'Brawl_Ball', 'Volley_Brawl'];
+            for (const gm of gms) {
+                if (fname.startsWith(gm)) {
+                    assetKey = `GM_${gm}`;
+                    break;
+                }
+            }
         } else if (extractionPath.endsWith('Unbreakable.png')) {
             isGlobal = 'Unbreakable';
         } else if (extractionPath.endsWith('HealPad.png')) {
