@@ -70,7 +70,29 @@ export const ValidatorMixin = {
             (emptyBottomLeft && this.isBlockAt(x - 1, y + 1) && (this.isBlockAt(x + 1, y) || this.isBlockAt(x, y - 1))) ||
             (emptyTopLeft && this.isBlockAt(x - 1, y - 1) && (this.isBlockAt(x + 1, y) || this.isBlockAt(x, y + 1)));
 
-        const isSqueezed = verticalPair || horizontalPair || cornerSqueeze || diagonalPair || knightSqueeze;
+        // "Elbow squeeze": two cardinally-adjacent blocks that share only a corner (diagonal pair)
+        // create an impassable gap. The empty cells at the opposite corners of that 2×2 area
+        // (i.e., this cell) are flagged because a brawler cannot pass through a shared block corner.
+        //
+        //   Example:  . B       Cell (0,0) sees block RIGHT (1,0) and block DOWN (0,1),
+        //             B .       but NOT block at BOTTOM-RIGHT (1,1).
+        //                       → This "elbow" is impassable in Brawl Stars.
+        //
+        // We check all four L-shaped combinations. We only fire when the diagonal
+        // between the two adjacent blocks is EMPTY (solid L-corners are caught by other rules).
+        // NOTE: We use isRealBlock (not isBlockAt) so that map boundary pseudo-walls don't
+        // generate false positives for cells near the map edges.
+        const isRealBlock = (bx, by) => {
+            if (bx < 0 || bx >= this.mapWidth || by < 0 || by >= this.mapHeight) return false;
+            return this.isBlock(this.tileGrid[this.defaultTileLayer][by][bx]);
+        };
+        const elbowSqueeze =
+            (isRealBlock(x + 1, y) && isRealBlock(x, y + 1) && !this.isBlockAt(x + 1, y + 1)) ||
+            (isRealBlock(x + 1, y) && isRealBlock(x, y - 1) && !this.isBlockAt(x + 1, y - 1)) ||
+            (isRealBlock(x - 1, y) && isRealBlock(x, y + 1) && !this.isBlockAt(x - 1, y + 1)) ||
+            (isRealBlock(x - 1, y) && isRealBlock(x, y - 1) && !this.isBlockAt(x - 1, y - 1));
+
+        const isSqueezed = verticalPair || horizontalPair || cornerSqueeze || diagonalPair || knightSqueeze || elbowSqueeze;
 
         // Fall back to transition/cluster detection for dense walled areas or fully enclosed cells
         const directions = [

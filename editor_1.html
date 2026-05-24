@@ -110,8 +110,9 @@
             background: transparent;
             border: none;
             position: relative;
-            z-index: 60;
-            overflow: visible; /* MUST be fully visible so dragged panels aren't clipped */
+            /* NO z-index here — setting z-index on a flex container creates a stacking context
+               that would trap child panels and prevent e1-tiles-float from overlapping them */
+            overflow: visible;
         }
         
         .panel-placeholder {
@@ -240,13 +241,14 @@
         }
 
         /* ── TILES FLOAT (Resizable) ── */
+        /* position:fixed takes it OUT of all stacking contexts so it's always on top */
         .e1-tiles-float {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            z-index: 1000;
+            z-index: 9000;
             pointer-events: none;
         }
         .e1-tiles-float .e1-tiles-panel {
