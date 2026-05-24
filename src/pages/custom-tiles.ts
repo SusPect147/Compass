@@ -1005,7 +1005,7 @@ function initStudioControls() {
             crop(event: any) {
                 if (isSnapping || !cropperInstance) return;
                 updateSlicingGrid();
-                if (currentCropMode === 'ghost' || currentCropMode === 'smart' || !snapToGridCheck?.checked) return;
+                if (currentCropMode === 'ghost' || currentCropMode === 'smart' || currentCropMode === 'manual' || !snapToGridCheck?.checked) return;
                 const gw = parseInt(gridSizeWInput?.value || '32');
                 const gh = parseInt(gridSizeHInput?.value || '32');
                 const gm = parseInt(gridMarginInput?.value || '0');
@@ -1284,7 +1284,7 @@ async function handleStudioSubmit() {
             uploadIdx++;
             if (loaderText) loaderText.textContent = `Uploading ${tileId} (${uploadIdx}/${modifiedCount})...`;
             const fileExt = (fileObj as any).name ? (fileObj as any).name.split('.').pop() : 'png';
-            const uploadPath = `${currentUserId}/${timestamp}_${sanitizedName}/${tileId}.${fileExt}`;
+            const uploadPath = `forum_attachments/${currentUserId}/${timestamp}_${sanitizedName}/${tileId}.${fileExt}`;
             
             const { error: sError } = await (supabase as any).storage
                 .from('custom_tiles')

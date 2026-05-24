@@ -63,7 +63,14 @@ export const ValidatorMixin = {
         const diagonalPair = (this.isBlockAt(x - 1, y - 1) && this.isBlockAt(x + 1, y + 1) && !this.isBlockAt(x - 1, y) && !this.isBlockAt(x + 1, y) && !this.isBlockAt(x, y - 1) && !this.isBlockAt(x, y + 1)) ||
                              (this.isBlockAt(x + 1, y - 1) && this.isBlockAt(x - 1, y + 1) && !this.isBlockAt(x - 1, y) && !this.isBlockAt(x + 1, y) && !this.isBlockAt(x, y - 1) && !this.isBlockAt(x, y + 1));
 
-        const isSqueezed = verticalPair || horizontalPair || cornerSqueeze || diagonalPair;
+        // 1-tile diagonal passages
+        const diagSqueeze1 = this.isBlockAt(x - 1, y) && this.isBlockAt(x, y + 1) && this.isBlockAt(x + 1, y - 1) && !this.isBlockAt(x, y - 1) && !this.isBlockAt(x + 1, y);
+        const diagSqueeze2 = this.isBlockAt(x + 1, y) && this.isBlockAt(x, y + 1) && this.isBlockAt(x - 1, y - 1) && !this.isBlockAt(x, y - 1) && !this.isBlockAt(x - 1, y);
+        const diagSqueeze3 = this.isBlockAt(x - 1, y) && this.isBlockAt(x, y - 1) && this.isBlockAt(x + 1, y + 1) && !this.isBlockAt(x, y + 1) && !this.isBlockAt(x + 1, y);
+        const diagSqueeze4 = this.isBlockAt(x + 1, y) && this.isBlockAt(x, y - 1) && this.isBlockAt(x - 1, y + 1) && !this.isBlockAt(x, y + 1) && !this.isBlockAt(x - 1, y);
+        const diagSqueeze = diagSqueeze1 || diagSqueeze2 || diagSqueeze3 || diagSqueeze4;
+
+        const isSqueezed = verticalPair || horizontalPair || cornerSqueeze || diagonalPair || diagSqueeze;
 
         // Fall back to transition/cluster detection for dense walled areas or fully enclosed cells
         const directions = [
@@ -87,7 +94,7 @@ export const ValidatorMixin = {
             }
         }
 
-        let transitions = -1;
+        let transitions = 0;
         let blockCount = 0;
         for (let i = 0; i < 8; i++) {
             const current = neighborBlocks[(startIndex + i) % 8];
@@ -97,7 +104,7 @@ export const ValidatorMixin = {
         }
 
         const fullySurrounded = transitions === 0 && neighborBlocks[startIndex];
-        const denseCluster = transitions === 1 && blockCount > 5;
+        const denseCluster = transitions === 2 && blockCount > 5;
 
         return (fullySurrounded || denseCluster || isSqueezed);
     },

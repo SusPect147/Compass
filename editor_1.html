@@ -243,8 +243,8 @@
         .e1-tiles-float {
             position: absolute;
             top: 0.75rem;
-            left: 0.75rem;
-            z-index: 55;
+            left: 270px; /* Offset it to the right of left-col initially */
+            z-index: 70; /* Above left col (which is 60) */
             width: 320px;
             height: calc(100% - 1.5rem);
             pointer-events: none;
@@ -691,28 +691,29 @@
                         </div>
                     </section>
                 </div>
+
+            </div>
+
+            <!-- TILES FLOAT (Resizable) - Moved outside map area to allow overlaying left col -->
+            <div class="e1-tiles-float">
+                <div class="e1-tiles-panel draggable-panel" data-panel="tiles">
+                    <div class="panel-drag-handle">
+                        <span class="panel-title">Tiles</span>
+                        <label class="sort-toggle" title="Toggle Categories" style="display: flex; align-items: center; gap: 4px; font-size: 0.7rem; color: rgba(255,255,255,0.6); cursor: pointer; border: 1px solid rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; background: rgba(0,0,0,0.2);">
+                            <input type="checkbox" id="sortTilesToggle" style="margin:0; cursor:pointer;" checked> Sort
+                        </label>
+                    </div>
+                    <div class="tiles-grid">
+                        <div id="tileSelector"></div>
+                    </div>
+                    <div class="opacity-control">
+                        <label>Panel Opacity</label>
+                        <input type="range" id="panelOpacity" class="opacity-slider" min="0.2" max="1" step="0.05" value="0.8">
+                    </div>
+                </div>
             </div>
 
             <div class="e1-map-area">
-
-                <!-- TILES FLOAT (Resizable) -->
-                <div class="e1-tiles-float">
-                    <div class="e1-tiles-panel draggable-panel" data-panel="tiles">
-                        <div class="panel-drag-handle">
-                            <span class="panel-title">Tiles</span>
-                            <label class="sort-toggle" title="Toggle Categories" style="display: flex; align-items: center; gap: 4px; font-size: 0.7rem; color: rgba(255,255,255,0.6); cursor: pointer; border: 1px solid rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; background: rgba(0,0,0,0.2);">
-                                <input type="checkbox" id="sortTilesToggle" style="margin:0; cursor:pointer;" checked> Sort
-                            </label>
-                        </div>
-                        <div class="tiles-grid">
-                            <div id="tileSelector"></div>
-                        </div>
-                        <div class="opacity-control">
-                            <label>Panel Opacity</label>
-                            <input type="range" id="panelOpacity" class="opacity-slider" min="0.2" max="1" step="0.05" value="0.8">
-                        </div>
-                    </div>
-                </div>
 
                 <section class="map-wrapper">
                     <div class="zoom-controls-floating draggable-panel" data-panel="zoom" style="display:none!important;">

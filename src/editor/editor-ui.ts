@@ -112,11 +112,13 @@
             startOffsetY = off.y;
             startX = e.clientX;
             startY = e.clientY;
+            let hasDraggedPanel = false;
 
             const onMove = ev => {
                 if (!isDragging) return;
                 const dx = ev.clientX - startX;
                 const dy = ev.clientY - startY;
+                if (Math.abs(dx) > 3 || Math.abs(dy) > 3) hasDraggedPanel = true;
                 const newX = startOffsetX + dx;
                 const newY = startOffsetY + dy;
                 offsets.set(panel, { x: newX, y: newY });
@@ -128,11 +130,21 @@
                 }
             };
 
-            const onUp = () => {
+            const onUp = (eUp) => {
                 isDragging = false;
                 panel.classList.remove('is-dragging');
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup', onUp);
+                
+                if (hasDraggedPanel) {
+                    const preventClick = (eClick) => {
+                        eClick.stopPropagation();
+                        eClick.preventDefault();
+                        handle.removeEventListener('click', preventClick, true);
+                    };
+                    handle.addEventListener('click', preventClick, true);
+                    setTimeout(() => handle.removeEventListener('click', preventClick, true), 50);
+                }
                 
                 // Save layout on drop
                 if (panelId) {
@@ -322,5 +334,31 @@
         opacitySlider.addEventListener('change', removePreviewClass);
         opacitySlider.addEventListener('mouseup', removePreviewClass);
         opacitySlider.addEventListener('touchend', removePreviewClass);
+    }
+
+    // =============================================================
+    // 6. TILES PANEL SIZE PERSISTENCE
+    // =============================================================
+    const tilesPanel = document.querySelector('.e1-tiles-panel');
+    if (tilesPanel) {
+        const savedSize = JSON.parse(localStorage.getItem('cp_tiles_size') || 'null');
+        if (savedSize && savedSize.width && savedSize.height) {
+            tilesPanel.style.width = savedSize.width + 'px';
+            tilesPanel.style.height = savedSize.height + 'px';
+        }
+        
+        if (window.ResizeObserver) {
+            const ro = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    if (entry.target === tilesPanel) {
+                        localStorage.setItem('cp_tiles_size', JSON.stringify({
+                            width: entry.contentRect.width,
+                            height: entry.contentRect.height
+                        }));
+                    }
+                }
+            });
+            ro.observe(tilesPanel);
+        }
     }
 })();
