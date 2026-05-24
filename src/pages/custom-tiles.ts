@@ -1288,7 +1288,7 @@ async function handleStudioSubmit() {
             
             const { error: sError } = await (supabase as any).storage
                 .from('custom_tiles')
-                .upload(uploadPath, fileObj, { upsert: true });
+                .upload(uploadPath, fileObj);
             if (sError) throw sError;
             
             const { data: { publicUrl } } = (supabase as any).storage

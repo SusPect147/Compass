@@ -1692,7 +1692,7 @@ body.opacity-adjusting .zoom-controls-floating {
     border-color: rgba(255,255,255,0.15);
     background: rgba(12,12,18,0.95);
 }
-.reset-panels-btn.visible { display: block; }
+.reset-panels-btn.visible { display: inline-flex; align-items: center; justify-content: center; width: auto; }
 
 /* ==========================================
    DESKTOP COLLAPSE & WORKSPACE MAXIMIZER
@@ -1883,7 +1883,7 @@ body.top-bar-hidden .mapmaker-container {
     border-color: rgba(255,255,255,0.15);
     background: rgba(12,12,18,0.95);
 }
-.reset-panels-btn.visible { display: block; }
+.reset-panels-btn.visible { display: inline-flex; align-items: center; justify-content: center; width: auto; }
 
 /* ==========================================
    DESKTOP COLLAPSE & WORKSPACE MAXIMIZER

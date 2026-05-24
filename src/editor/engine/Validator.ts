@@ -58,14 +58,19 @@ export const ValidatorMixin = {
         const diagonalPair = (this.isBlockAt(x - 1, y - 1) && this.isBlockAt(x + 1, y + 1) && !this.isBlockAt(x - 1, y) && !this.isBlockAt(x + 1, y) && !this.isBlockAt(x, y - 1) && !this.isBlockAt(x, y + 1)) ||
                              (this.isBlockAt(x + 1, y - 1) && this.isBlockAt(x - 1, y + 1) && !this.isBlockAt(x - 1, y) && !this.isBlockAt(x + 1, y) && !this.isBlockAt(x, y - 1) && !this.isBlockAt(x, y + 1));
 
-        // 1-tile diagonal passages
-        const diagSqueeze1 = this.isBlockAt(x - 1, y) && this.isBlockAt(x, y + 1) && this.isBlockAt(x + 1, y - 1) && !this.isBlockAt(x, y - 1) && !this.isBlockAt(x + 1, y);
-        const diagSqueeze2 = this.isBlockAt(x + 1, y) && this.isBlockAt(x, y + 1) && this.isBlockAt(x - 1, y - 1) && !this.isBlockAt(x, y - 1) && !this.isBlockAt(x - 1, y);
-        const diagSqueeze3 = this.isBlockAt(x - 1, y) && this.isBlockAt(x, y - 1) && this.isBlockAt(x + 1, y + 1) && !this.isBlockAt(x, y + 1) && !this.isBlockAt(x + 1, y);
-        const diagSqueeze4 = this.isBlockAt(x + 1, y) && this.isBlockAt(x, y - 1) && this.isBlockAt(x - 1, y + 1) && !this.isBlockAt(x, y + 1) && !this.isBlockAt(x - 1, y);
-        const diagSqueeze = diagSqueeze1 || diagSqueeze2 || diagSqueeze3 || diagSqueeze4;
+        // 1-tile diagonal passages and Knight's move gaps
+        const emptyBottomRight = !this.isBlockAt(x, y + 1) && !this.isBlockAt(x + 1, y);
+        const emptyTopRight = !this.isBlockAt(x, y - 1) && !this.isBlockAt(x + 1, y);
+        const emptyBottomLeft = !this.isBlockAt(x, y + 1) && !this.isBlockAt(x - 1, y);
+        const emptyTopLeft = !this.isBlockAt(x, y - 1) && !this.isBlockAt(x - 1, y);
 
-        const isSqueezed = verticalPair || horizontalPair || cornerSqueeze || diagonalPair || diagSqueeze;
+        const knightSqueeze = 
+            (emptyBottomRight && this.isBlockAt(x + 1, y + 1) && (this.isBlockAt(x - 1, y) || this.isBlockAt(x, y - 1))) ||
+            (emptyTopRight && this.isBlockAt(x + 1, y - 1) && (this.isBlockAt(x - 1, y) || this.isBlockAt(x, y + 1))) ||
+            (emptyBottomLeft && this.isBlockAt(x - 1, y + 1) && (this.isBlockAt(x + 1, y) || this.isBlockAt(x, y - 1))) ||
+            (emptyTopLeft && this.isBlockAt(x - 1, y - 1) && (this.isBlockAt(x + 1, y) || this.isBlockAt(x, y + 1)));
+
+        const isSqueezed = verticalPair || horizontalPair || cornerSqueeze || diagonalPair || knightSqueeze;
 
         // Fall back to transition/cluster detection for dense walled areas or fully enclosed cells
         const directions = [

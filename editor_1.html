@@ -242,11 +242,18 @@
         /* ── TILES FLOAT (Resizable) ── */
         .e1-tiles-float {
             position: absolute;
-            top: 0.75rem;
-            left: 270px; /* Offset it to the right of left-col initially */
-            width: 320px;
-            height: calc(100% - 1.5rem);
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1000;
             pointer-events: none;
+        }
+        .e1-tiles-float .e1-tiles-panel {
+            pointer-events: auto;
+            position: absolute;
+            top: 0.75rem;
+            left: 270px;
         }
         
         .e1-tiles-panel {
@@ -337,7 +344,7 @@
         #collabBanner { flex: 0 0 auto; }
         .tooltip-floating { bottom: 3rem; }
         .reset-panels-btn { display: none; }
-        .reset-panels-btn.visible { display: block; }
+        .reset-panels-btn.visible { display: inline-flex; align-items: center; justify-content: center; width: auto; flex: 0 0 auto !important; }
 
         /* ══════════ RESPONSIVE DESIGN (TABLET & MOBILE) ══════════ */
         
