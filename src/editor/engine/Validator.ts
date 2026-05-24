@@ -42,20 +42,15 @@ export const ValidatorMixin = {
         // Skip block tiles
         if (this.isBlock(tileId)) return false;
 
-        const isRealBlockAt = (nx, ny) => {
-            if (nx < 0 || nx >= this.mapWidth || ny < 0 || ny >= this.mapHeight) return false;
-            return this.isBlock(this.tileGrid[this.defaultTileLayer][ny][nx]);
-        };
-
         // Check for cardinal squeezes
         const horizontalPair = this.isBlockAt(x - 1, y) && this.isBlockAt(x + 1, y);
         const verticalPair = this.isBlockAt(x, y - 1) && this.isBlockAt(x, y + 1);
 
         // Diagonal block corners squeezing against a flat wall or border
-        const horizontalSqueezeLeft = this.isBlockAt(x - 1, y) && isRealBlockAt(x + 1, y - 1) && isRealBlockAt(x + 1, y + 1);
-        const horizontalSqueezeRight = this.isBlockAt(x + 1, y) && isRealBlockAt(x - 1, y - 1) && isRealBlockAt(x - 1, y + 1);
-        const verticalSqueezeTop = this.isBlockAt(x, y - 1) && isRealBlockAt(x - 1, y + 1) && isRealBlockAt(x + 1, y + 1);
-        const verticalSqueezeBottom = this.isBlockAt(x, y + 1) && isRealBlockAt(x - 1, y - 1) && isRealBlockAt(x + 1, y - 1);
+        const horizontalSqueezeLeft = this.isBlockAt(x - 1, y) && this.isBlockAt(x + 1, y - 1) && this.isBlockAt(x + 1, y + 1);
+        const horizontalSqueezeRight = this.isBlockAt(x + 1, y) && this.isBlockAt(x - 1, y - 1) && this.isBlockAt(x - 1, y + 1);
+        const verticalSqueezeTop = this.isBlockAt(x, y - 1) && this.isBlockAt(x - 1, y + 1) && this.isBlockAt(x + 1, y + 1);
+        const verticalSqueezeBottom = this.isBlockAt(x, y + 1) && this.isBlockAt(x - 1, y - 1) && this.isBlockAt(x + 1, y - 1);
 
         const cornerSqueeze = horizontalSqueezeLeft || horizontalSqueezeRight || verticalSqueezeTop || verticalSqueezeBottom;
 
