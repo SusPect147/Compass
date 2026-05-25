@@ -146,46 +146,61 @@ async function displayNextBatch() {
 
     updateLoadMoreButton();
 
-    // 2. PROCESS LEGACY MAP RENDERINGS
+    // 2. PROCESS LEGACY MAP RENDERINGS IN CHUNKS
     if (queue.length > 0) {
-        try {
-            // Fetch map_data dynamically for missing thumbnails in ONE query to save massive bandwidth and time
-            const missingIds = queue.map(t => t.map.id);
-            const { data: missingMapsData, error } = await supabase
-                .from('maps')
-                .select('id, map_data, theme_options')
-                .in('id', missingIds);
-                
-            const dataMap = {};
-            if (missingMapsData) {
-                missingMapsData.forEach(m => dataMap[m.id] = m);
-            }
-            
-            // Render sequentially to prevent DOM/Canvas thread race conditions
-            for (const task of queue) {
-                try {
-                    const mapWithData = dataMap[task.map.id];
-                    if (mapWithData && mapWithData.map_data) {
-                        const pngDataUrl = await drawStaticMapPreview(
-                            mapWithData.map_data, 
-                            task.map.size, 
-                            task.map.gamemode, 
-                            task.map.environment,
-                            mapWithData.theme_options
-                        );
-                        task.img.src = pngDataUrl;
-                    } else {
-                        task.img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" background="%23161625"><text x="50%" y="50%" fill="%23ffffff" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="14">No Preview</text></svg>';
-                    }
-                    task.img.style.opacity = '1';
-                } catch (error) {
-                    console.warn("[Compass] Skipping dynamic card visual render:", error);
-                    task.img.style.opacity = '1';
+        // Process queue in chunks of 4 to prevent payload too large errors
+        const chunkSize = 4;
+        for (let i = 0; i < queue.length; i += chunkSize) {
+            const chunk = queue.slice(i, i + chunkSize);
+            try {
+                const missingIds = chunk.map(t => t.map.id);
+                const { data: missingMapsData, error } = await supabase
+                    .from('maps')
+                    .select('id, map_data, theme_options')
+                    .in('id', missingIds);
+                    
+                if (error) {
+                    console.error("[Compass] Batch fetch error:", error);
+                    throw error; // Will be caught by the chunk catch block
                 }
+                    
+                const dataMap = {};
+                if (missingMapsData) {
+                    missingMapsData.forEach(m => dataMap[m.id] = m);
+                }
+                
+                // Render sequentially
+                for (const task of chunk) {
+                    try {
+                        const mapWithData = dataMap[task.map.id];
+                        if (mapWithData && mapWithData.map_data) {
+                            // Add a safety timeout to drawStaticMapPreview to prevent total freeze
+                            const renderPromise = drawStaticMapPreview(
+                                mapWithData.map_data, 
+                                task.map.size, 
+                                task.map.gamemode, 
+                                task.map.environment,
+                                mapWithData.theme_options
+                            );
+                            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Render timeout')), 10000));
+                            task.img.src = await Promise.race([renderPromise, timeoutPromise]);
+                        } else {
+                            task.img.src = 'Resources/Additional/Icons/compass.png';
+                        }
+                    } catch (error) {
+                        console.warn("[Compass] Skipping dynamic card visual render:", error);
+                        task.img.src = 'Resources/Additional/Icons/compass.png';
+                    } finally {
+                        task.img.style.opacity = '1';
+                    }
+                }
+            } catch (err) {
+                console.error("[Compass] Failed to process image chunk:", err);
+                chunk.forEach(task => {
+                    task.img.src = 'Resources/Additional/Icons/compass.png';
+                    task.img.style.opacity = '1';
+                });
             }
-        } catch (err) {
-            console.error("Failed to batch fetch map_data:", err);
-            queue.forEach(task => task.img.style.opacity = '1');
         }
     }
 }
