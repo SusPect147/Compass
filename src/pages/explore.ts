@@ -146,32 +146,46 @@ async function displayNextBatch() {
 
     updateLoadMoreButton();
 
-    // 2. PROCESS LEGACY MAP RENDERINGS SEQUENTIALLY: Prevents DOM/Canvas thread race conditions
-    for (const task of queue) {
+    // 2. PROCESS LEGACY MAP RENDERINGS
+    if (queue.length > 0) {
         try {
-            // Fetch map_data dynamically ONLY for maps missing a thumbnail to save massive bandwidth
-            const { data: mapWithData, error } = await supabase
+            // Fetch map_data dynamically for missing thumbnails in ONE query to save massive bandwidth and time
+            const missingIds = queue.map(t => t.map.id);
+            const { data: missingMapsData, error } = await supabase
                 .from('maps')
-                .select('map_data, theme_options')
-                .eq('id', task.map.id)
-                .single();
+                .select('id, map_data, theme_options')
+                .in('id', missingIds);
                 
-            if (mapWithData && mapWithData.map_data) {
-                const pngDataUrl = await drawStaticMapPreview(
-                    mapWithData.map_data, 
-                    task.map.size, 
-                    task.map.gamemode, 
-                    task.map.environment,
-                    mapWithData.theme_options
-                );
-                task.img.src = pngDataUrl;
-            } else {
-                task.img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" background="%23161625"><text x="50%" y="50%" fill="%23ffffff" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="14">No Preview</text></svg>';
+            const dataMap = {};
+            if (missingMapsData) {
+                missingMapsData.forEach(m => dataMap[m.id] = m);
             }
-            task.img.style.opacity = '1';
-        } catch (error) {
-            console.warn("[Compass] Skipping dynamic card visual render:", error);
-            task.img.style.opacity = '1';
+            
+            // Render sequentially to prevent DOM/Canvas thread race conditions
+            for (const task of queue) {
+                try {
+                    const mapWithData = dataMap[task.map.id];
+                    if (mapWithData && mapWithData.map_data) {
+                        const pngDataUrl = await drawStaticMapPreview(
+                            mapWithData.map_data, 
+                            task.map.size, 
+                            task.map.gamemode, 
+                            task.map.environment,
+                            mapWithData.theme_options
+                        );
+                        task.img.src = pngDataUrl;
+                    } else {
+                        task.img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" background="%23161625"><text x="50%" y="50%" fill="%23ffffff" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="14">No Preview</text></svg>';
+                    }
+                    task.img.style.opacity = '1';
+                } catch (error) {
+                    console.warn("[Compass] Skipping dynamic card visual render:", error);
+                    task.img.style.opacity = '1';
+                }
+            }
+        } catch (err) {
+            console.error("Failed to batch fetch map_data:", err);
+            queue.forEach(task => task.img.style.opacity = '1');
         }
     }
 }

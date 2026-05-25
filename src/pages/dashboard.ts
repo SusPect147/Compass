@@ -24,7 +24,7 @@ async function loadMyMaps() {
             currentUserId = session.user.id;
             const { data, error } = await supabase
                 .from('maps')
-                .select('*, map_likes(count)')
+                .select('id, name, user_id, created_at, gamemode, environment, size, thumbnail_url, is_public, map_likes(count)')
                 .eq('user_id', currentUserId)
                 .order('created_at', { ascending: false });
 
@@ -127,6 +127,8 @@ function displayNextBatch() {
     const batch = filteredMaps.slice(displayedCount, displayedCount + mapsPerPage);
     const renderedCards = []; // Collect {mapId, card} for batch suggestion loading
 
+    const queue = [];
+
     batch.forEach(map => {
         if (map.thumbnail_url) {
             // Instant render from Supabase Storage
@@ -134,18 +136,23 @@ function displayNextBatch() {
             container.appendChild(card);
             renderedCards.push({ mapId: map.id, card });
         } else {
-            // Legacy visual render for maps that haven't been re-saved yet
-            drawStaticMapPreview(map.map_data, map.size, map.gamemode, map.environment)
-                .then(png => {
-                    const card = createOwnerCard(map, png);
-                    container.appendChild(card);
-                    renderedCards.push({ mapId: map.id, card });
-                })
-                .catch(() => {
-                    const card = createOwnerCard(map, 'Resources/Additional/Icons/compass.png');
-                    container.appendChild(card);
-                    renderedCards.push({ mapId: map.id, card });
-                });
+            // Setup card with invisible spacer to keep layout
+            const card = createOwnerCard(map, 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+            container.appendChild(card);
+            renderedCards.push({ mapId: map.id, card });
+            
+            const img = card.querySelector('.card-image-wrapper img');
+            if (img) {
+                img.style.opacity = '0';
+                if (!map.isLocalOnly) {
+                    queue.push({ map, img });
+                } else if (map.map_data) {
+                    // Local maps have data directly in memory usually
+                    drawStaticMapPreview(map.map_data, map.size, map.gamemode, map.environment)
+                        .then(png => { img.src = png; img.style.opacity = '1'; })
+                        .catch(() => { img.src = 'Resources/Additional/Icons/compass.png'; img.style.opacity = '1'; });
+                }
+            }
         }
     });
 
@@ -154,6 +161,52 @@ function displayNextBatch() {
 
     // Batch-load all suggestion counts in ONE query instead of N+1
     loadBatchSuggestions(renderedCards);
+    
+    // Process missing thumbnail renderings sequentially to avoid canvas blocking
+    if (queue.length > 0) {
+        try {
+            // Fetch missing map_data in ONE batch query
+            const missingIds = queue.map(t => t.map.id);
+            supabase
+                .from('maps')
+                .select('id, map_data, theme_options')
+                .in('id', missingIds)
+                .then(({ data: missingMapsData }) => {
+                    const dataMap = {};
+                    if (missingMapsData) {
+                        missingMapsData.forEach(m => dataMap[m.id] = m);
+                    }
+                    
+                    // Render sequentially
+                    const renderQueue = async () => {
+                        for (const task of queue) {
+                            try {
+                                const mapWithData = dataMap[task.map.id];
+                                if (mapWithData && mapWithData.map_data) {
+                                    const pngDataUrl = await drawStaticMapPreview(
+                                        mapWithData.map_data, 
+                                        task.map.size, 
+                                        task.map.gamemode, 
+                                        task.map.environment,
+                                        mapWithData.theme_options
+                                    );
+                                    task.img.src = pngDataUrl;
+                                } else {
+                                    task.img.src = 'Resources/Additional/Icons/compass.png';
+                                }
+                                task.img.style.opacity = '1';
+                            } catch (e) {
+                                task.img.src = 'Resources/Additional/Icons/compass.png';
+                                task.img.style.opacity = '1';
+                            }
+                        }
+                    };
+                    renderQueue();
+                });
+        } catch(e) {
+            console.error("Failed to batch render images:", e);
+        }
+    }
 }
 
 function escapeHTML(str) {
