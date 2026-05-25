@@ -613,12 +613,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         async function loadComments() {
             try {
                 const { data: comments, error } = await supabase
-                    .from('map_comments')
-                    .select('*, map_comment_votes(*)')
+                    .from('map_comments_with_stats')
+                    .select('*')
                     .eq('map_id', mapId);
                 if (error)
                     throw error;
                 allComments = comments || [];
+                
+                if (currentUserId && allComments.length > 0) {
+                    const commentIds = allComments.map(c => c.id);
+                    const { data: userVotes } = await supabase
+                        .from('map_comment_votes')
+                        .select('comment_id, vote_type')
+                        .eq('user_id', currentUserId)
+                        .in('comment_id', commentIds);
+                        
+                    if (userVotes) {
+                        const votesMap = {};
+                        userVotes.forEach(v => votesMap[v.comment_id] = v.vote_type);
+                        allComments.forEach(c => c.user_vote_type = votesMap[c.id]);
+                    }
+                }
+                
                 sortAndRenderComments();
             }
             catch (err) {
@@ -647,8 +663,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             else if (currentCommentSort === 'likes') {
                 roots.sort((a, b) => {
-                    const aLikes = (a.map_comment_votes || []).filter(v => v.vote_type === 'like').length;
-                    const bLikes = (b.map_comment_votes || []).filter(v => v.vote_type === 'like').length;
+                    const aLikes = a.like_count || 0;
+                    const bLikes = b.like_count || 0;
                     if (bLikes !== aLikes)
                         return bLikes - aLikes;
                     return new Date(b.created_at) - new Date(a.created_at);
@@ -698,12 +714,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const commentDate = new Date(c.created_at).toLocaleString();
             const isCommentAdmin = c.user_id === ADMIN_UUID || c.author_name === 'hammer147' || c.author_name?.includes('hammer147');
             // Compute voting aggregates
-            const votes = c.map_comment_votes || [];
-            const likeCount = votes.filter(v => v.vote_type === 'like').length;
-            const dislikeCount = votes.filter(v => v.vote_type === 'dislike').length;
-            const userVote = votes.find(v => v.user_id === currentUserId);
-            const isLiked = userVote?.vote_type === 'like';
-            const isDisliked = userVote?.vote_type === 'dislike';
+            const likeCount = c.like_count || 0;
+            const dislikeCount = c.dislike_count || 0;
+            const isLiked = c.user_vote_type === 'like';
+            const isDisliked = c.user_vote_type === 'dislike';
             card.innerHTML = `
                 <div class="comment-header">
                     <div style="display: flex; flex-direction: column;">
@@ -842,8 +856,41 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (error)
                         throw error;
                 }
-                // UI updates in real time or via manually triggered refresh
-                await loadComments();
+                // UI updates optimistically!
+                const cardEl = document.querySelector(`.comment-vote-btn[data-commentid="${commentId}"]`)?.closest('.comment-voting-group');
+                if (cardEl) {
+                    const likeBtn = cardEl.querySelector('.comment-vote-btn.like');
+                    const dislikeBtn = cardEl.querySelector('.comment-vote-btn.dislike');
+                    let likeCount = parseInt(likeBtn.querySelector('.count').textContent);
+                    let dislikeCount = parseInt(dislikeBtn.querySelector('.count').textContent);
+                    
+                    if (existing) {
+                        if (existing.vote_type === voteType) {
+                            if (voteType === 'like') { likeBtn.classList.remove('active'); likeCount = Math.max(0, likeCount - 1); }
+                            else { dislikeBtn.classList.remove('active'); dislikeCount = Math.max(0, dislikeCount - 1); }
+                        } else {
+                            if (voteType === 'like') {
+                                likeBtn.classList.add('active'); likeCount++;
+                                dislikeBtn.classList.remove('active'); dislikeCount = Math.max(0, dislikeCount - 1);
+                            } else {
+                                dislikeBtn.classList.add('active'); dislikeCount++;
+                                likeBtn.classList.remove('active'); likeCount = Math.max(0, likeCount - 1);
+                            }
+                        }
+                    } else {
+                        if (voteType === 'like') { likeBtn.classList.add('active'); likeCount++; }
+                        else { dislikeBtn.classList.add('active'); dislikeCount++; }
+                    }
+                    likeBtn.querySelector('.count').textContent = likeCount;
+                    dislikeBtn.querySelector('.count').textContent = dislikeCount;
+                    
+                    const memComm = allComments.find(c => c.id === commentId);
+                    if (memComm) {
+                        memComm.like_count = likeCount;
+                        memComm.dislike_count = dislikeCount;
+                        memComm.user_vote_type = (!existing || existing.vote_type !== voteType) ? voteType : null;
+                    }
+                }
             }
             catch (err) {
                 console.error("Comment vote error:", err);

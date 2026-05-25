@@ -41,7 +41,7 @@ async function initializeGallery() {
         // SERVER-SIDE PAGINATION: load only first batch to speed up initial load
         const { data, error } = await supabase
             .from('maps')
-            .select('*, map_likes(count)')
+            .select('id, name, author_name, user_id, created_at, gamemode, environment, size, thumbnail_url, is_public, map_likes(count)')
             .eq('is_public', true) // ЗАЩИТА: В галерею попадают ТОЛЬКО публичные
             .order('created_at', { ascending: false })
             .range(0, serverPageSize - 1);
@@ -149,14 +149,25 @@ async function displayNextBatch() {
     // 2. PROCESS LEGACY MAP RENDERINGS SEQUENTIALLY: Prevents DOM/Canvas thread race conditions
     for (const task of queue) {
         try {
-            const pngDataUrl = await drawStaticMapPreview(
-                task.map.map_data, 
-                task.map.size, 
-                task.map.gamemode, 
-                task.map.environment,
-                task.map.theme_options
-            );
-            task.img.src = pngDataUrl;
+            // Fetch map_data dynamically ONLY for maps missing a thumbnail to save massive bandwidth
+            const { data: mapWithData, error } = await supabase
+                .from('maps')
+                .select('map_data, theme_options')
+                .eq('id', task.map.id)
+                .single();
+                
+            if (mapWithData && mapWithData.map_data) {
+                const pngDataUrl = await drawStaticMapPreview(
+                    mapWithData.map_data, 
+                    task.map.size, 
+                    task.map.gamemode, 
+                    task.map.environment,
+                    mapWithData.theme_options
+                );
+                task.img.src = pngDataUrl;
+            } else {
+                task.img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" background="%23161625"><text x="50%" y="50%" fill="%23ffffff" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="14">No Preview</text></svg>';
+            }
             task.img.style.opacity = '1';
         } catch (error) {
             console.warn("[Compass] Skipping dynamic card visual render:", error);
@@ -282,7 +293,7 @@ function updateLoadMoreButton() {
                 try {
                     const { data, error } = await supabase
                         .from('maps')
-                        .select('*, map_likes(count)')
+                        .select('id, name, author_name, user_id, created_at, gamemode, environment, size, thumbnail_url, is_public, map_likes(count)')
                         .eq('is_public', true)
                         .order('created_at', { ascending: false })
                         .range(serverOffset, serverOffset + serverPageSize - 1);

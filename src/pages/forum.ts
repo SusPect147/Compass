@@ -279,13 +279,29 @@ function escapeHTML(text) {
 async function loadMessages() {
     try {
         const { data, error } = await supabase
-            .from('forum_messages')
-            .select('*, forum_message_votes(*)')
+            .from('forum_messages_with_stats')
+            .select('*')
             .order('created_at', { ascending: false })
             .limit(50);
 
         if (error) throw error;
         allMessages = data || [];
+        
+        if (currentUserId && allMessages.length > 0) {
+            const messageIds = allMessages.map(m => m.id);
+            const { data: userVotes } = await supabase
+                .from('forum_message_votes')
+                .select('message_id, vote_type')
+                .eq('user_id', currentUserId)
+                .in('message_id', messageIds);
+                
+            if (userVotes) {
+                const votesMap = {};
+                userVotes.forEach(v => votesMap[v.message_id] = v.vote_type);
+                allMessages.forEach(m => m.user_vote_type = votesMap[m.id]);
+            }
+        }
+        
         sortAndRenderMessages();
     } catch (err) {
         console.error("Failed to fetch forum messages:", err);
@@ -302,8 +318,8 @@ function sortAndRenderMessages() {
     } else if (currentSort === 'likes') {
         // Sort by likes DESC, secondary by created_at DESC
         sorted.sort((a, b) => {
-            const aLikes = (a.forum_message_votes || []).filter(v => v.vote_type === 'like').length;
-            const bLikes = (b.forum_message_votes || []).filter(v => v.vote_type === 'like').length;
+            const aLikes = a.like_count || 0;
+            const bLikes = b.like_count || 0;
 
             if (bLikes !== aLikes) {
                 return bLikes - aLikes;
@@ -328,14 +344,12 @@ function renderMessages(messages) {
         const postDate = new Date(msg.created_at).toLocaleString();
 
         // Compute voting counts
-        const votes = msg.forum_message_votes || [];
-        const likeCount = votes.filter(v => v.vote_type === 'like').length;
-        const dislikeCount = votes.filter(v => v.vote_type === 'dislike').length;
+        const likeCount = msg.like_count || 0;
+        const dislikeCount = msg.dislike_count || 0;
 
         // Check if current logged user has already voted
-        const userVote = votes.find(v => v.user_id === currentUserId);
-        const isLiked = userVote?.vote_type === 'like';
-        const isDisliked = userVote?.vote_type === 'dislike';
+        const isLiked = msg.user_vote_type === 'like';
+        const isDisliked = msg.user_vote_type === 'dislike';
 
         // 1. Status Badges Logic
         const statusVal = msg.status || 'unresolved';
@@ -641,8 +655,41 @@ async function handleVoteMessage(messageId, voteType) {
             if (error) throw error;
         }
         
-        // Visual update is handled in real-time OR can be forced immediately!
-        await loadMessages();
+        // Visual update is handled optimistically!
+        const msgEl = document.querySelector(`.vote-btn[data-msgid="${messageId}"]`)?.closest('.voting-group');
+        if (msgEl) {
+            const likeBtn = msgEl.querySelector('.vote-btn.like');
+            const dislikeBtn = msgEl.querySelector('.vote-btn.dislike');
+            let likeCount = parseInt(likeBtn.querySelector('.count').textContent);
+            let dislikeCount = parseInt(dislikeBtn.querySelector('.count').textContent);
+            
+            if (existing) {
+                if (existing.vote_type === voteType) {
+                    if (voteType === 'like') { likeBtn.classList.remove('active'); likeCount = Math.max(0, likeCount - 1); }
+                    else { dislikeBtn.classList.remove('active'); dislikeCount = Math.max(0, dislikeCount - 1); }
+                } else {
+                    if (voteType === 'like') {
+                        likeBtn.classList.add('active'); likeCount++;
+                        dislikeBtn.classList.remove('active'); dislikeCount = Math.max(0, dislikeCount - 1);
+                    } else {
+                        dislikeBtn.classList.add('active'); dislikeCount++;
+                        likeBtn.classList.remove('active'); likeCount = Math.max(0, likeCount - 1);
+                    }
+                }
+            } else {
+                if (voteType === 'like') { likeBtn.classList.add('active'); likeCount++; }
+                else { dislikeBtn.classList.add('active'); dislikeCount++; }
+            }
+            likeBtn.querySelector('.count').textContent = likeCount;
+            dislikeBtn.querySelector('.count').textContent = dislikeCount;
+            
+            const memMsg = allMessages.find(m => m.id === messageId);
+            if (memMsg) {
+                memMsg.like_count = likeCount;
+                memMsg.dislike_count = dislikeCount;
+                memMsg.user_vote_type = (!existing || existing.vote_type !== voteType) ? voteType : null;
+            }
+        }
 
     } catch (err) {
         console.error("Vote error:", err);
