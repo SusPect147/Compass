@@ -24,8 +24,15 @@ export async function drawStaticMapPreview(mapData, size = 'regular', gamemode =
     if (typeof environment === 'string' && environment.startsWith('CUSTOM_') && typeof window.ensureThemeLoaded === 'function') {
       const packId = environment.replace('CUSTOM_', '');
       // If ensureThemeLoaded returns a theme, we temporarily re-enable the interceptor for its resources!
-      const loadedTheme = await window.ensureThemeLoaded(packId, themeOptions);
-      if (loadedTheme) window.cp_bypassTheme = false;
+      try {
+        const loadedTheme = await Promise.race([
+          window.ensureThemeLoaded(packId, themeOptions),
+          new Promise(resolve => setTimeout(() => resolve(null), 4000))
+        ]);
+        if (loadedTheme) window.cp_bypassTheme = false;
+      } catch (e) {
+        console.warn("[ThemeLoader] Theme fetch timeout/error", e);
+      }
     }
 
   // Get actual map dimensions from mapData
@@ -318,11 +325,23 @@ export async function drawStaticMapPreview(mapData, size = 'regular', gamemode =
 
 function waitForImage(img) {
   return new Promise((resolve) => {
-    if (img?.complete) resolve();
-    else {
-      img.onload = () => resolve();
-      img.onerror = () => resolve();
+    if (!img || img.complete) {
+      resolve();
+      return;
     }
+
+    let isResolved = false;
+    const finish = () => {
+      if (isResolved) return;
+      isResolved = true;
+      resolve();
+    };
+
+    img.addEventListener('load', finish, { once: true });
+    img.addEventListener('error', finish, { once: true });
+
+    // Safety timeout to prevent infinite hanging (max 5 seconds per image)
+    setTimeout(finish, 5000);
   });
 }
 
