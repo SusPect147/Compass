@@ -733,7 +733,7 @@
             /* ── Mobile quick tools strip ── */
             .mob-quick-tools {
                 display: grid !important;
-                grid-template-columns: repeat(4, 1fr) !important;
+                grid-template-columns: repeat(5, 1fr) !important;
                 gap: 0.25rem !important;
                 width: 100% !important;
                 order: 0;
@@ -776,6 +776,7 @@
             /* Highlight active tool */
             body:has(#eraseBtn:checked) label[for="eraseBtn"],
             body:has(#replaceBtn:checked) label[for="replaceBtn"],
+            body:has(#overwriteBtn:checked) label[for="overwriteBtn"],
             body:has(#guidesBtn:checked) label[for="guidesBtn"],
             body:has(#handToolBtn:checked) label[for="handToolBtn"],
             body:has(#errorsBtn:checked) label[for="errorsBtn"] {
@@ -994,6 +995,7 @@
                         <pc><h5>Tools</h5></pc>
                         <div class="toolbar-section">
                             <label class="icon-btn" title="Hand Tool (Pan)"><input type="checkbox" id="handToolBtn"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="display:block;margin:0 auto;stroke:rgba(255,255,255,0.85);"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v5m-4-1V5a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8M6 14v-2a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8c0 2.76 2.24 5 5 5h5.5c2.76 0 5-2.24 5-5v-3a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path></svg></label>
+                            <label class="icon-btn" title="Overwrite Mode (Pen)"><input type="checkbox" id="overwriteBtn"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="display:block;margin:0 auto;stroke:rgba(255,255,255,0.85);"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg></label>
                             <label class="icon-btn"><input type="checkbox" id="eraseBtn"><img src="./Resources/Additional/Icons/Erase.png" alt="Erase"></label>
                             <button id="rotateBtn" class="icon-btn"><img src="./Resources/Additional/Icons/Rotate.png" alt="Rotate"></button>
                             <button id="undoBtn" class="icon-btn"><img src="./Resources/Additional/Icons/Undo.png" alt="Undo"></button>
@@ -1080,6 +1082,9 @@
                 <button id="mobRotateBtn" class="mob-qt-btn" title="Rotate">
                     <img src="./Resources/Additional/Icons/Rotate.png" alt="Rotate"> Rotate
                 </button>
+                <label class="mob-qt-btn" for="overwriteBtn" title="Pen (Overwrite)">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="display:block;margin:0 auto 3px auto;stroke:rgba(255,255,255,0.85);"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> Pen
+                </label>
                 <label class="mob-qt-btn" for="errorsBtn" title="Errors">
                     <img src="./Resources/Additional/Icons/Issues.png" alt="Errors"> Errors
                 </label>
