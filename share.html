@@ -63,10 +63,7 @@
 
             <!-- Toolbar dynamically populated based on mode -->
             <div class="studio-toolbar" id="studioToolbar">
-                <label class="toolbar-btn">
-                    Upload Image
-                    <input type="file" id="uploadImageInput" accept="image/*" style="display:none;" multiple>
-                </label>
+                <button id="selectMapBtn" class="toolbar-btn">Select Map</button>
                 <!-- Controls added by JS depending on the mode -->
             </div>
 
@@ -276,5 +273,16 @@
         draw();
     })();
     </script>
+    <!-- Map Picker Modal -->
+    <div id="mapPickerModal" class="map-picker-modal" style="display: none;">
+        <div class="map-picker-content">
+            <div class="map-picker-header">
+                <h2>Select a Map</h2>
+                <button id="closeMapPickerBtn" class="close-btn">&times;</button>
+            </div>
+            <div class="map-picker-loading" id="mapPickerLoading">Loading your maps...</div>
+            <div class="map-picker-grid" id="mapPickerGrid"></div>
+        </div>
+    </div>
 </body>
 </html>

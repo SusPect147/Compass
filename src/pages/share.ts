@@ -1,5 +1,7 @@
 // @ts-nocheck
 import { showSharpnessDownload } from '../core/sharpness-modal.js';
+import { drawStaticMapPreview } from '../utils/canvas-drawer.js';
+import { supabase } from '../core/supabase-client.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const modeSelector = document.getElementById('modeSelector');
@@ -49,12 +51,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     function setupToolbar() {
-        // Clear old toolbar controls (keep upload button)
-        const uploadLabel = toolbar.querySelector('label');
+        // Clear old toolbar controls (keep select map button)
+        const selectBtn = toolbar.querySelector('#selectMapBtn');
         toolbar.innerHTML = '';
-        toolbar.appendChild(uploadLabel);
-        
-        const uploadInput = document.getElementById('uploadImageInput') as HTMLInputElement;
+        if (selectBtn) {
+            toolbar.appendChild(selectBtn);
+            selectBtn.onclick = openMapPicker;
+        }
         
         if (currentMode === 'collage') {
             titleText.textContent = 'Collage Maker';
@@ -88,8 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             toolbar.appendChild(bgInput);
             
-            uploadInput.onchange = handleImageUpload;
-            
         } else if (currentMode === 'paths') {
             titleText.textContent = 'Strategy Paths';
             
@@ -106,12 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderCanvas();
             };
             toolbar.appendChild(clearBtn);
-            
-            uploadInput.onchange = (e) => {
-                // In paths, usually just 1 map
-                elements = elements.filter(el => el.type !== 'image');
-                handleImageUpload(e);
-            };
             
         } else if (currentMode === 'showcase') {
             titleText.textContent = 'Map Showcase';
@@ -165,65 +160,154 @@ document.addEventListener('DOMContentLoaded', () => {
                     isDesc: true
                 }
             ];
-            
-            uploadInput.onchange = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        // Place image on the right side
-                        const scale = Math.min((CANVAS_WIDTH / 2 - 100) / img.width, (CANVAS_HEIGHT - 200) / img.height);
-                        const w = img.width * scale;
-                        const h = img.height * scale;
-                        
-                        // Remove old image
-                        elements = elements.filter(el => el.type !== 'image');
-                        elements.push({
-                            type: 'image',
-                            img: img,
-                            x: CANVAS_WIDTH - w - 100,
-                            y: (CANVAS_HEIGHT - h) / 2,
-                            w: w,
-                            h: h
-                        });
-                        renderCanvas();
-                    };
-                    img.src = ev.target.result as string;
-                };
-                reader.readAsDataURL(file);
-            };
         }
     }
     
-    function handleImageUpload(e: Event) {
-        const files = (e.target as HTMLInputElement).files;
-        if (!files) return;
-        
-        for(let i = 0; i < files.length; i++) {
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                const img = new Image();
-                img.onload = () => {
-                    // Center it
-                    let scale = 1;
-                    if (img.height > CANVAS_HEIGHT - 100) {
-                        scale = (CANVAS_HEIGHT - 100) / img.height;
+    function handleMapSelection(dataUrl: string) {
+        if (currentMode === 'paths' || currentMode === 'showcase') {
+            elements = elements.filter(el => el.type !== 'image');
+        }
+
+        const img = new Image();
+        img.onload = () => {
+            let scale = 1;
+            let targetX = 0;
+            let targetY = 0;
+
+            if (currentMode === 'showcase') {
+                // Right side
+                scale = Math.min((CANVAS_WIDTH / 2 - 100) / img.width, (CANVAS_HEIGHT - 200) / img.height);
+                targetX = CANVAS_WIDTH - (img.width * scale) - 100;
+                targetY = (CANVAS_HEIGHT - (img.height * scale)) / 2;
+            } else {
+                // Center
+                if (img.height > CANVAS_HEIGHT - 100) {
+                    scale = (CANVAS_HEIGHT - 100) / img.height;
+                }
+                targetX = (CANVAS_WIDTH - (img.width * scale)) / 2 + (currentMode === 'collage' ? (Math.random()*100-50) : 0);
+                targetY = (CANVAS_HEIGHT - (img.height * scale)) / 2 + (currentMode === 'collage' ? (Math.random()*100-50) : 0);
+            }
+
+            elements.push({
+                type: 'image',
+                img: img,
+                x: targetX,
+                y: targetY,
+                w: img.width * scale,
+                h: img.height * scale
+            });
+            renderCanvas();
+        };
+        img.src = dataUrl;
+    }
+
+    // --- Map Picker Logic ---
+    const mapPickerModal = document.getElementById('mapPickerModal');
+    const closeMapPickerBtn = document.getElementById('closeMapPickerBtn');
+    const mapPickerGrid = document.getElementById('mapPickerGrid');
+    const mapPickerLoading = document.getElementById('mapPickerLoading');
+
+    closeMapPickerBtn?.addEventListener('click', () => {
+        if (mapPickerModal) mapPickerModal.style.display = 'none';
+    });
+
+    async function openMapPicker() {
+        if (!mapPickerModal || !mapPickerGrid || !mapPickerLoading) return;
+        mapPickerModal.style.display = 'flex';
+        mapPickerGrid.innerHTML = '';
+        mapPickerLoading.style.display = 'block';
+
+        let localMaps = [];
+        try {
+            const localStr = localStorage.getItem('compass_local_maps');
+            if (localStr) {
+                localMaps = JSON.parse(localStr);
+                if (!Array.isArray(localMaps)) localMaps = [];
+                localMaps = localMaps.map(m => ({...m, isLocalOnly: true}));
+            }
+        } catch(e) {}
+
+        let onlineMaps = [];
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+            const { data, error } = await supabase
+                .from('maps')
+                .select('id, name, user_id, gamemode, environment, size, thumbnail_url, map_data, theme_options')
+                .eq('user_id', session.user.id)
+                .order('created_at', { ascending: false });
+            
+            if (!error && data) {
+                onlineMaps = data;
+            }
+        }
+
+        const allUserMaps = [...localMaps, ...onlineMaps];
+
+        mapPickerLoading.style.display = 'none';
+
+        if (allUserMaps.length === 0) {
+            mapPickerGrid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; color:#888;">No maps found. Save some maps in the editor first!</div>`;
+            return;
+        }
+
+        for (const map of allUserMaps) {
+            const card = document.createElement('div');
+            card.className = 'picker-card';
+            
+            const title = document.createElement('div');
+            title.className = 'picker-card-title';
+            title.textContent = map.name || 'Untitled';
+
+            const img = document.createElement('img');
+            img.style.opacity = '0.5';
+
+            card.appendChild(img);
+            card.appendChild(title);
+            mapPickerGrid.appendChild(card);
+
+            // Handle map selection
+            card.addEventListener('click', async () => {
+                mapPickerModal.style.display = 'none';
+                
+                // If it already has a drawn PNG data url, use it
+                if (img.src && img.src.startsWith('data:image')) {
+                    handleMapSelection(img.src);
+                    return;
+                }
+
+                // If no pre-rendered data url, we must render it from map_data or wait for thumbnail
+                if (map.map_data) {
+                    try {
+                        const dataUrl = await drawStaticMapPreview(map.map_data, map.size, map.gamemode, map.environment, map.theme_options);
+                        handleMapSelection(dataUrl);
+                    } catch (e) {
+                        console.error('Failed to render map', e);
+                        alert('Could not render map. Please open it in the editor first.');
                     }
-                    elements.push({
-                        type: 'image',
-                        img: img,
-                        x: (CANVAS_WIDTH - (img.width * scale)) / 2 + (Math.random()*100-50),
-                        y: (CANVAS_HEIGHT - (img.height * scale)) / 2 + (Math.random()*100-50),
-                        w: img.width * scale,
-                        h: img.height * scale
+                } else if (map.thumbnail_url) {
+                    handleMapSelection(map.thumbnail_url);
+                }
+            });
+
+            // Load map thumbnail visually
+            if (map.thumbnail_url) {
+                img.src = map.thumbnail_url;
+                img.style.opacity = '1';
+            } else if (map.map_data) {
+                // Async generate local preview
+                drawStaticMapPreview(map.map_data, map.size, map.gamemode, map.environment, map.theme_options)
+                    .then(png => {
+                        img.src = png;
+                        img.style.opacity = '1';
+                    })
+                    .catch(() => {
+                        img.src = 'Resources/Additional/Icons/compass.png';
+                        img.style.opacity = '1';
                     });
-                    renderCanvas();
-                };
-                img.src = ev.target.result as string;
-            };
-            reader.readAsDataURL(files[i]);
+            } else {
+                img.src = 'Resources/Additional/Icons/compass.png';
+                img.style.opacity = '1';
+            }
         }
     }
     
