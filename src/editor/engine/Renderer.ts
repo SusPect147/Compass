@@ -657,13 +657,40 @@ export const RendererMixin = {
             }
         }
 
-        // Draw tiles in layer order
-        Array.from(tilesByLayer.keys())
-            .sort((a, b) => a - b)
-            .forEach(layerKey => {
-                const tiles = tilesByLayer.get(layerKey);
+        // Helper to draw upper goals
+        let upperGoalsDrawn = false;
+        const drawUpperGoals = () => {
+            if (!upperGoalsDrawn && this.goalImages?.length && this.gamemode === 'Brawl_Ball') {
+                for (const goal of this.goalImages) {
+                    if (goal.y < this.mapHeight / 2) {
+                        const img = this.goalImageCache[`${goal.name}${this.environment}`] ||
+                                    this.goalImageCache[`${goal.name}`];
+                        if (!img || !img.complete || img.naturalWidth === 0) continue;
 
-                // Group tiles by row (y value)
+                        this.ctx.drawImage(
+                            img,
+                            goal.x * this.tileSize + this.canvasPadding + (goal.offsetX || 0),
+                            goal.y * this.tileSize + this.canvasPadding + (goal.offsetY || 0),
+                            (goal.w || 1) * this.tileSize,
+                            (goal.h || 1) * this.tileSize
+                        );
+                    }
+                }
+                upperGoalsDrawn = true;
+            }
+        };
+
+        // Draw tiles in layer order
+        const sortedLayers = Array.from(tilesByLayer.keys()).sort((a, b) => a - b);
+        
+        sortedLayers.forEach(layerKey => {
+            if (layerKey >= 1) {
+                drawUpperGoals();
+            }
+
+            const tiles = tilesByLayer.get(layerKey);
+
+            // Group tiles by row (y value)
                 const rows = new Map();
 
                 tiles.forEach(tile => {
@@ -725,8 +752,16 @@ export const RendererMixin = {
             }
         }
 
+        // Make sure upper goals are drawn if there were no layers >= 1
+        drawUpperGoals();
+
         if (this.goalImages?.length) {
             for (const goal of this.goalImages) {
+                // Skip upper goal for Brawl Ball since it was drawn below tiles
+                if (this.gamemode === 'Brawl_Ball' && goal.y < this.mapHeight / 2) {
+                    continue;
+                }
+
                 const img = this.goalImageCache[`${goal.name}${this.environment}`] ||
                     this.goalImageCache[`${goal.name}`];
                 if (!img || !img.complete || img.naturalWidth === 0) continue;
