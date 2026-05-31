@@ -1391,16 +1391,16 @@ export function getTileDefinitions(mapEditor) {
     9: { name: 'Rope Fence', img: '${env}/Rope/Post.png', size: 1 },
     10: { name: 'Skull', img: '${env}/Tiles/Skull.png', size: 1 },
     11: { name: 'Unbreakable', img: 'Global/Unbreakable.png', size: 1 },
-    12: { name: 'Blue Spawn', size: 1, layer:mapEditor.layerCount -1,  getImg: (gamemode) => {
+    12: { name: 'Blue Spawn', size: 1, layer: 0,  getImg: (gamemode) => {
         return { img: gamemode === 'Showdown' || gamemode === 'Loaded_SD' || gamemode === 'Trophy_Escape' || gamemode === 'Lone_Star' || gamemode === 'Hunters' || gamemode ==='Subway_Run' || gamemode === 'Drumroll' ? 'Global/Spawns/3.png' : 'Global/Spawns/1.png' }; // Won't use the default spawns for the listed modes
     }},
-    13: { name: 'Red Spawn', size: 1, layer: mapEditor.layerCount - 1, getImg: (gamemode) => { if (['Trophy_Escape', 'Hunters', 'Lone_Star', 'Brawl_Bosses', 'Subway_Run', 'Drumroll'].includes(gamemode)) {
+    13: { name: 'Red Spawn', size: 1, layer: 0, getImg: (gamemode) => { if (['Trophy_Escape', 'Hunters', 'Lone_Star', 'Brawl_Bosses', 'Subway_Run', 'Drumroll'].includes(gamemode)) {
     return null;}
     return { img: (gamemode === 'Showdown' || gamemode === 'Loaded_SD') 
         ? 'Global/Spawns/4.png' 
         : 'Global/Spawns/2.png'
     };}},
-    14: { name: 'Objective', size: 1, layer: mapEditor.layerCount -2, getImg: (gamemode, y, mapHeight, environment) => {
+    14: { name: 'Objective', size: 1, layer: 1, getImg: (gamemode, y, mapHeight, environment) => {
         const objectives = {
             'Gem_Grab': { img: '${env}/Gamemode_Specifics/Gem_Grab.png' },
             'Heist': { img: '${env}/Gamemode_Specifics/Heist.png' },
@@ -1459,24 +1459,24 @@ export function getTileDefinitions(mapEditor) {
     29: { name: 'Teleporter Green', img: 'Global/Teleporters/Green.png', size: 2 },
     30: { name: 'Teleporter Red', img: 'Global/Teleporters/Red.png', size: 2 },
     31: { name: 'Teleporter Yellow', img: 'Global/Teleporters/Yellow.png', size: 2 },
-    32: { name: 'Bolt', img: 'Global/Objectives/Bolt.png', placeableOn: [-100], placeableOnThis: [-100], size: 1, layer: mapEditor.layerCount -2, showInGamemode: 'Siege' },
-    34: { name: 'TokenBlue', img: 'Global/Objectives/TokenBlue.png', size: 1, showInGamemode: 'Token_Run', placeableOn: [-100], placeableOnThis: [-100], layer: mapEditor.layerCount -2},
-    35: { name: 'TokenRed', img: 'Global/Objectives/TokenRed.png', size: 1, showInGamemode: 'Token_Run', placeableOn: [-100], placeableOnThis: [-100], layer: mapEditor.layerCount -2},
-    36: { name: 'Trio Spawn', size: 1, showInGamemode: ['Showdown', 'Loaded_SD', 'Gem_Grab', 'Wipeout'], layer: mapEditor.layerCount - 1, getImg: (gamemode) => {
+    32: { name: 'Bolt', img: 'Global/Objectives/Bolt.png', placeableOn: [-100], placeableOnThis: [-100], size: 1, layer: 1, showInGamemode: 'Siege' },
+    34: { name: 'TokenBlue', img: 'Global/Objectives/TokenBlue.png', size: 1, showInGamemode: 'Token_Run', placeableOn: [-100], placeableOnThis: [-100], layer: 1},
+    35: { name: 'TokenRed', img: 'Global/Objectives/TokenRed.png', size: 1, showInGamemode: 'Token_Run', placeableOn: [-100], placeableOnThis: [-100], layer: 1},
+    36: { name: 'Trio Spawn', size: 1, showInGamemode: ['Showdown', 'Loaded_SD', 'Gem_Grab', 'Wipeout'], layer: 0, getImg: (gamemode) => {
         const isShowdownMode = gamemode === 'Showdown' || gamemode === 'Loaded_SD';
         return { img: isShowdownMode ? 'Global/Spawns/7.png' : 'Global/Spawns/8.png'};
     }},
-    37: { name: 'Box', img: 'Global/Objectives/Box.png', showInGamemode: ['Showdown', 'Trophy_Escape', 'Brawl_Bosses'], size: 1},
-    38: { name: 'Boss Zone', layer: mapEditor.layerCount -1, img: 'Global/Arena/Boss_Zone.png', showInGamemode: 'Brawl_Arena', size: 1},
-    39: { name: 'Monster Zone', layer: mapEditor.layerCount -1, img: 'Global/Arena/Monster_Zone.png', showInGamemode: 'Brawl_Arena', size: 1},
-    40: { name: 'Track', layer: mapEditor.layerCount -2, img: 'Global/Arena/Track/Blue/Fence.png', showInGamemode: 'Brawl_Arena', size: 1},
-    41: { name: 'Blue Respawn', layer: mapEditor.layerCount -1, img: 'Global/Spawns/5.png', showInGamemode: ['Brawl_Ball', 'Hockey', 'Volley_Brawl', 'Paint_Brawl'], size: 1},
-    42: { name: 'Red Respawn', layer: mapEditor.layerCount -1, img: 'Global/Spawns/6.png', showInGamemode: ['Brawl_Ball', 'Hockey', 'Volley_Brawl', 'Paint_Brawl'], size: 1},
-    43: { name: 'Base Ike Blue', layer: mapEditor.layerCount -1, img: 'Global/Arena/Base_Ike_Blue.png', showInGamemode: 'Brawl_Arena', size: 1 },
-    44: { name: 'Small Ike Blue', layer: mapEditor.layerCount -1, img: 'Global/Arena/Small_Ike_Blue.png', showInGamemode: 'Brawl_Arena', size: 1 },
+    37: { name: 'Box', img: 'Global/Objectives/Box.png', showInGamemode: ['Showdown', 'Trophy_Escape', 'Brawl_Bosses'], size: 1, layer: 1},
+    38: { name: 'Boss Zone', layer: 1, img: 'Global/Arena/Boss_Zone.png', showInGamemode: 'Brawl_Arena', size: 1},
+    39: { name: 'Monster Zone', layer: 1, img: 'Global/Arena/Monster_Zone.png', showInGamemode: 'Brawl_Arena', size: 1},
+    40: { name: 'Track', layer: 1, img: 'Global/Arena/Track/Blue/Fence.png', showInGamemode: 'Brawl_Arena', size: 1},
+    41: { name: 'Blue Respawn', layer: 0, img: 'Global/Spawns/5.png', showInGamemode: ['Brawl_Ball', 'Hockey', 'Volley_Brawl', 'Paint_Brawl'], size: 1},
+    42: { name: 'Red Respawn', layer: 0, img: 'Global/Spawns/6.png', showInGamemode: ['Brawl_Ball', 'Hockey', 'Volley_Brawl', 'Paint_Brawl'], size: 1},
+    43: { name: 'Base Ike Blue', layer: 1, img: 'Global/Arena/Base_Ike_Blue.png', showInGamemode: 'Brawl_Arena', size: 1 },
+    44: { name: 'Small Ike Blue', layer: 1, img: 'Global/Arena/Small_Ike_Blue.png', showInGamemode: 'Brawl_Arena', size: 1 },
     45: { name: 'BFence', img: '${env}/Fence_5v5/BFence.png', showInEnvironment: ['Tropical_Island', 'Super_City_2', 'Bazaar', 'Medieval_Manor', 'Ice_Island', 'Katana_Kingdom', 'Hockey', 'Spongebob', 'Subway_Surfers', 'Stranger_Things_Lair', 'Stranger_Things_Lab', 'Stranger_Things_Forest', 'Swamp_of_Love', 'Mortuary', 'Circus', 'Starr_Toon', 'Escape_Room',], size: 1 },
-    46: { name: 'Base Ike Red', layer: mapEditor.layerCount -1, img: 'Global/Arena/Base_Ike_Red.png', showInGamemode: 'Brawl_Arena', size: 1 },
-    47: { name: 'Small Ike Red', layer: mapEditor.layerCount -1, img: 'Global/Arena/Small_Ike_Red.png', showInGamemode: 'Brawl_Arena', size: 1 },
+    46: { name: 'Base Ike Red', layer: 1, img: 'Global/Arena/Base_Ike_Red.png', showInGamemode: 'Brawl_Arena', size: 1 },
+    47: { name: 'Small Ike Red', layer: 1, img: 'Global/Arena/Small_Ike_Red.png', showInGamemode: 'Brawl_Arena', size: 1 },
     48: { name: 'Bumper', size: 1, showInGamemode: ['Brawl_Ball', 'Hockey', 'Paint_Brawl'], getImg: (gamemode) => {
         return { img: gamemode === 'Hockey' ? 'Global/Bumpers/HockeyBumper.png' : mapEditor.environment === 'Deep_Sea' ? 'Global/Bumpers/DeepSeaBumper.png' : 'Global/Bumpers/Bumper.png' };
     }},
@@ -1487,23 +1487,23 @@ export function getTileDefinitions(mapEditor) {
     53: { name: 'GodzillaCity3', img: 'Global/Godzilla Tiles/GodzillaCity3.png', showInGamemode: 'Godzilla_City_Smash', size: 1},
     54: { name: 'GodzillaCity4', img: 'Global/Godzilla Tiles/GodzillaCity4.png', showInGamemode: 'Godzilla_City_Smash', size: 1},
     55: { name: 'GodzillaExplosive', img: 'Global/Godzilla Tiles/GodzillaExplosive.png', showInGamemode: 'Godzilla_City_Smash', size: 1},
-    56: { name: 'GodzillaSpawn', img: 'Global/Godzilla Tiles/GodzillaSpawn.png', showInGamemode: 'Godzilla_City_Smash', placeableOn: [-100], placeableOnThis: [-100], size: 1, layer: mapEditor.layerCount -2},
-    57: { name: 'Bot_Zone', layer: mapEditor.layerCount -2, img: 'Global/Objectives/Bot_Zone.png', showInGamemode: ['Trophy_Escape', 'Samurai_Smash'], placeableOn: [-100], placeableOnThis: [-100], size: 1, layer: mapEditor.layerCount -2},
-    58: { name: 'Escape', layer: mapEditor.layerCount -2, img: 'Global/Objectives/Escape.png', showInGamemode: 'Trophy_Escape', size: 1},
-    59: { name: 'Bomb', img: 'Global/Objectives/Bomb.png', showInGamemode: 'Safe_Blast', placeableOn: [-100], placeableOnThis: [-100], size: 1, layer: mapEditor.layerCount -2},
-    60: { name: 'Amulet', img: 'Global/Objectives/Amulet.png', showInGamemode: 'Spirit_Wars', placeableOn: [-100], placeableOnThis: [-100], size: 1, layer: mapEditor.layerCount -2},
-    61: { name: 'BossSpawn', img: 'Global/Boss Spawns/BossSpawn.png', showInGamemode: ['Boss_Fight', 'Takedown'], placeableOn: [-100], placeableOnThis: [-100], size: 1, layer: mapEditor.layerCount -2},
-    62: { name: 'KaijuBoss', img: 'Global/Boss Spawns/KaijuBoss.png', showInGamemode: 'Super_City_Rampage', placeableOn: [-100], placeableOnThis: [-100], size: 1, layer: mapEditor.layerCount -2},
-    		63: { name: 'Yellow Spawn', img: 'Global/Spawns/9.png', showInGamemode: ['Gem_Grab','Wipeout'], size: 1 },
-    		64: { name: 'GenericBoss', img: 'Global/Boss Spawns/GenericBoss.png', showInGamemode: 'Brawl_Bosses', placeableOn: [-100], placeableOnThis: [-100], layer: mapEditor.layerCount -2, size: 1 },
-    65: { name: 'OniHunt', img: 'Global/Boss Spawns/OniHunt.png', showInGamemode: 'Brawl_Bosses', placeableOn: [-100], placeableOnThis: [-100], layer: mapEditor.layerCount -2, size: 1},
+    56: { name: 'GodzillaSpawn', img: 'Global/Godzilla Tiles/GodzillaSpawn.png', showInGamemode: 'Godzilla_City_Smash', placeableOn: [-100], placeableOnThis: [-100], size: 1, layer: 0},
+    57: { name: 'Bot_Zone', layer: 1, img: 'Global/Objectives/Bot_Zone.png', showInGamemode: ['Trophy_Escape', 'Samurai_Smash'], placeableOn: [-100], placeableOnThis: [-100], size: 1},
+    58: { name: 'Escape', layer: 1, img: 'Global/Objectives/Escape.png', showInGamemode: 'Trophy_Escape', size: 1},
+    59: { name: 'Bomb', img: 'Global/Objectives/Bomb.png', showInGamemode: 'Safe_Blast', placeableOn: [-100], placeableOnThis: [-100], size: 1, layer: 1},
+    60: { name: 'Amulet', img: 'Global/Objectives/Amulet.png', showInGamemode: 'Spirit_Wars', placeableOn: [-100], placeableOnThis: [-100], size: 1, layer: 1},
+    61: { name: 'BossSpawn', img: 'Global/Boss Spawns/BossSpawn.png', showInGamemode: ['Boss_Fight', 'Takedown'], placeableOn: [-100], placeableOnThis: [-100], size: 1, layer: 0},
+    62: { name: 'KaijuBoss', img: 'Global/Boss Spawns/KaijuBoss.png', showInGamemode: 'Super_City_Rampage', placeableOn: [-100], placeableOnThis: [-100], size: 1, layer: 1},
+    		63: { name: 'Yellow Spawn', img: 'Global/Spawns/9.png', showInGamemode: ['Gem_Grab','Wipeout'], size: 1, layer: 0 },
+    		64: { name: 'GenericBoss', img: 'Global/Boss Spawns/GenericBoss.png', showInGamemode: 'Brawl_Bosses', placeableOn: [-100], placeableOnThis: [-100], layer: 1, size: 1 },
+    65: { name: 'OniHunt', img: 'Global/Boss Spawns/OniHunt.png', showInGamemode: 'Brawl_Bosses', placeableOn: [-100], placeableOnThis: [-100], layer: 1, size: 1},
     66: { name: 'SubwayRun1', img: 'Global/Objectives/SubwayRun1.png', showInGamemode: 'Subway_Run', size: 2 },
     67: { name: 'SubwayRun2', img: 'Global/Objectives/SubwayRun2.png', showInGamemode: 'Subway_Run', size: 2 },
     68: { name: 'Rails', layer: 1, img: 'Global/Special_Tiles/Rails/Fence.png', placeableOnThis: [73, 74, 75], size: 1},
     69: { name: 'IceTile', img: 'Global/Special_Tiles/IceTile/00000000.png', size: 1 },
     70: { name: 'SnowTile', img: 'Global/Special_Tiles/SnowTile/00000000.png', size: 1 },
-    71: { name: 'TreasurePad1', img: 'Global/Objectives/TreasurePad1.png', showInGamemode: 'Treasure_Hunt', placeableOn: [-100], placeableOnThis: [-100], size: 1, layer: mapEditor.layerCount -2},
-    72: { name: 'TreasurePad2', img: 'Global/Objectives/TreasurePad2.png', showInGamemode: 'Treasure_Hunt', placeableOn: [-100], placeableOnThis: [-100], size: 1, layer: mapEditor.layerCount -2},
+    71: { name: 'TreasurePad1', img: 'Global/Objectives/TreasurePad1.png', showInGamemode: 'Treasure_Hunt', placeableOn: [-100], placeableOnThis: [-100], size: 1, layer: 1},
+    72: { name: 'TreasurePad2', img: 'Global/Objectives/TreasurePad2.png', showInGamemode: 'Treasure_Hunt', placeableOn: [-100], placeableOnThis: [-100], size: 1, layer: 1},
     73: { name: 'RedTrain', img: 'Global/Special_Tiles/RedTrain/Train_Fence.png', placeableOn: [68], size: 1},
     74: { name: 'YellowTrain', img: 'Global/Special_Tiles/YellowTrain/Train_Fence.png', placeableOn: [68], size: 1},
     75: { name: 'GreenTrain', img: 'Global/Special_Tiles/GreenTrain/Train_Fence.png', placeableOn: [68], size: 1},

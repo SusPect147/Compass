@@ -657,26 +657,24 @@ export const RendererMixin = {
             }
         }
 
-        // Helper to draw upper goals
-        let upperGoalsDrawn = false;
-        const drawUpperGoals = () => {
-            if (!upperGoalsDrawn && this.goalImages?.length && this.gamemode === 'Brawl_Ball') {
+        // Helper to draw all goals (ворота) at layer 1
+        let goalsDrawn = false;
+        const drawAllGoals = () => {
+            if (!goalsDrawn && this.goalImages?.length) {
                 for (const goal of this.goalImages) {
-                    if (goal.y < this.mapHeight / 2) {
-                        const img = this.goalImageCache[`${goal.name}${this.environment}`] ||
-                                    this.goalImageCache[`${goal.name}`];
-                        if (!img || !img.complete || img.naturalWidth === 0) continue;
+                    const img = this.goalImageCache[`${goal.name}${this.environment}`] ||
+                                this.goalImageCache[`${goal.name}`];
+                    if (!img || !img.complete || img.naturalWidth === 0) continue;
 
-                        this.ctx.drawImage(
-                            img,
-                            goal.x * this.tileSize + this.canvasPadding + (goal.offsetX || 0),
-                            goal.y * this.tileSize + this.canvasPadding + (goal.offsetY || 0),
-                            (goal.w || 1) * this.tileSize,
-                            (goal.h || 1) * this.tileSize
-                        );
-                    }
+                    this.ctx.drawImage(
+                        img,
+                        goal.x * this.tileSize + this.canvasPadding + (goal.offsetX || 0),
+                        goal.y * this.tileSize + this.canvasPadding + (goal.offsetY || 0),
+                        (goal.w || 1) * this.tileSize,
+                        (goal.h || 1) * this.tileSize
+                    );
                 }
-                upperGoalsDrawn = true;
+                goalsDrawn = true;
             }
         };
 
@@ -684,8 +682,9 @@ export const RendererMixin = {
         const sortedLayers = Array.from(tilesByLayer.keys()).sort((a, b) => a - b);
         
         sortedLayers.forEach(layerKey => {
+            // Draw goals exactly at layer 1 (above spawns layer 0, below default tiles layer 2)
             if (layerKey >= 1) {
-                drawUpperGoals();
+                drawAllGoals();
             }
 
             const tiles = tilesByLayer.get(layerKey);
@@ -752,29 +751,8 @@ export const RendererMixin = {
             }
         }
 
-        // Make sure upper goals are drawn if there were no layers >= 1
-        drawUpperGoals();
-
-        if (this.goalImages?.length) {
-            for (const goal of this.goalImages) {
-                // Skip upper goal for Brawl Ball since it was drawn below tiles
-                if (this.gamemode === 'Brawl_Ball' && goal.y < this.mapHeight / 2) {
-                    continue;
-                }
-
-                const img = this.goalImageCache[`${goal.name}${this.environment}`] ||
-                    this.goalImageCache[`${goal.name}`];
-                if (!img || !img.complete || img.naturalWidth === 0) continue;
-
-                this.ctx.drawImage(
-                    img,
-                    goal.x * this.tileSize + this.canvasPadding + (goal.offsetX || 0),
-                    goal.y * this.tileSize + this.canvasPadding + (goal.offsetY || 0),
-                    (goal.w || 1) * this.tileSize,
-                    (goal.h || 1) * this.tileSize
-                );
-            }
-        }
+        // Make sure goals are drawn if there were no layers >= 1
+        drawAllGoals();
 
 
 
