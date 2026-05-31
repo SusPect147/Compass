@@ -511,7 +511,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (e.target !== canvas) return; // Only interact with canvas elements if clicking canvas
+        if (e.target !== canvas) {
+            // Clicked outside canvas, deselect element
+            if (selectedElement) {
+                selectedElement = null;
+                renderPropertiesPanel();
+                renderCanvas();
+            }
+            return;
+        }
 
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
@@ -552,7 +560,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else if (el.type === 'arrow') {
                 const dist = distToSegment({x: mx, y: my}, {x: el.startX, y: el.startY}, {x: el.endX, y: el.endY});
-                if (dist < 20 * scaleX) {
+                if (dist < 8 * scaleX) { // Reduced hitbox size for arrows
                     newlySelected = el;
                     break;
                 }
