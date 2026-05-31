@@ -27,10 +27,19 @@ document.addEventListener('DOMContentLoaded', () => {
     let isResizing = false;
     let resizeHandle = null; // 'nw', 'ne', 'sw', 'se'
 
+    // Pan & Zoom State
+    let panX = 0, panY = 0, zoom = 1;
+    let isPanning = false;
+    let lastPanX = 0, lastPanY = 0;
+
     // Base resolution
     let CANVAS_WIDTH = 1920;
     let CANVAS_HEIGHT = 1080;
     let canvasBgColor = '#0a0a0f';
+
+    function getThemeBgColor() {
+        return getComputedStyle(document.body).getPropertyValue('--bg-primary').trim() || '#0a0a0f';
+    }
 
     function resetCanvas() {
         CANVAS_WIDTH = 1920;
@@ -39,6 +48,9 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.height = CANVAS_HEIGHT;
         elements = [];
         selectedElement = null;
+        panX = 0;
+        panY = 0;
+        zoom = 1;
         renderCanvas();
         renderPropertiesPanel();
     }
@@ -50,10 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
             modeSelector.style.display = 'none';
             studioEditor.style.display = 'flex';
             
-            if (currentMode === 'collage') {
-                canvasBgColor = '#0a0a0f';
-            } else if (currentMode === 'paths') {
-                canvasBgColor = '#05050a';
+            if (currentMode === 'collage' || currentMode === 'paths') {
+                canvasBgColor = getThemeBgColor();
             } else if (currentMode === 'showcase') {
                 canvasBgColor = '#1e1b4b'; // deep purple
             }
@@ -163,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         Click on any element in the workspace to edit it. You can drag the corner squares to resize.
                     </div>
                 </div>
-                ${(currentMode === 'collage' || currentMode === 'showcase') ? `
+                ${(currentMode === 'collage' || currentMode === 'showcase' || currentMode === 'paths') ? `
                 <div class="prop-group">
                     <label>Background Color</label>
                     <input type="color" class="prop-color-picker" id="canvasBgProp" value="${canvasBgColor}">
@@ -277,6 +287,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 CANVAS_HEIGHT = img.height;
                 canvas.width = CANVAS_WIDTH;
                 canvas.height = CANVAS_HEIGHT;
+                panX = 0;
+                panY = 0;
+                zoom = 1;
                 
                 elements.unshift({
                     type: 'image',
@@ -460,18 +473,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let tempArrow = null;
     
+    // Prevent context menu to allow right-click panning
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+    canvas.addEventListener('wheel', (e) => {
+        if (studioEditor.style.display === 'none') return;
+        e.preventDefault();
+        
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const rawMx = (e.clientX - rect.left) * scaleX;
+        const rawMy = (e.clientY - rect.top) * scaleY;
+
+        const zoomDelta = e.deltaY < 0 ? 1.1 : 0.9;
+        const newZoom = Math.max(0.1, Math.min(zoom * zoomDelta, 10));
+        
+        panX = rawMx - (rawMx - panX) * (newZoom / zoom);
+        panY = rawMy - (rawMy - panY) * (newZoom / zoom);
+        zoom = newZoom;
+        
+        renderCanvas();
+    });
+
     canvas.addEventListener('mousedown', (e) => {
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
-        const mx = (e.clientX - rect.left) * scaleX;
-        const my = (e.clientY - rect.top) * scaleY;
+        const rawMx = (e.clientX - rect.left) * scaleX;
+        const rawMy = (e.clientY - rect.top) * scaleY;
+        
+        if (e.button === 2) { // Right click to pan
+            isPanning = true;
+            lastPanX = rawMx;
+            lastPanY = rawMy;
+            return;
+        }
+
+        const mx = (rawMx - panX) / zoom;
+        const my = (rawMy - panY) / zoom;
         
         // 1. Check handles of selected element first
         if (selectedElement && !selectedElement.isLocked && selectedElement.type !== 'arrow') {
             const handles = getHandles(selectedElement);
             if (handles) {
-                const HANDLE_SIZE = 20 * scaleX; // responsive hit area
+                const HANDLE_SIZE = 20 / zoom; // keep hit area comfortable regardless of zoom
                 for (const h in handles) {
                     const hx = handles[h].x;
                     const hy = handles[h].y;
@@ -500,7 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else if (el.type === 'arrow') {
                 const dist = distToSegment({x: mx, y: my}, {x: el.startX, y: el.startY}, {x: el.endX, y: el.endY});
-                if (dist < 20 * scaleX) {
+                if (dist < 20 / zoom) {
                     newlySelected = el;
                     break;
                 }
@@ -540,8 +586,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
-        const mx = (e.clientX - rect.left) * scaleX;
-        const my = (e.clientY - rect.top) * scaleY;
+        const rawMx = (e.clientX - rect.left) * scaleX;
+        const rawMy = (e.clientY - rect.top) * scaleY;
+        
+        if (isPanning) {
+            panX += (rawMx - lastPanX);
+            panY += (rawMy - lastPanY);
+            lastPanX = rawMx;
+            lastPanY = rawMy;
+            renderCanvas();
+            return;
+        }
+
+        const mx = (rawMx - panX) / zoom;
+        const my = (rawMy - panY) / zoom;
         
         if (isResizing && selectedElement) {
             const dx = mx - dragStartX;
@@ -592,7 +650,6 @@ document.addEventListener('DOMContentLoaded', () => {
             tempArrow.endX = mx;
             tempArrow.endY = my;
             renderCanvas();
-            drawArrow(ctx, tempArrow.startX, tempArrow.startY, tempArrow.endX, tempArrow.endY, tempArrow.color);
             return;
         }
         
@@ -614,7 +671,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    canvas.addEventListener('mouseup', () => {
+    canvas.addEventListener('mouseup', (e) => {
+        if (e.button === 2) {
+            isPanning = false;
+            return;
+        }
+
         if (currentMode === 'paths' && tempArrow && !selectedElement) {
             const dx = tempArrow.endX - tempArrow.startX;
             const dy = tempArrow.endY - tempArrow.startY;
@@ -686,6 +748,10 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillStyle = canvasBgColor;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
+        ctx.save();
+        ctx.translate(panX, panY);
+        ctx.scale(zoom, zoom);
+        
         for (const el of elements) {
             if (el.type === 'glow') {
                 const grad = ctx.createRadialGradient(el.x, el.y, 10, el.x, el.y, el.radius);
@@ -716,47 +782,63 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
+        if (currentMode === 'paths' && tempArrow) {
+            drawArrow(ctx, tempArrow.startX, tempArrow.startY, tempArrow.endX, tempArrow.endY, tempArrow.color);
+        }
+        
         // Draw selection highlight and handles
         if (selectedElement && !selectedElement.isLocked) {
             ctx.strokeStyle = '#8b5cf6';
-            ctx.lineWidth = 4;
-            ctx.setLineDash([10, 10]);
+            ctx.lineWidth = 4 / zoom;
+            ctx.setLineDash([10 / zoom, 10 / zoom]);
             
             const b = getBounds(selectedElement);
             if (b) {
-                ctx.strokeRect(b.x - 5, b.y - 5, b.w + 10, b.h + 10);
+                ctx.strokeRect(b.x - 5/zoom, b.y - 5/zoom, b.w + 10/zoom, b.h + 10/zoom);
                 
                 // Draw handles
                 if (selectedElement.type !== 'arrow') {
                     ctx.setLineDash([]);
                     ctx.fillStyle = '#fff';
-                    const hSize = 16;
-                    ctx.fillRect(b.x - 5 - hSize/2, b.y - 5 - hSize/2, hSize, hSize);
-                    ctx.fillRect(b.x + b.w + 5 - hSize/2, b.y - 5 - hSize/2, hSize, hSize);
-                    ctx.fillRect(b.x - 5 - hSize/2, b.y + b.h + 5 - hSize/2, hSize, hSize);
-                    ctx.fillRect(b.x + b.w + 5 - hSize/2, b.y + b.h + 5 - hSize/2, hSize, hSize);
+                    const hSize = 16 / zoom;
+                    ctx.fillRect(b.x - 5/zoom - hSize/2, b.y - 5/zoom - hSize/2, hSize, hSize);
+                    ctx.fillRect(b.x + b.w + 5/zoom - hSize/2, b.y - 5/zoom - hSize/2, hSize, hSize);
+                    ctx.fillRect(b.x - 5/zoom - hSize/2, b.y + b.h + 5/zoom - hSize/2, hSize, hSize);
+                    ctx.fillRect(b.x + b.w + 5/zoom - hSize/2, b.y + b.h + 5/zoom - hSize/2, hSize, hSize);
                     
-                    ctx.strokeRect(b.x - 5 - hSize/2, b.y - 5 - hSize/2, hSize, hSize);
-                    ctx.strokeRect(b.x + b.w + 5 - hSize/2, b.y - 5 - hSize/2, hSize, hSize);
-                    ctx.strokeRect(b.x - 5 - hSize/2, b.y + b.h + 5 - hSize/2, hSize, hSize);
-                    ctx.strokeRect(b.x + b.w + 5 - hSize/2, b.y + b.h + 5 - hSize/2, hSize, hSize);
+                    ctx.strokeRect(b.x - 5/zoom - hSize/2, b.y - 5/zoom - hSize/2, hSize, hSize);
+                    ctx.strokeRect(b.x + b.w + 5/zoom - hSize/2, b.y - 5/zoom - hSize/2, hSize, hSize);
+                    ctx.strokeRect(b.x - 5/zoom - hSize/2, b.y + b.h + 5/zoom - hSize/2, hSize, hSize);
+                    ctx.strokeRect(b.x + b.w + 5/zoom - hSize/2, b.y + b.h + 5/zoom - hSize/2, hSize, hSize);
                 }
             } else if (selectedElement.type === 'arrow') {
                 const minX = Math.min(selectedElement.startX, selectedElement.endX);
                 const maxX = Math.max(selectedElement.startX, selectedElement.endX);
                 const minY = Math.min(selectedElement.startY, selectedElement.endY);
                 const maxY = Math.max(selectedElement.startY, selectedElement.endY);
-                ctx.strokeRect(minX - 20, minY - 20, (maxX - minX) + 40, (maxY - minY) + 40);
+                ctx.strokeRect(minX - 20/zoom, minY - 20/zoom, (maxX - minX) + 40/zoom, (maxY - minY) + 40/zoom);
                 ctx.setLineDash([]);
             }
         }
+        ctx.restore();
     }
     
     exportBtn.addEventListener('click', () => {
         selectedElement = null;
+        const savedPanX = panX;
+        const savedPanY = panY;
+        const savedZoom = zoom;
+        panX = 0;
+        panY = 0;
+        zoom = 1;
         renderCanvas();
         
         const dataUrl = canvas.toDataURL('image/png', 1.0);
         showSharpnessDownload(dataUrl, `compass_art_${currentMode}`);
+        
+        panX = savedPanX;
+        panY = savedPanY;
+        zoom = savedZoom;
+        renderCanvas();
     });
 });

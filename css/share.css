@@ -518,8 +518,8 @@
 .picker-card img {
     width: 100%;
     aspect-ratio: 16/10;
-    object-fit: cover;
-    background: #000;
+    object-fit: contain;
+    background: transparent;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 

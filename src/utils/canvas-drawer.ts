@@ -63,7 +63,10 @@ export async function drawStaticMapPreview(mapData, size = 'regular', gamemode =
 
   
   // Calculate canvas padding and base tile size
-  const padding = 16;
+  const isBrawl = gamemode === 'Brawl_Ball' || gamemode === 'Hockey' || gamemode === 'Volley_Brawl' || gamemode === 'Basket_Brawl';
+  const isStuntShow = environment === 'Stunt_Show';
+  // Increase padding to prevent goals/tall objects from clipping.
+  const padding = (isBrawl || isStuntShow) ? 100 : 16;
   const baseTileSize = 32;
   
   // Calculate scale to fit the actual map within the preview canvas
