@@ -67,9 +67,16 @@
                 <!-- Controls added by JS depending on the mode -->
             </div>
 
-            <!-- The main workspace canvas -->
-            <div class="studio-workspace">
-                <canvas id="artCanvas"></canvas>
+            <div class="studio-main-area">
+                <!-- The main workspace canvas -->
+                <div class="studio-workspace" id="studioWorkspace">
+                    <canvas id="artCanvas"></canvas>
+                </div>
+                
+                <!-- Properties Sidebar -->
+                <div class="studio-properties" id="studioProperties">
+                    <div class="properties-placeholder">Select an element to edit properties</div>
+                </div>
             </div>
         </div>
     </main>
@@ -280,8 +287,13 @@
                 <h2>Select a Map</h2>
                 <button id="closeMapPickerBtn" class="close-btn">&times;</button>
             </div>
-            <div class="map-picker-loading" id="mapPickerLoading">Loading your maps...</div>
-            <div class="map-picker-grid" id="mapPickerGrid"></div>
+            <div class="map-picker-body">
+                <div class="map-picker-loading" id="mapPickerLoading">
+                    <div class="spinner"></div>
+                    <p>Loading your maps...</p>
+                </div>
+                <div class="map-picker-grid" id="mapPickerGrid"></div>
+            </div>
         </div>
     </div>
 </body>
