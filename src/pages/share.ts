@@ -387,15 +387,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             card.addEventListener('click', async () => {
                 mapPickerModal.style.display = 'none';
-                
-                if (img.src && img.src.startsWith('data:image')) {
-                    handleMapSelection(img.src);
-                    return;
-                }
 
                 if (map.map_data) {
                     try {
-                        const dataUrl = await drawStaticMapPreview(map.map_data, map.size, map.gamemode, map.environment, map.theme_options);
+                        const dataUrl = await drawStaticMapPreview(map.map_data, map.size, map.gamemode, map.environment, map.theme_options, true);
                         handleMapSelection(dataUrl);
                     } catch (e) {
                         console.error('Failed to render map', e);
@@ -403,6 +398,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 } else if (map.thumbnail_url) {
                     handleMapSelection(map.thumbnail_url);
+                } else if (img.src && img.src.startsWith('data:image')) {
+                    handleMapSelection(img.src);
                 }
             });
 

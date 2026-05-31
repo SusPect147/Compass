@@ -15,7 +15,7 @@ const sharedResources = {
   backgrounds: {}, // backgrounds[env] = { bgDark, bgLight }
 };
 
-export async function drawStaticMapPreview(mapData, size = 'regular', gamemode = 'Gem_Grab', environment = 'Desert', themeOptions = null) {
+export async function drawStaticMapPreview(mapData, size = 'regular', gamemode = 'Gem_Grab', environment = 'Desert', themeOptions = null, exactSize = false) {
   // Bypass the global theme interceptor to ensure we see the base reference or author's theme only!
   window.cp_bypassTheme = true;
   
@@ -57,10 +57,10 @@ export async function drawStaticMapPreview(mapData, size = 'regular', gamemode =
     ({ width: actualWidth, height: actualHeight } = MAP_SIZES[size]);
   }
   
-  // For preview images, always use regular map size (21x33) as the canvas size
-  // This ensures all previews are the same size
-  const previewWidth = MAP_SIZES.regular.width;  // 21
-  const previewHeight = MAP_SIZES.regular.height; // 33
+  // For preview images, we use regular map size (21x33) unless exactSize is true
+  const previewWidth = exactSize ? actualWidth : MAP_SIZES.regular.width;  
+  const previewHeight = exactSize ? actualHeight : MAP_SIZES.regular.height; 
+
   
   // Calculate canvas padding and base tile size
   const padding = 16;
