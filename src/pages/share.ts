@@ -34,9 +34,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Base resolution
     let CANVAS_WIDTH = 1920;
-    let CANVAS_HEIGHT = 1080;
     let canvasBgColor = '#0a0a0f';
     let isTransparentBg = false;
+
+    // Default Arrow Settings
+    let defaultArrowColor = '#f43f5e';
+    let defaultArrowOpacity = 1.0;
+    let defaultArrowType = 'solid_arrow'; // solid_arrow, dashed_arrow, solid_line, dashed_line
 
     function getThemeBgColor() {
         return getComputedStyle(document.body).getPropertyValue('--bg-primary').trim() || '#0a0a0f';
@@ -190,6 +194,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
                 ` : ''}
+                ${currentMode === 'paths' ? `
+                <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 0.5rem 0;">
+                ${getArrowPropertiesHTML(true, defaultArrowColor, defaultArrowOpacity, defaultArrowType)}
+                ` : ''}
             `;
             const bgInput = document.getElementById('canvasBgProp');
             const transInput = document.getElementById('transparentBgProp');
@@ -205,6 +213,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (bgInput) bgInput.disabled = isTransparentBg;
                     renderCanvas();
                 };
+            }
+            if (currentMode === 'paths') {
+                bindArrowProperties(true, null);
             }
             return;
         }
@@ -258,20 +269,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderCanvas();
             };
         } else if (selectedElement.type === 'arrow') {
-            propertiesPanel.innerHTML = `
-                <div class="prop-group">
-                    <label>Arrow Properties</label>
-                </div>
-                <div class="prop-group">
-                    <label>Arrow Color</label>
-                    <input type="color" class="prop-color-picker" id="arrowColorProp" value="${selectedElement.color || '#f43f5e'}">
-                </div>
-                <button class="prop-btn" id="deleteElementBtn" style="margin-top: auto;">Delete Arrow</button>
-            `;
-            document.getElementById('arrowColorProp').oninput = (e) => {
-                selectedElement.color = e.target.value;
-                renderCanvas();
-            };
+            propertiesPanel.innerHTML = getArrowPropertiesHTML(false, selectedElement.color || '#f43f5e', selectedElement.opacity !== undefined ? selectedElement.opacity : 1.0, selectedElement.arrowType || 'solid_arrow');
+            
+            bindArrowProperties(false, selectedElement);
+            
+            const delBtn = document.getElementById('deleteElementBtn');
+            if (delBtn) {
+                delBtn.onclick = () => {
+                    elements = elements.filter(e => e !== selectedElement);
+                    selectedElement = null;
+                    renderCanvas();
+                    renderPropertiesPanel();
+                };
+            }
         }
 
         const delBtn = document.getElementById('deleteElementBtn');
@@ -283,6 +293,90 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderPropertiesPanel();
             };
         }
+    }
+
+    function getArrowPropertiesHTML(isDefault, color, opacity, type) {
+        const title = isDefault ? 'Default Arrow Settings' : 'Arrow Properties';
+        const swatches = ['#f43f5e', '#3b82f6', '#10b981', '#f59e0b', '#a855f7', '#ffffff', '#000000'];
+        return `
+            <div class="prop-group">
+                <label>${title}</label>
+            </div>
+            <div class="prop-group">
+                <label>Style</label>
+                <select class="prop-input" id="arrowTypeProp">
+                    <option value="solid_arrow" ${type === 'solid_arrow' ? 'selected' : ''}>Solid Arrow</option>
+                    <option value="dashed_arrow" ${type === 'dashed_arrow' ? 'selected' : ''}>Dashed Arrow</option>
+                    <option value="solid_line" ${type === 'solid_line' ? 'selected' : ''}>Solid Line</option>
+                    <option value="dashed_line" ${type === 'dashed_line' ? 'selected' : ''}>Dashed Line</option>
+                </select>
+            </div>
+            <div class="prop-group">
+                <label>Opacity: <span id="arrowOpacityLabel">${Math.round(opacity * 100)}%</span></label>
+                <input type="range" class="prop-input" id="arrowOpacityProp" min="0.1" max="1" step="0.05" value="${opacity}">
+            </div>
+            <div class="prop-group">
+                <label>Color</label>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+                    ${swatches.map(c => `
+                        <div class="color-swatch" data-color="${c}" style="background-color: ${c}; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; border: 2px solid ${c.toLowerCase() === color.toLowerCase() ? '#fff' : 'transparent'};"></div>
+                    `).join('')}
+                </div>
+                <input type="color" class="prop-color-picker" id="arrowColorProp" value="${color}">
+            </div>
+            ${!isDefault ? `<button class="prop-btn" id="deleteElementBtn" style="margin-top: auto;">Delete Arrow</button>` : ''}
+        `;
+    }
+
+    function bindArrowProperties(isDefault, element) {
+        const typeProp = document.getElementById('arrowTypeProp');
+        const opacityProp = document.getElementById('arrowOpacityProp');
+        const opacityLabel = document.getElementById('arrowOpacityLabel');
+        const colorProp = document.getElementById('arrowColorProp');
+        const swatches = document.querySelectorAll('.color-swatch');
+
+        if (typeProp) {
+            typeProp.onchange = (e) => {
+                const val = e.target.value;
+                if (isDefault) defaultArrowType = val;
+                else if (element) element.arrowType = val;
+                renderCanvas();
+            };
+        }
+        
+        if (opacityProp) {
+            opacityProp.oninput = (e) => {
+                const val = parseFloat(e.target.value);
+                if (opacityLabel) opacityLabel.textContent = `${Math.round(val * 100)}%`;
+                if (isDefault) defaultArrowOpacity = val;
+                else if (element) element.opacity = val;
+                renderCanvas();
+            };
+        }
+
+        const updateColor = (color) => {
+            if (isDefault) defaultArrowColor = color;
+            else if (element) element.color = color;
+            
+            // Update borders
+            swatches.forEach(s => {
+                s.style.border = (s.getAttribute('data-color').toLowerCase() === color.toLowerCase()) ? '2px solid #fff' : '2px solid transparent';
+            });
+            if (colorProp) colorProp.value = color;
+            renderCanvas();
+        };
+
+        if (colorProp) {
+            colorProp.oninput = (e) => {
+                updateColor(e.target.value);
+            };
+        }
+
+        swatches.forEach(swatch => {
+            swatch.addEventListener('click', () => {
+                updateColor(swatch.getAttribute('data-color'));
+            });
+        });
     }
 
     function updateFontString(el) {
@@ -608,7 +702,15 @@ document.addEventListener('DOMContentLoaded', () => {
             // Clicked empty space
             if (currentMode === 'paths') {
                 isDragging = true;
-                tempArrow = { startX: mx, startY: my, endX: mx, endY: my, color: '#f43f5e' };
+                tempArrow = { 
+                    startX: mx, 
+                    startY: my, 
+                    endX: mx, 
+                    endY: my, 
+                    color: defaultArrowColor,
+                    opacity: defaultArrowOpacity,
+                    arrowType: defaultArrowType
+                };
             }
             renderCanvas();
         }
@@ -706,18 +808,23 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (currentMode === 'paths' && tempArrow && !selectedElement) {
-            const dx = tempArrow.endX - tempArrow.startX;
-            const dy = tempArrow.endY - tempArrow.startY;
-            if (Math.sqrt(dx*dx + dy*dy) > 20) {
+        if (currentMode === 'paths' && tempArrow) {
+            if (tempArrow && tempArrow.startX !== tempArrow.endX && tempArrow.startY !== tempArrow.endY) {
                 elements.push({
                     type: 'arrow',
                     startX: tempArrow.startX,
                     startY: tempArrow.startY,
                     endX: tempArrow.endX,
                     endY: tempArrow.endY,
-                    color: tempArrow.color
+                    color: tempArrow.color,
+                    opacity: tempArrow.opacity,
+                    arrowType: tempArrow.arrowType
                 });
+                tempArrow = null;
+                renderCanvas();
+                // Reselect the new arrow so it can be edited immediately
+                selectedElement = elements[elements.length - 1];
+                renderPropertiesPanel();
             }
             tempArrow = null;
             renderCanvas();
@@ -739,7 +846,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    function drawArrow(ctx, fromx, fromy, tox, toy, color) {
+    function drawArrow(ctx, fromx, fromy, tox, toy, color, opacity, type) {
+        ctx.save();
+        ctx.globalAlpha = opacity !== undefined ? opacity : 1.0;
+        
         const headlen = 30;
         const dx = tox - fromx;
         const dy = toy - fromy;
@@ -751,17 +861,33 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         
+        type = type || 'solid_arrow';
+        const isDashed = type.includes('dashed');
+        const hasHead = type.includes('arrow');
+
+        if (isDashed) {
+            ctx.setLineDash([20, 15]);
+        } else {
+            ctx.setLineDash([]);
+        }
+        
         ctx.beginPath();
         ctx.moveTo(fromx, fromy);
         ctx.lineTo(tox, toy);
         ctx.stroke();
         
-        ctx.beginPath();
-        ctx.moveTo(tox, toy);
-        ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
-        ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
-        ctx.lineTo(tox, toy);
-        ctx.fill();
+        ctx.setLineDash([]); // Always draw solid head
+        
+        if (hasHead) {
+            ctx.beginPath();
+            ctx.moveTo(tox, toy);
+            ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.lineTo(tox, toy);
+            ctx.fill();
+        }
+        
+        ctx.restore();
     }
 
     function hexToRgba(hex, alpha) {
@@ -810,12 +936,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.shadowOffsetX = 0;
                 ctx.shadowOffsetY = 0;
             } else if (el.type === 'arrow') {
-                drawArrow(ctx, el.startX, el.startY, el.endX, el.endY, el.color || '#f43f5e');
+                drawArrow(ctx, el.startX, el.startY, el.endX, el.endY, el.color, el.opacity, el.arrowType);
             }
         }
         
-        if (currentMode === 'paths' && tempArrow) {
-            drawArrow(ctx, tempArrow.startX, tempArrow.startY, tempArrow.endX, tempArrow.endY, tempArrow.color);
+        if (tempArrow) {
+            drawArrow(ctx, tempArrow.startX, tempArrow.startY, tempArrow.endX, tempArrow.endY, tempArrow.color, tempArrow.opacity, tempArrow.arrowType);
         }
         
         // Draw selection highlight and handles
