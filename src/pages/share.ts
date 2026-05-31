@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let CANVAS_WIDTH = 1920;
     let CANVAS_HEIGHT = 1080;
     let canvasBgColor = '#0a0a0f';
+    let isTransparentBg = false;
 
     function getThemeBgColor() {
         return getComputedStyle(document.body).getPropertyValue('--bg-primary').trim() || '#0a0a0f';
@@ -51,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         panX = 0;
         panY = 0;
         zoom = 1;
+        isTransparentBg = false;
         canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
         renderCanvas();
         renderPropertiesPanel();
@@ -65,8 +67,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (currentMode === 'collage' || currentMode === 'paths') {
                 canvasBgColor = getThemeBgColor();
+                isTransparentBg = false;
             } else if (currentMode === 'showcase') {
                 canvasBgColor = '#1e1b4b'; // deep purple
+                isTransparentBg = false;
             }
             
             resetCanvas();
@@ -176,15 +180,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 ${(currentMode === 'collage' || currentMode === 'showcase' || currentMode === 'paths') ? `
                 <div class="prop-group">
-                    <label>Background Color</label>
-                    <input type="color" class="prop-color-picker" id="canvasBgProp" value="${canvasBgColor}">
+                    <label>Background</label>
+                    <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
+                        <input type="color" class="prop-color-picker" id="canvasBgProp" value="${canvasBgColor}" style="flex: 1;" ${isTransparentBg ? 'disabled' : ''}>
+                        <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: #fff; cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="transparentBgProp" ${isTransparentBg ? 'checked' : ''}>
+                            Transparent
+                        </label>
+                    </div>
                 </div>
                 ` : ''}
             `;
             const bgInput = document.getElementById('canvasBgProp');
+            const transInput = document.getElementById('transparentBgProp');
             if (bgInput) {
                 bgInput.onchange = (e) => {
                     canvasBgColor = e.target.value;
+                    renderCanvas();
+                };
+            }
+            if (transInput) {
+                transInput.onchange = (e) => {
+                    isTransparentBg = e.target.checked;
+                    if (bgInput) bgInput.disabled = isTransparentBg;
                     renderCanvas();
                 };
             }
@@ -759,8 +777,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const rect = canvas.getBoundingClientRect();
         const scaleX = rect.width ? canvas.width / rect.width : 1;
 
-        ctx.fillStyle = canvasBgColor;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        if (isTransparentBg) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        } else {
+            ctx.fillStyle = canvasBgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
         
         for (const el of elements) {
             if (el.type === 'glow') {
