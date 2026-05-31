@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { drawStaticMapPreview } from '../utils/canvas-drawer.js';
 import { supabase } from '../core/supabase-client.js';
+import { showSharpnessDownload } from '../core/sharpness-modal.js';
 document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const mapId = urlParams.get('id');
@@ -586,10 +587,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (downloadBtn) {
             downloadBtn.onclick = (e) => {
                 e.preventDefault();
-                const link = document.createElement('a');
-                link.download = `${data.name.replace(/\s+/g, '_') || 'map'}.png`;
-                link.href = pngDataUrl;
-                link.click();
+                showSharpnessDownload(pngDataUrl, data.name.replace(/\s+/g, '_') || 'map');
             };
         }
         // ==========================================
