@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Base resolution
     let CANVAS_WIDTH = 1920;
+    let CANVAS_HEIGHT = 1080;
     let canvasBgColor = '#0a0a0f';
     let isTransparentBg = false;
 
