@@ -5,7 +5,7 @@
     <script>(function () { const t = localStorage.getItem('cp_app_theme'); if (t && t !== 'space') document.documentElement.setAttribute('data-theme', t); })();</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>Compass - Map Maker</title>
+    <title>Compass - Map Maker (Layout Test)</title>
     <meta name="description" content="Build and edit Brawl Stars maps with the Compass editor.">
     <link rel="stylesheet" href="./css/style.css">
     <link rel="stylesheet" href="./css/editor.css">
@@ -38,12 +38,21 @@
         }
 
         /* ══════════ TOP BAR ══════════ */
-        .top-bar {
+        .e1-topbar {
             flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            height: 52px;
+            background: color-mix(in srgb, var(--bg-secondary, #0f0f17) 92%, transparent);
+            border: none;
+            backdrop-filter: blur(20px);
+            z-index: 300;
             transition: height 0.3s ease, padding 0.3s ease, opacity 0.3s;
             overflow: hidden;
         }
-        body.top-bar-hidden .top-bar {
+        body.top-bar-hidden .e1-topbar {
             height: 0 !important;
             padding-top: 0 !important;
             padding-bottom: 0 !important;
@@ -51,6 +60,20 @@
             pointer-events: none;
             border: none !important;
         }
+        .e1-topbar .logo {
+            font-size: 1.1rem; font-weight: 700; letter-spacing: -0.04em;
+            color: rgba(255,255,255,0.7); display: flex; align-items: center;
+            gap: 0.5rem; text-decoration: none; transition: color 0.3s; flex-shrink: 0;
+        }
+        .e1-topbar .logo:hover { color: #fff; }
+        .e1-topbar .logo-icon { width: 22px; height: 22px; filter: brightness(0) invert(1); opacity: 0.6; }
+        .e1-topbar-nav { display: flex; align-items: center; gap: 0.2rem; }
+        .e1-topbar-nav a {
+            text-decoration: none; color: rgba(255,255,255,0.35); font-size: 0.78rem;
+            font-weight: 500; padding: 0.4rem 0.8rem; border-radius: 8px;
+            transition: color 0.25s, background 0.25s;
+        }
+        .e1-topbar-nav a:hover { color: rgba(255,255,255,0.9); background: rgba(255,255,255,0.04); }
 
         .collapse-topbar-btn, .restore-topbar-btn {
             position: fixed; top: 0; left: 50%;
@@ -87,8 +110,9 @@
             background: transparent;
             border: none;
             position: relative;
-            z-index: 60;
-            overflow: visible; /* MUST be fully visible so dragged panels aren't clipped */
+            /* NO z-index here — setting z-index on a flex container creates a stacking context
+               that would trap child panels and prevent e1-tiles-float from overlapping them */
+            overflow: visible;
         }
         
         .panel-placeholder {
@@ -184,6 +208,10 @@
             margin: 0 !important;
         }
         .e1-left-col .icon-btn img, .e1-left-col .icon-btn svg { width: 16px !important; height: 16px !important; }
+        .e1-left-col .icon-btn:has(input:checked) {
+            background: rgba(167, 139, 250, 0.2) !important;
+            border-color: rgba(167, 139, 250, 0.5) !important;
+        }
         .e1-left-col pc { display: block !important; }
         .e1-left-col pc h5 { font-size: 0.57rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.28); margin: 0.2rem 0 0.15rem; }
         .e1-left-col .mirror-btn { font-size: 0.65rem; padding: 0.22rem 0.35rem; }
@@ -202,7 +230,7 @@
         .e1-map-area {
             flex: 1 1 0;
             position: relative;
-            /* z-index removed so it doesn't create a stacking context, allowing .e1-tiles-float (z-index 70) to go above .e1-left-col (z-index 60) */
+            z-index: 1; /* below left col */
             overflow: hidden;
             min-width: 0;
         }
@@ -217,14 +245,21 @@
         }
 
         /* ── TILES FLOAT (Resizable) ── */
+        /* position:fixed takes it OUT of all stacking contexts so it's always on top */
         .e1-tiles-float {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 9000;
+            pointer-events: none;
+        }
+        .e1-tiles-float .e1-tiles-panel {
+            pointer-events: auto;
             position: absolute;
             top: 0.75rem;
-            left: 0.75rem;
-            z-index: 70;
-            width: 320px;
-            height: calc(100% - 1.5rem);
-            pointer-events: none;
+            left: 270px;
         }
         
         .e1-tiles-panel {
@@ -315,7 +350,7 @@
         #collabBanner { flex: 0 0 auto; }
         .tooltip-floating { bottom: 3rem; }
         .reset-panels-btn { display: none; }
-        .reset-panels-btn.visible { display: block; }
+        .reset-panels-btn.visible { display: inline-flex; align-items: center; justify-content: center; width: auto; flex: 0 0 auto !important; }
 
         /* ══════════ RESPONSIVE DESIGN (TABLET & MOBILE) ══════════ */
         
@@ -383,74 +418,377 @@
                 top: auto !important; left: auto !important;
                 width: 100% !important;
                 height: auto !important;
+                min-height: 180px !important;
+                max-height: 250px !important;
                 padding: 0.75rem 0.75rem 0 0.75rem;
                 z-index: 10;
             }
-            .e1-main .e1-tiles-panel {
-                resize: vertical !important;
-                overflow: hidden !important;
+            .e1-tiles-panel {
+                resize: none !important;
                 width: 100% !important;
                 max-width: 100% !important;
-                height: 250px !important;
-                min-height: 150px !important;
-                display: flex !important;
-                flex-direction: column !important;
-            }
-            .e1-main .e1-tiles-panel .tiles-grid {
-                flex: 1 1 0 !important;
-                height: auto !important;
-                min-height: 0 !important;
+                height: 100% !important;
             }
             
             .reset-panels-btn { display: none !important; }
         }
 
+        /* ══════════ MOBILE ≤768px — Vertical scroll layout ══════════
+           Concept: Settings → Tiles (horizontal + category tabs) → Map → Bottom actions
+           Inspired by competitor layout, keeping our style.
+        ══════════════════════════════════════════════════════════ */
+        /* ── Desktop: hide mobile-only quick tools ── */
+        .mob-quick-tools { display: none; }
+
+        @media (max-width: 900px) {
+            /* Override: collapse topbar buttons hidden on mobile */
+            .collapse-topbar-btn, .restore-topbar-btn { display: none !important; }
+        }
+
         @media (max-width: 768px) {
-            .top-bar { padding: 0.8rem 1rem; }
-            .top-bar .logo { font-size: 1rem; }
-            .top-bar-right a { padding: 0.3rem 0.5rem; font-size: 0.7rem; }
-            
-            .e1-map-area .map-wrapper {
-                min-height: 50vh;
-                flex: 1 1 auto;
-            }
-            
-            .e1-tiles-float {
-                height: auto !important;
-            }
-            
-            .e1-tiles-panel #tileSelector {
-                grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)) !important;
-            }
-            
-            .e1-tiles-panel #tileSelector.unsorted-grid {
-                grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)) !important;
-            }
-            
-            /* Status Bar Mobile */
-            .e1-statusbar {
+
+            /* Shell becomes a vertical scrolling column */
+            .e1-shell {
+                height: 100dvh;
+                overflow: hidden;
+                display: flex;
                 flex-direction: column;
-                padding: 0.8rem;
-                gap: 0.8rem;
             }
-            .e1-statusbar-left, .e1-statusbar-center, .map-link {
-                justify-content: center;
+
+            /* Top bar — use the standard top-bar class now (same as index.html) */
+            .top-bar {
+                height: 54px !important;
+                flex-shrink: 0;
+                padding: 0 0.75rem !important;
+            }
+
+            /* Main: vertical scrollable */
+            .e1-main {
+                flex: 1 1 0;
+                flex-direction: column !important;
+                overflow-y: auto;
+                overflow-x: hidden;
+                min-height: 0;
+                scrollbar-width: none;
+            }
+            .e1-main::-webkit-scrollbar { display: none; }
+
+            /* Flatten stacking */
+            .e1-left-col, .e1-map-area { display: contents; }
+
+            /* ── 1. Settings section — top of scroll ── */
+            #ph-settings {
+                order: 1;
+                flex: 0 0 auto;
+                height: auto !important;
+                padding: 0.3rem 0.3rem 0;
+                display: block;
                 width: 100%;
+            }
+            #ph-settings .draggable-panel {
+                position: relative !important;
+                width: 100% !important;
+                height: auto !important;
+                transform: none !important;
+                margin: 0 !important;
+                border-radius: 10px !important;
+            }
+            #ph-settings .mobile-panel-toggle { display: none !important; }
+            #ph-settings .controls-content {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 0.2rem !important;
+                padding: 0.2rem !important;
+                max-height: none !important;
+                opacity: 1 !important;
+                overflow: visible !important;
+            }
+            /* Map name spans full width */
+            #ph-settings .controls-content > div:first-child {
+                grid-column: 1 / -1;
+            }
+            #ph-settings .controls-content > div {
+                display: flex; flex-direction: column; gap: 0.1rem;
+            }
+            #ph-settings .controls-bar p,
+            #ph-settings .controls-bar label {
+                font-size: 0.5rem !important;
+                margin-left: 0.2rem !important;
+            }
+            #ph-settings .controls-bar input[type="text"],
+            #ph-settings .controls-bar select {
+                height: 28px !important;
+                font-size: 0.75rem !important;
+                padding: 0 0.4rem !important;
+            }
+
+            /* ── 2. Tiles — 2-row horizontal scroll ── */
+            .e1-tiles-float {
+                order: 2;
+                position: relative !important;
+                top: auto !important; left: auto !important;
+                width: 100% !important;
+                height: auto !important;
+                min-height: unset !important;
+                max-height: unset !important;
+                padding: 0.3rem 0.3rem 0 !important;
+                z-index: 10;
+                flex: 0 0 auto;
+            }
+            .e1-tiles-panel {
+                resize: none !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                height: auto !important;
+                min-height: unset !important;
+                border-radius: 10px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                overflow: hidden !important;
+            }
+            /* Compact drag handle */
+            .e1-tiles-panel .panel-drag-handle {
+                padding: 0.3rem 0.6rem !important;
+                cursor: default !important;
+                min-height: unset !important;
+            }
+            .e1-tiles-panel .panel-drag-handle::after { display: none !important; }
+            /* Tiles grid — vertical scrollable grid */
+            .e1-tiles-panel .tiles-grid {
                 flex: 0 0 auto !important;
+                overflow-x: hidden !important;
+                overflow-y: auto !important;
+                scrollbar-width: none !important;
+                padding: 0 0.2rem 0.2rem !important;
+                -webkit-overflow-scrolling: touch;
+                height: 150px !important;
+                max-height: 200px !important;
             }
+            .e1-tiles-panel .tiles-grid::-webkit-scrollbar { display: none !important; }
+            .e1-tiles-panel #tileSelector {
+                display: grid !important;
+                grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)) !important;
+                gap: 4px !important;
+                padding: 4px !important;
+                width: 100% !important;
+                height: auto !important;
+                align-content: flex-start !important;
+            }
+            .e1-tiles-panel .tile-category-grid {
+                grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)) !important;
+                gap: 4px !important;
+            }
+            .e1-tiles-panel #tileSelector .tile-btn {
+                width: 46px !important;
+                min-width: 46px !important;
+                height: 46px !important;
+                flex-shrink: 0 !important;
+            }
+            /* Opacity slider — hide on mobile */
+            .e1-tiles-panel .opacity-control { display: none !important; }
+
+            /* ── 3. Map — takes generous fixed height ── */
+            .e1-map-area .map-wrapper {
+                order: 3;
+                position: relative !important;
+                width: 100% !important;
+                height: auto !important;
+                min-height: 250px !important;
+                max-height: none !important;
+                flex: 1 1 0 !important;
+                padding: 0.3rem !important;
+                box-sizing: border-box;
+            }
+            .e1-map-area .map-editor {
+                height: 100% !important;
+                min-height: 0 !important;
+                max-height: none !important;
+                border-radius: 8px !important;
+            }
+
+            /* ── 4. Tools panel — hide (moved to bottom actions) ── */
+            #ph-tools {
+                order: 4;
+                height: auto !important;
+                padding: 0;
+                display: none !important;
+            }
+
+            /* ── 5. Selections — compact horizontal tabs ── */
+            #ph-selections {
+                order: 5;
+                flex: 0 0 auto;
+                height: auto !important;
+                padding: 0 0.3rem 0;
+                display: block;
+                width: 100%;
+            }
+            #ph-selections .draggable-panel {
+                position: relative !important;
+                width: 100% !important;
+                height: auto !important;
+                transform: none !important;
+                margin: 0 !important;
+                border-radius: 8px !important;
+                padding: 0.3rem 0.4rem !important;
+            }
+            #ph-selections .panel-drag-handle { display: none !important; }
+            #ph-selections .selections-container {
+                display: flex !important;
+                flex-direction: row !important;
+                gap: 0.25rem !important;
+                width: 100% !important;
+            }
+            #ph-selections .select-btn {
+                flex: 1 1 0 !important;
+                width: auto !important;
+                min-height: 36px !important;
+                height: 36px !important;
+                padding: 0 0.2rem !important;
+                justify-content: center !important;
+                gap: 0.2rem !important;
+                font-size: 0.58rem !important;
+                flex-direction: column !important;
+            }
+            #ph-selections .select-btn img {
+                width: 16px !important;
+                height: 16px !important;
+            }
+            #ph-selections .select-btn mob { display: block !important; font-size: 0.53rem !important; }
+
+            /* ── 6. Status bar — bottom action buttons ── */
+            .e1-statusbar {
+                order: 6;
+                flex: 0 0 auto;
+                flex-direction: column !important;
+                padding: 0.3rem 0.3rem env(safe-area-inset-bottom, 0.3rem) !important;
+                gap: 0.3rem !important;
+                min-height: unset !important;
+                background: color-mix(in srgb, var(--bg-secondary, #0f0f17) 92%, transparent);
+                border-top: 1px solid rgba(255,255,255,0.05);
+            }
+            .e1-statusbar-left { display: none !important; }
+            .e1-vis-toggle { display: none !important; }
+            /* Action buttons grid: Save | PNG | Clear(full) */
+            .e1-statusbar-center {
+                order: 1;
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 0.3rem !important;
+                width: 100% !important;
+            }
+            .e1-statusbar .reset-panels-btn { display: none !important; }
             .e1-statusbar .text-btn {
-                flex: 1 1 auto;
-                text-align: center;
-                padding: 0.5rem;
+                flex: 1 1 auto !important;
+                text-align: center !important;
+                padding: 0.45rem 0.3rem !important;
+                font-size: 0.78rem !important;
+                min-height: 38px !important;
+                border-radius: 8px !important;
             }
-            .e1-statusbar .link-container { 
-                margin: 0; width: 100%; justify-content: center; 
-                display: flex; flex-direction: row; align-items: center; flex-wrap: nowrap; gap: 0.5rem; 
+            /* Clear spans full width */
+            #clearBtn {
+                grid-column: 1 / -1 !important;
+            }
+            /* Map link — single inline row */
+            .map-link {
+                order: 3;
+                flex: 0 0 auto !important;
+                display: flex !important;
+                justify-content: flex-start !important;
+                width: 100% !important;
+            }
+            .e1-statusbar .link-container {
+                margin: 0 !important;
+                display: flex !important;
+                align-items: center !important;
+                gap: 0.35rem !important;
+                flex-wrap: nowrap !important;
+                width: 100%;
+            }
+            .e1-statusbar .link-container > span {
+                color: rgba(255,255,255,0.35);
+                font-size: 0.68rem;
+                flex-shrink: 0;
             }
             .e1-statusbar .map-link-text {
-                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;
+                flex: 1 1 0;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                font-size: 0.72rem !important;
+                min-width: 0;
             }
+            /* hide keyboard shortcut tooltip on mobile */
+            .e1-statusbar .tooltip-floating { display: none !important; }
+
+            /* Zoom — hide, too small screen */
             .e1-zoom { display: none !important; }
+
+            /* Panels drag disabled on mobile */
+            .e1-main .panel-drag-handle { cursor: default !important; }
+            .e1-main .panel-drag-handle::after { display: none !important; }
+
+            /* Reset panels btn — hide */
+            .reset-panels-btn { display: none !important; }
+
+            /* ── Mobile quick tools strip ── */
+            .mob-quick-tools {
+                display: grid !important;
+                grid-template-columns: repeat(4, 1fr) !important;
+                gap: 0.25rem !important;
+                width: 100% !important;
+                order: 0;
+            }
+            .mob-quick-tools::-webkit-scrollbar { display: none !important; }
+
+            .mob-qt-btn {
+                flex: 1 1 0;
+                min-width: 48px;
+                height: 36px;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                gap: 2px !important;
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 7px;
+                background: rgba(255,255,255,0.04);
+                color: rgba(255,255,255,0.6);
+                font-size: 0.48rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+                cursor: pointer;
+                transition: background 0.15s;
+                -webkit-tap-highlight-color: transparent;
+                padding: 0;
+                text-align: center;
+                font-family: inherit;
+            }
+            .mob-qt-btn img, .mob-qt-btn svg {
+                width: 15px !important;
+                height: 15px !important;
+                object-fit: contain;
+                filter: brightness(0) invert(1) brightness(150%);
+            }
+            .mob-qt-btn svg { stroke: rgba(255,255,255,0.8); fill: none; }
+            .mob-qt-btn:active { background: rgba(255,255,255,0.12); }
+
+            /* Highlight active tool */
+            body:has(#eraseBtn:checked) label[for="eraseBtn"],
+            body:has(#replaceBtn:checked) label[for="replaceBtn"],
+            body:has(#guidesBtn:checked) label[for="guidesBtn"],
+            body:has(#handToolBtn:checked) label[for="handToolBtn"],
+            body:has(#errorsBtn:checked) label[for="errorsBtn"] {
+                background: rgba(167, 139, 250, 0.25) !important;
+                border-color: rgba(167, 139, 250, 0.5) !important;
+                color: #fff !important;
+            }
+
+            /* Statusbar flex order on mobile */
+            .e1-statusbar { flex-wrap: nowrap; }
+            .mob-quick-tools { order: 0; }
+            .e1-statusbar-center { order: 1; }
+            .map-link { order: 2; }
         }
     </style>
 </head>
@@ -488,7 +826,7 @@
 
     <div class="e1-shell">
 
-        <!-- Top Bar -->
+        <!-- TOP BAR — same structure as index.html (auth-global.js injects mobile toggle) -->
         <div class="top-bar">
             <a href="./index.html" class="logo">
                 <img src="./Resources/Additional/Icons/compass.png" alt="" class="logo-icon">
@@ -655,13 +993,12 @@
                         <div class="toolbar-divider"></div>
                         <pc><h5>Tools</h5></pc>
                         <div class="toolbar-section">
-                            <label class="icon-btn" title="Hand Tool (Pan)"><input type="checkbox" id="handToolBtn"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="display:block;margin:0 auto;"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v5m-4-1V5a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8M6 14v-2a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8c0 2.76 2.24 5 5 5h5.5c2.76 0 5-2.24 5-5v-3a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path></svg></label>
+                            <label class="icon-btn" title="Hand Tool (Pan)"><input type="checkbox" id="handToolBtn"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="display:block;margin:0 auto;stroke:rgba(255,255,255,0.85);"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v5m-4-1V5a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8M6 14v-2a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8c0 2.76 2.24 5 5 5h5.5c2.76 0 5-2.24 5-5v-3a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path></svg></label>
                             <label class="icon-btn"><input type="checkbox" id="eraseBtn"><img src="./Resources/Additional/Icons/Erase.png" alt="Erase"></label>
                             <button id="rotateBtn" class="icon-btn"><img src="./Resources/Additional/Icons/Rotate.png" alt="Rotate"></button>
                             <button id="undoBtn" class="icon-btn"><img src="./Resources/Additional/Icons/Undo.png" alt="Undo"></button>
                             <button id="redoBtn" class="icon-btn"><img src="./Resources/Additional/Icons/Redo.png" alt="Redo"></button>
                             <label class="icon-btn"><input type="checkbox" id="replaceBtn"><img src="./Resources/Additional/Icons/Replace.png" alt="Replace"></label>
-                            <label class="icon-btn" title="Overwrite Tiles"><input type="checkbox" id="overwriteBtn"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="display:block;margin:0 auto;"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg></label>
                             <label class="icon-btn"><input type="checkbox" id="errorsBtn"><img src="./Resources/Additional/Icons/Issues.png" alt="Errors"></label>
                             <label class="icon-btn"><input type="checkbox" id="guidesBtn"><img src="./Resources/Additional/Icons/Grid.png" alt="Guides"></label>
                         </div>
@@ -681,28 +1018,29 @@
                         </div>
                     </section>
                 </div>
+
+            </div>
+
+            <!-- TILES FLOAT (Resizable) - Moved outside map area to allow overlaying left col -->
+            <div class="e1-tiles-float">
+                <div class="e1-tiles-panel draggable-panel" data-panel="tiles">
+                    <div class="panel-drag-handle">
+                        <span class="panel-title">Tiles</span>
+                        <label class="sort-toggle" title="Toggle Categories" style="display: flex; align-items: center; gap: 4px; font-size: 0.7rem; color: rgba(255,255,255,0.6); cursor: pointer; border: 1px solid rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; background: rgba(0,0,0,0.2);">
+                            <input type="checkbox" id="sortTilesToggle" style="margin:0; cursor:pointer;" checked> Sort
+                        </label>
+                    </div>
+                    <div class="tiles-grid">
+                        <div id="tileSelector"></div>
+                    </div>
+                    <div class="opacity-control">
+                        <label>Panel Opacity</label>
+                        <input type="range" id="panelOpacity" class="opacity-slider" min="0.2" max="1" step="0.05" value="0.8">
+                    </div>
+                </div>
             </div>
 
             <div class="e1-map-area">
-
-                <!-- TILES FLOAT (Resizable) -->
-                <div class="e1-tiles-float">
-                    <div class="e1-tiles-panel draggable-panel" data-panel="tiles">
-                        <div class="panel-drag-handle">
-                            <span class="panel-title">Tiles</span>
-                            <label class="sort-toggle" title="Toggle Categories" style="display: flex; align-items: center; gap: 4px; font-size: 0.7rem; color: rgba(255,255,255,0.6); cursor: pointer; border: 1px solid rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; background: rgba(0,0,0,0.2);">
-                                <input type="checkbox" id="sortTilesToggle" style="margin:0; cursor:pointer;" checked> Sort
-                            </label>
-                        </div>
-                        <div class="tiles-grid">
-                            <div id="tileSelector"></div>
-                        </div>
-                        <div class="opacity-control">
-                            <label>Panel Opacity</label>
-                            <input type="range" id="panelOpacity" class="opacity-slider" min="0.2" max="1" step="0.05" value="0.8">
-                        </div>
-                    </div>
-                </div>
 
                 <section class="map-wrapper">
                     <div class="zoom-controls-floating draggable-panel" data-panel="zoom" style="display:none!important;">
@@ -725,6 +1063,33 @@
         </div>
 
         <div class="e1-statusbar">
+            <!-- Mobile-only quick tools row (Erase / Undo / Redo / Replace / Mirroring) -->
+            <div class="mob-quick-tools" style="display:none;">
+                <label class="mob-qt-btn" for="eraseBtn" title="Erase">
+                    <img src="./Resources/Additional/Icons/Erase.png" alt="Erase"> Erase
+                </label>
+                <button id="mobUndoBtn" class="mob-qt-btn" title="Undo">
+                    <img src="./Resources/Additional/Icons/Undo.png" alt="Undo"> Undo
+                </button>
+                <button id="mobRedoBtn" class="mob-qt-btn" title="Redo">
+                    <img src="./Resources/Additional/Icons/Redo.png" alt="Redo"> Redo
+                </button>
+                <label class="mob-qt-btn" for="replaceBtn" title="Replace">
+                    <img src="./Resources/Additional/Icons/Replace.png" alt="Replace"> Replace
+                </label>
+                <button id="mobRotateBtn" class="mob-qt-btn" title="Rotate">
+                    <img src="./Resources/Additional/Icons/Rotate.png" alt="Rotate"> Rotate
+                </button>
+                <label class="mob-qt-btn" for="errorsBtn" title="Errors">
+                    <img src="./Resources/Additional/Icons/Issues.png" alt="Errors"> Errors
+                </label>
+                <label class="mob-qt-btn mob-qt-toggle" for="guidesBtn" title="Guides">
+                    <img src="./Resources/Additional/Icons/Grid.png" alt="Guides"> Guides
+                </label>
+                <label class="mob-qt-btn mob-qt-toggle" for="handToolBtn" title="Pan">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v5m-4-1V5a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8M6 14v-2a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8c0 2.76 2.24 5 5 5h5.5c2.76 0 5-2.24 5-5v-3a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path></svg> Pan
+                </label>
+            </div>
             <div class="e1-statusbar-left" style="flex: 1;">
                 <label class="e1-vis-toggle" title="Mark as public"><input type="checkbox" id="isPublicToggle" style="cursor:pointer;"> 🌍 Public</label>
                 <label class="e1-vis-toggle" title="Include custom theme when downloading PNG"><input type="checkbox" id="showThemeInDownloadToggle" style="cursor:pointer;"> Theme in PNG</label>
@@ -762,14 +1127,11 @@
                 </div>
             </div>
         </div>
-    <script>
-        localStorage.removeItem('cp_topbar_hidden');
-    </script>
+
     <script type="module" src="./js/editor/editor-ui.js"></script>
     <script type="module" src="./js/editor/editor-vortex.js"></script>
     <script type="module" src="./js/core/auth-global.js?v=1.0.6"></script>
     <script type="module" src="./js/editor/MapEditor.js?v=1.0.6"></script>
-
 
 </body>
 </html>

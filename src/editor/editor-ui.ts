@@ -361,4 +361,15 @@
             ro.observe(tilesPanel);
         }
     }
+
+    // =============================================================
+    // 7. MOBILE INITIALIZATION
+    // =============================================================
+    localStorage.removeItem('cp_topbar_hidden');
+    if (window.innerWidth <= 768) {
+        const stToggle = document.getElementById('sortTilesToggle') as HTMLInputElement;
+        if (stToggle) {
+            stToggle.checked = false;
+        }
+    }
 })();

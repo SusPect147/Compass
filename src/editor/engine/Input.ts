@@ -134,6 +134,8 @@ export const InputMixin = {
         // Undo/Redo buttons — BUG-02: null-checks
         document.getElementById('undoBtn')?.addEventListener('click', () => this.undo());
         document.getElementById('redoBtn')?.addEventListener('click', () => this.redo());
+        document.getElementById('mobUndoBtn')?.addEventListener('click', () => this.undo());
+        document.getElementById('mobRedoBtn')?.addEventListener('click', () => this.redo());
 
         // Replace and Overwrite buttons
         document.getElementById('replaceBtn')?.addEventListener('click', () => this.toggleReplaceMode());
@@ -141,6 +143,7 @@ export const InputMixin = {
 
         // Rotate button
         document.getElementById('rotateBtn')?.addEventListener('click', () => this.rotateSelectedTiles());
+        document.getElementById('mobRotateBtn')?.addEventListener('click', () => this.rotateSelectedTiles());
 
         // Add keyboard shortcuts
         document.addEventListener('keydown', (e) => {

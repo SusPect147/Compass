@@ -546,6 +546,39 @@ pc {
     border-radius: 8px;
 }
 
+.tile-category-header {
+    grid-column: 1 / -1;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: rgba(255,255,255,0.5);
+    padding: 8px 4px 4px;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.tile-category-header svg {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.2s;
+}
+
+.tile-category-header svg.collapsed {
+    transform: rotate(-90deg);
+}
+
+.tile-category-grid {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(52px, max-content));
+    gap: 8px;
+    width: 100%;
+}
+
 
 
 .tile-btn {
