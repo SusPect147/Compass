@@ -10,25 +10,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportBtn = document.getElementById('exportArtBtn');
     const titleText = document.getElementById('studioTitle');
     const toolbar = document.getElementById('studioToolbar');
-    const canvas = document.getElementById('artCanvas');
+    
+    const canvas = document.getElementById('artCanvas') as HTMLCanvasElement;
     const ctx = canvas.getContext('2d');
     const propertiesPanel = document.getElementById('studioProperties');
-
+    
     let currentMode = '';
+    
     // Canvas State
-    let elements = []; // { type: 'image'|'text'|'arrow', x, y, ... }
+    let elements = []; // { type: 'image'|'text'|'arrow'|'glow', x, y, ... }
     let selectedElement = null;
     let isDragging = false;
     let dragStartX = 0, dragStartY = 0;
     
-    // Canvas settings
+    // Resizing State
+    let isResizing = false;
+    let resizeHandle = null; // 'nw', 'ne', 'sw', 'se'
+
+    // Base resolution
+    let CANVAS_WIDTH = 1920;
+    let CANVAS_HEIGHT = 1080;
     let canvasBgColor = '#0a0a0f';
 
-    // Base resolution for high-quality export
-    const CANVAS_WIDTH = 1920;
-    const CANVAS_HEIGHT = 1080;
-
     function resetCanvas() {
+        CANVAS_WIDTH = 1920;
+        CANVAS_HEIGHT = 1080;
         canvas.width = CANVAS_WIDTH;
         canvas.height = CANVAS_HEIGHT;
         elements = [];
@@ -36,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCanvas();
         renderPropertiesPanel();
     }
-
+    
     // Mode Switching
     document.querySelectorAll('.mode-card').forEach(card => {
         card.addEventListener('click', () => {
@@ -56,12 +62,12 @@ document.addEventListener('DOMContentLoaded', () => {
             setupToolbar();
         });
     });
-
+    
     backBtn.addEventListener('click', () => {
         studioEditor.style.display = 'none';
         modeSelector.style.display = 'grid';
     });
-
+    
     function setupToolbar() {
         // Clear old toolbar controls (keep select map button)
         const selectBtn = toolbar.querySelector('#selectMapBtn');
@@ -70,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
             toolbar.appendChild(selectBtn);
             selectBtn.onclick = openMapPicker;
         }
-
+        
         if (currentMode === 'collage') {
             titleText.textContent = 'Collage Maker';
             const addTextBtn = document.createElement('button');
@@ -92,17 +98,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderPropertiesPanel();
             };
             toolbar.appendChild(addTextBtn);
-        }
-        else if (currentMode === 'paths') {
+        } else if (currentMode === 'paths') {
             titleText.textContent = 'Strategy Paths';
             const drawModeBtn = document.createElement('button');
             drawModeBtn.className = 'toolbar-btn active';
             drawModeBtn.innerHTML = '<span>✏️</span> Draw Arrows';
             toolbar.appendChild(drawModeBtn);
-
+            
             const clearBtn = document.createElement('button');
             clearBtn.className = 'toolbar-btn';
-            clearBtn.innerHTML = '<span>🗑️</span> Clear All';
+            clearBtn.innerHTML = '<span>🗑️</span> Clear Arrows';
             clearBtn.onclick = () => {
                 elements = elements.filter(e => e.type === 'image'); // keep map
                 selectedElement = null;
@@ -110,11 +115,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderPropertiesPanel();
             };
             toolbar.appendChild(clearBtn);
-        }
-        else if (currentMode === 'showcase') {
+        } else if (currentMode === 'showcase') {
             titleText.textContent = 'Map Showcase';
             // Setup default showcase template
             elements = [
+                {
+                    type: 'glow',
+                    x: CANVAS_WIDTH / 2,
+                    y: CANVAS_HEIGHT / 2,
+                    radius: 800,
+                    color: '#8b5cf6'
+                },
                 {
                     type: 'text',
                     text: 'Map Title...',
@@ -140,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderPropertiesPanel();
         }
     }
-
+    
     function renderPropertiesPanel() {
         if (!propertiesPanel) return;
 
@@ -149,7 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="prop-group">
                     <label>Canvas Properties</label>
                     <div style="color: rgba(255,255,255,0.4); font-size: 0.85rem; margin-bottom: 1rem;">
-                        Click on any element in the workspace to edit it.
+                        Click on any element in the workspace to edit it. You can drag the corner squares to resize.
                     </div>
                 </div>
                 ${(currentMode === 'collage' || currentMode === 'showcase') ? `
@@ -176,23 +187,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     <input type="text" class="prop-input" id="textContentProp" value="${selectedElement.text}">
                 </div>
                 <div class="prop-group">
-                    <label>Font Size</label>
-                    <input type="number" class="prop-input" id="textSizeProp" value="${selectedElement.fontSize}" min="10" max="400">
-                </div>
-                <div class="prop-group">
                     <label>Text Color</label>
                     <input type="color" class="prop-color-picker" id="textColorProp" value="${selectedElement.color}">
                 </div>
                 <button class="prop-btn" id="deleteElementBtn" style="margin-top: auto;">Delete Text</button>
             `;
-            
             document.getElementById('textContentProp').oninput = (e) => {
                 selectedElement.text = e.target.value;
-                renderCanvas();
-            };
-            document.getElementById('textSizeProp').oninput = (e) => {
-                selectedElement.fontSize = parseInt(e.target.value) || 20;
-                updateFontString(selectedElement);
                 renderCanvas();
             };
             document.getElementById('textColorProp').oninput = (e) => {
@@ -204,18 +205,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="prop-group">
                     <label>Map Properties</label>
                     <div style="color: rgba(255,255,255,0.4); font-size: 0.85rem;">
-                        Drag the map to move it around the canvas.
+                        Drag the corners to resize the map.
                     </div>
                 </div>
                 <button class="prop-btn" id="deleteElementBtn" style="margin-top: auto;">Remove Map</button>
             `;
+        } else if (selectedElement.type === 'glow') {
+            propertiesPanel.innerHTML = `
+                <div class="prop-group">
+                    <label>Glow Sphere</label>
+                    <div style="color: rgba(255,255,255,0.4); font-size: 0.85rem;">
+                        Drag to move, use handles to resize.
+                    </div>
+                </div>
+                <div class="prop-group">
+                    <label>Glow Color</label>
+                    <input type="color" class="prop-color-picker" id="glowColorProp" value="${selectedElement.color}">
+                </div>
+                <button class="prop-btn" id="deleteElementBtn" style="margin-top: auto;">Delete Glow</button>
+            `;
+            document.getElementById('glowColorProp').oninput = (e) => {
+                selectedElement.color = e.target.value;
+                renderCanvas();
+            };
         } else if (selectedElement.type === 'arrow') {
             propertiesPanel.innerHTML = `
                 <div class="prop-group">
                     <label>Arrow Properties</label>
-                    <div style="color: rgba(255,255,255,0.4); font-size: 0.85rem;">
-                        Drag the arrow to move it. Use delete key to remove.
-                    </div>
                 </div>
                 <div class="prop-group">
                     <label>Arrow Color</label>
@@ -244,41 +260,62 @@ document.addEventListener('DOMContentLoaded', () => {
         let weight = el.isTitle || el.font.includes('bold') ? 'bold ' : '';
         let family = el.font.includes('Inter') ? 'Inter, sans-serif' : 'sans-serif';
         if (currentMode === 'collage') family = 'Inter, sans-serif';
-        el.font = `${weight}${el.fontSize}px ${family}`;
+        el.font = `${weight}${Math.round(el.fontSize)}px ${family}`;
     }
-
-    function handleMapSelection(dataUrl) {
+    
+    function handleMapSelection(dataUrl: string) {
         if (currentMode === 'paths' || currentMode === 'showcase') {
+            // Remove previous map
             elements = elements.filter(el => el.type !== 'image');
         }
 
         const img = new Image();
         img.onload = () => {
-            let scale = 1;
-            let targetX = 0;
-            let targetY = 0;
+            if (currentMode === 'paths') {
+                // Resize canvas exactly to map
+                CANVAS_WIDTH = img.width;
+                CANVAS_HEIGHT = img.height;
+                canvas.width = CANVAS_WIDTH;
+                canvas.height = CANVAS_HEIGHT;
+                
+                elements.unshift({
+                    type: 'image',
+                    img: img,
+                    x: 0,
+                    y: 0,
+                    w: img.width,
+                    h: img.height,
+                    isLocked: true // Prevent moving/resizing the map in paths mode
+                });
+            } else {
+                let scale = 1;
+                let targetX = 0;
+                let targetY = 0;
 
-            if (currentMode === 'showcase') {
-                scale = Math.min((CANVAS_WIDTH / 2 - 100) / img.width, (CANVAS_HEIGHT - 200) / img.height);
-                targetX = CANVAS_WIDTH - (img.width * scale) - 100;
-                targetY = (CANVAS_HEIGHT - (img.height * scale)) / 2;
-            }
-            else {
-                if (img.height > CANVAS_HEIGHT - 100) {
-                    scale = (CANVAS_HEIGHT - 100) / img.height;
+                if (currentMode === 'showcase') {
+                    // Right side
+                    scale = Math.min((CANVAS_WIDTH / 2 - 100) / img.width, (CANVAS_HEIGHT - 200) / img.height);
+                    targetX = CANVAS_WIDTH - (img.width * scale) - 100;
+                    targetY = (CANVAS_HEIGHT - (img.height * scale)) / 2;
+                } else {
+                    // Center
+                    if (img.height > CANVAS_HEIGHT - 100) {
+                        scale = (CANVAS_HEIGHT - 100) / img.height;
+                    }
+                    targetX = (CANVAS_WIDTH - (img.width * scale)) / 2 + (currentMode === 'collage' ? (Math.random()*100-50) : 0);
+                    targetY = (CANVAS_HEIGHT - (img.height * scale)) / 2 + (currentMode === 'collage' ? (Math.random()*100-50) : 0);
                 }
-                targetX = (CANVAS_WIDTH - (img.width * scale)) / 2 + (currentMode === 'collage' ? (Math.random() * 100 - 50) : 0);
-                targetY = (CANVAS_HEIGHT - (img.height * scale)) / 2 + (currentMode === 'collage' ? (Math.random() * 100 - 50) : 0);
-            }
 
-            elements.push({
-                type: 'image',
-                img: img,
-                x: targetX,
-                y: targetY,
-                w: img.width * scale,
-                h: img.height * scale
-            });
+                elements.push({
+                    type: 'image',
+                    img: img,
+                    x: targetX,
+                    y: targetY,
+                    w: img.width * scale,
+                    h: img.height * scale,
+                    isLocked: false
+                });
+            }
             renderCanvas();
         };
         img.src = dataUrl;
@@ -306,30 +343,30 @@ document.addEventListener('DOMContentLoaded', () => {
             if (localStr) {
                 localMaps = JSON.parse(localStr);
                 if (!Array.isArray(localMaps)) localMaps = [];
-                localMaps = localMaps.map(m => ({ ...m, isLocalOnly: true }));
+                localMaps = localMaps.map(m => ({...m, isLocalOnly: true}));
             }
-        } catch (e) {}
+        } catch(e) {}
 
         let onlineMaps = [];
         const { data: { session } } = await supabase.auth.getSession();
-
         if (session?.user) {
             const { data, error } = await supabase
                 .from('maps')
                 .select('id, name, user_id, gamemode, environment, size, thumbnail_url, map_data, theme_options')
                 .eq('user_id', session.user.id)
                 .order('created_at', { ascending: false });
-
+            
             if (!error && data) {
                 onlineMaps = data;
             }
         }
 
         const allUserMaps = [...localMaps, ...onlineMaps];
+
         mapPickerLoading.style.display = 'none';
 
         if (allUserMaps.length === 0) {
-            mapPickerGrid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; color: rgba(255,255,255,0.4); padding: 4rem;">No maps found. Save some maps in the editor first!</div>`;
+            mapPickerGrid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; color:#888;">No maps found. Save some maps in the editor first!</div>`;
             return;
         }
 
@@ -339,17 +376,18 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const title = document.createElement('div');
             title.className = 'picker-card-title';
-            title.textContent = map.name || 'Untitled Map';
+            title.textContent = map.name || 'Untitled';
 
             const img = document.createElement('img');
             img.style.opacity = '0.5';
-            
+
             card.appendChild(img);
             card.appendChild(title);
             mapPickerGrid.appendChild(card);
 
             card.addEventListener('click', async () => {
                 mapPickerModal.style.display = 'none';
+                
                 if (img.src && img.src.startsWith('data:image')) {
                     handleMapSelection(img.src);
                     return;
@@ -387,8 +425,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
-
-    // Math helper for arrow selection
+    
+    // Math helpers
     function distToSegment(p, v, w) {
         function sqr(x) { return x * x }
         function dist2(v, w) { return sqr(v.x - w.x) + sqr(v.y - w.y) }
@@ -399,48 +437,82 @@ document.addEventListener('DOMContentLoaded', () => {
         return Math.sqrt(dist2(p, { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) }));
     }
 
-    // Interaction logic
-    let tempArrow = null; 
+    function getBounds(el) {
+        if (el.type === 'image') {
+            return { x: el.x, y: el.y, w: el.w, h: el.h };
+        } else if (el.type === 'text') {
+            ctx.font = el.font;
+            const metrics = ctx.measureText(el.text);
+            return { x: el.x, y: el.y - el.fontSize, w: metrics.width, h: el.fontSize + el.fontSize * 0.2 };
+        } else if (el.type === 'glow') {
+            return { x: el.x - el.radius, y: el.y - el.radius, w: el.radius * 2, h: el.radius * 2 };
+        }
+        return null;
+    }
 
+    function getHandles(el) {
+        const b = getBounds(el);
+        if (!b) return null;
+        return {
+            nw: { x: b.x, y: b.y },
+            ne: { x: b.x + b.w, y: b.y },
+            sw: { x: b.x, y: b.y + b.h },
+            se: { x: b.x + b.w, y: b.y + b.h }
+        };
+    }
+
+    let tempArrow = null;
+    
     canvas.addEventListener('mousedown', (e) => {
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
+        
+        // 1. Check handles of selected element first
+        if (selectedElement && !selectedElement.isLocked && selectedElement.type !== 'arrow') {
+            const handles = getHandles(selectedElement);
+            if (handles) {
+                const HANDLE_SIZE = 20 * scaleX; // responsive hit area
+                for (const h in handles) {
+                    const hx = handles[h].x;
+                    const hy = handles[h].y;
+                    if (mx >= hx - HANDLE_SIZE && mx <= hx + HANDLE_SIZE && my >= hy - HANDLE_SIZE && my <= hy + HANDLE_SIZE) {
+                        isResizing = true;
+                        resizeHandle = h;
+                        dragStartX = mx;
+                        dragStartY = my;
+                        return;
+                    }
+                }
+            }
+        }
 
-        // Find clicked element (top-down)
+        // 2. Find clicked element (top-down)
         let newlySelected = null;
         for (let i = elements.length - 1; i >= 0; i--) {
             const el = elements[i];
-            if (el.type === 'image') {
-                if (mx >= el.x && mx <= el.x + el.w && my >= el.y && my <= el.y + el.h) {
+            if (el.isLocked && currentMode === 'paths') continue; // Don't select locked map in paths
+
+            if (el.type === 'image' || el.type === 'text' || el.type === 'glow') {
+                const b = getBounds(el);
+                if (b && mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
                     newlySelected = el;
                     break;
                 }
-            }
-            else if (el.type === 'text') {
-                ctx.font = el.font;
-                const metrics = ctx.measureText(el.text);
-                const h = el.fontSize;
-                const w = metrics.width;
-                if (mx >= el.x && mx <= el.x + w && my >= el.y - h && my <= el.y + h*0.2) {
-                    newlySelected = el;
-                    break;
-                }
-            }
-            else if (el.type === 'arrow') {
+            } else if (el.type === 'arrow') {
                 const dist = distToSegment({x: mx, y: my}, {x: el.startX, y: el.startY}, {x: el.endX, y: el.endY});
-                if (dist < 20) {
+                if (dist < 20 * scaleX) {
                     newlySelected = el;
                     break;
                 }
             }
         }
-
+        
         selectedElement = newlySelected;
         renderPropertiesPanel();
-
+        
         if (selectedElement) {
             isDragging = true;
             if (selectedElement.type === 'arrow') {
@@ -452,8 +524,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Bring to front
-            elements = elements.filter(e => e !== selectedElement);
-            elements.push(selectedElement);
+            if (!selectedElement.isLocked) {
+                elements = elements.filter(e => e !== selectedElement);
+                elements.push(selectedElement);
+            }
             renderCanvas();
         } else {
             // Clicked empty space
@@ -464,14 +538,58 @@ document.addEventListener('DOMContentLoaded', () => {
             renderCanvas();
         }
     });
-
+    
     canvas.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
+        
+        if (isResizing && selectedElement) {
+            const dx = mx - dragStartX;
+            const dy = my - dragStartY;
+            
+            if (selectedElement.type === 'image') {
+                let scaleChange = 1;
+                // keep aspect ratio based on dx vs width
+                if (resizeHandle === 'se' || resizeHandle === 'ne') {
+                    scaleChange = (selectedElement.w + dx) / selectedElement.w;
+                } else if (resizeHandle === 'nw' || resizeHandle === 'sw') {
+                    scaleChange = (selectedElement.w - dx) / selectedElement.w;
+                }
+
+                if (scaleChange > 0.1) {
+                    const oldW = selectedElement.w;
+                    const oldH = selectedElement.h;
+                    selectedElement.w *= scaleChange;
+                    selectedElement.h *= scaleChange;
+
+                    if (resizeHandle === 'nw') {
+                        selectedElement.x += (oldW - selectedElement.w);
+                        selectedElement.y += (oldH - selectedElement.h);
+                    } else if (resizeHandle === 'ne') {
+                        selectedElement.y += (oldH - selectedElement.h);
+                    } else if (resizeHandle === 'sw') {
+                        selectedElement.x += (oldW - selectedElement.w);
+                    }
+                }
+            } else if (selectedElement.type === 'text') {
+                let diff = dx;
+                if (resizeHandle === 'nw' || resizeHandle === 'sw') diff = -dx;
+                selectedElement.fontSize = Math.max(10, selectedElement.fontSize + diff * 0.2);
+                updateFontString(selectedElement);
+            } else if (selectedElement.type === 'glow') {
+                let diff = dx;
+                if (resizeHandle === 'nw' || resizeHandle === 'sw') diff = -dx;
+                selectedElement.radius = Math.max(20, selectedElement.radius + diff);
+            }
+
+            dragStartX = mx;
+            dragStartY = my;
+            renderCanvas();
+            return;
+        }
 
         if (currentMode === 'paths' && tempArrow && !selectedElement) {
             tempArrow.endX = mx;
@@ -480,8 +598,8 @@ document.addEventListener('DOMContentLoaded', () => {
             drawArrow(ctx, tempArrow.startX, tempArrow.startY, tempArrow.endX, tempArrow.endY, tempArrow.color);
             return;
         }
-
-        if (selectedElement) {
+        
+        if (isDragging && selectedElement && !selectedElement.isLocked) {
             if (selectedElement.type === 'arrow') {
                 const dx = mx - dragStartX - selectedElement.startX;
                 const dy = my - dragStartY - selectedElement.startY;
@@ -498,12 +616,12 @@ document.addEventListener('DOMContentLoaded', () => {
             renderCanvas();
         }
     });
-
+    
     canvas.addEventListener('mouseup', () => {
         if (currentMode === 'paths' && tempArrow && !selectedElement) {
             const dx = tempArrow.endX - tempArrow.startX;
             const dy = tempArrow.endY - tempArrow.startY;
-            if (Math.sqrt(dx * dx + dy * dy) > 20) {
+            if (Math.sqrt(dx*dx + dy*dy) > 20) {
                 elements.push({
                     type: 'arrow',
                     startX: tempArrow.startX,
@@ -517,9 +635,10 @@ document.addEventListener('DOMContentLoaded', () => {
             renderCanvas();
         }
         isDragging = false;
+        isResizing = false;
+        resizeHandle = null;
     });
 
-    // Keyboard support for deleting elements
     document.addEventListener('keydown', (e) => {
         if (studioEditor.style.display !== 'none' && selectedElement) {
             if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -531,7 +650,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
-
+    
     function drawArrow(ctx, fromx, fromy, tox, toy, color) {
         const headlen = 30;
         const dx = tox - fromx;
@@ -557,26 +676,34 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fill();
     }
 
+    function hexToRgba(hex, alpha) {
+        hex = hex.replace('#', '');
+        if (hex.length === 3) hex = hex.split('').map(x => x + x).join('');
+        const r = parseInt(hex.substring(0, 2), 16) || 0;
+        const g = parseInt(hex.substring(2, 4), 16) || 0;
+        const b = parseInt(hex.substring(4, 6), 16) || 0;
+        return `rgba(${r},${g},${b},${alpha})`;
+    }
+    
     function renderCanvas() {
         ctx.fillStyle = canvasBgColor;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        if (currentMode === 'showcase') {
-            const grad = ctx.createRadialGradient(CANVAS_WIDTH, CANVAS_HEIGHT / 2, 100, CANVAS_WIDTH, CANVAS_HEIGHT / 2, 1000);
-            grad.addColorStop(0, 'rgba(139, 92, 246, 0.4)');
-            grad.addColorStop(1, 'transparent');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-
+        
         for (const el of elements) {
-            if (el.type === 'image') {
+            if (el.type === 'glow') {
+                const grad = ctx.createRadialGradient(el.x, el.y, 10, el.x, el.y, el.radius);
+                grad.addColorStop(0, hexToRgba(el.color || '#8b5cf6', 0.6));
+                grad.addColorStop(1, 'transparent');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(el.x, el.y, el.radius, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (el.type === 'image') {
                 ctx.shadowColor = 'rgba(0,0,0,0.5)';
                 ctx.shadowBlur = 30;
                 ctx.drawImage(el.img, el.x, el.y, el.w, el.h);
                 ctx.shadowBlur = 0;
-            }
-            else if (el.type === 'text') {
+            } else if (el.type === 'text') {
                 ctx.font = el.font;
                 ctx.fillStyle = el.color;
                 ctx.shadowColor = 'rgba(0,0,0,0.8)';
@@ -587,83 +714,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.shadowBlur = 0;
                 ctx.shadowOffsetX = 0;
                 ctx.shadowOffsetY = 0;
-            }
-            else if (el.type === 'arrow') {
+            } else if (el.type === 'arrow') {
                 drawArrow(ctx, el.startX, el.startY, el.endX, el.endY, el.color || '#f43f5e');
             }
         }
-
-        // Draw selection highlight
-        if (selectedElement) {
+        
+        // Draw selection highlight and handles
+        if (selectedElement && !selectedElement.isLocked) {
             ctx.strokeStyle = '#8b5cf6';
             ctx.lineWidth = 4;
             ctx.setLineDash([10, 10]);
             
-            if (selectedElement.type === 'image') {
-                ctx.strokeRect(selectedElement.x - 5, selectedElement.y - 5, selectedElement.w + 10, selectedElement.h + 10);
-            } else if (selectedElement.type === 'text') {
-                ctx.font = selectedElement.font;
-                const metrics = ctx.measureText(selectedElement.text);
-                const h = selectedElement.fontSize;
-                const w = metrics.width;
-                ctx.strokeRect(selectedElement.x - 5, selectedElement.y - h - 5, w + 10, h + 15);
+            const b = getBounds(selectedElement);
+            if (b) {
+                ctx.strokeRect(b.x - 5, b.y - 5, b.w + 10, b.h + 10);
+                
+                // Draw handles
+                if (selectedElement.type !== 'arrow') {
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = '#fff';
+                    const hSize = 16;
+                    ctx.fillRect(b.x - 5 - hSize/2, b.y - 5 - hSize/2, hSize, hSize);
+                    ctx.fillRect(b.x + b.w + 5 - hSize/2, b.y - 5 - hSize/2, hSize, hSize);
+                    ctx.fillRect(b.x - 5 - hSize/2, b.y + b.h + 5 - hSize/2, hSize, hSize);
+                    ctx.fillRect(b.x + b.w + 5 - hSize/2, b.y + b.h + 5 - hSize/2, hSize, hSize);
+                    
+                    ctx.strokeRect(b.x - 5 - hSize/2, b.y - 5 - hSize/2, hSize, hSize);
+                    ctx.strokeRect(b.x + b.w + 5 - hSize/2, b.y - 5 - hSize/2, hSize, hSize);
+                    ctx.strokeRect(b.x - 5 - hSize/2, b.y + b.h + 5 - hSize/2, hSize, hSize);
+                    ctx.strokeRect(b.x + b.w + 5 - hSize/2, b.y + b.h + 5 - hSize/2, hSize, hSize);
+                }
             } else if (selectedElement.type === 'arrow') {
-                // Approximate bounding box for arrow
                 const minX = Math.min(selectedElement.startX, selectedElement.endX);
                 const maxX = Math.max(selectedElement.startX, selectedElement.endX);
                 const minY = Math.min(selectedElement.startY, selectedElement.endY);
                 const maxY = Math.max(selectedElement.startY, selectedElement.endY);
                 ctx.strokeRect(minX - 20, minY - 20, (maxX - minX) + 40, (maxY - minY) + 40);
+                ctx.setLineDash([]);
             }
-            ctx.setLineDash([]);
         }
     }
-
-    // Export Logic
+    
     exportBtn.addEventListener('click', () => {
-        // Deselect so selection box isn't exported
         selectedElement = null;
         renderCanvas();
-        renderPropertiesPanel();
-
-        let dataUrl;
         
-        if (currentMode === 'paths') {
-            const mapEl = elements.find(el => el.type === 'image');
-            if (mapEl) {
-                // Crop canvas tightly to the map boundaries
-                const offCanvas = document.createElement('canvas');
-                offCanvas.width = mapEl.w;
-                offCanvas.height = mapEl.h;
-                const offCtx = offCanvas.getContext('2d');
-                
-                // Fill background
-                offCtx.fillStyle = canvasBgColor;
-                offCtx.fillRect(0, 0, offCanvas.width, offCanvas.height);
-                
-                // Draw everything shifted
-                for (const el of elements) {
-                    if (el.type === 'image') {
-                        offCtx.drawImage(el.img, el.x - mapEl.x, el.y - mapEl.y, el.w, el.h);
-                    } else if (el.type === 'text') {
-                        offCtx.font = el.font;
-                        offCtx.fillStyle = el.color;
-                        offCtx.shadowColor = 'rgba(0,0,0,0.8)';
-                        offCtx.shadowBlur = 15;
-                        offCtx.fillText(el.text, el.x - mapEl.x, el.y - mapEl.y);
-                        offCtx.shadowBlur = 0;
-                    } else if (el.type === 'arrow') {
-                        drawArrow(offCtx, el.startX - mapEl.x, el.startY - mapEl.y, el.endX - mapEl.x, el.endY - mapEl.y, el.color || '#f43f5e');
-                    }
-                }
-                dataUrl = offCanvas.toDataURL('image/png', 1.0);
-            } else {
-                dataUrl = canvas.toDataURL('image/png', 1.0);
-            }
-        } else {
-            dataUrl = canvas.toDataURL('image/png', 1.0);
-        }
-
+        const dataUrl = canvas.toDataURL('image/png', 1.0);
         showSharpnessDownload(dataUrl, `compass_art_${currentMode}`);
     });
 });
