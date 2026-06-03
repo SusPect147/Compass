@@ -7,7 +7,8 @@ export const FENCE_LOGIC_TYPES = {
     SIMPLE_BLOCK: 1,    // Logic 1: Block, horizontal, vertical
     BINARY_CODE: 2,     // Logic 2: Binary code system (0001, 0010, etc.)
     SIX_PIECE: 3,       // Logic 3: Hor, Ver, TL, TR, BL, BR
-    FOUR_PIECE: 4       // Logic 4: Single, T, TR, R
+    FOUR_PIECE: 4,      // Logic 4: Single, T, TR, R
+    PAYLOAD_RAILS: 5    // Logic 5: Custom logic for payload
 };
 
 export const FENCE_LOGIC_BY_ENVIRONMENT = {
@@ -1499,15 +1500,19 @@ export function getTileDefinitions(mapEditor) {
     65: { name: 'OniHunt', img: 'Global/Boss Spawns/OniHunt.png', showInGamemode: 'Brawl_Bosses', placeableOn: [-100], placeableOnThis: [-100], layer: 1, size: 1},
     66: { name: 'SubwayRun1', img: 'Global/Objectives/SubwayRun1.png', showInGamemode: 'Subway_Run', size: 2 },
     67: { name: 'SubwayRun2', img: 'Global/Objectives/SubwayRun2.png', showInGamemode: 'Subway_Run', size: 2 },
-    68: { name: 'Rails', layer: 1, img: 'Global/Special_Tiles/Rails/Fence.png', placeableOnThis: [73, 74, 75], size: 1},
+    68: { name: 'Rails', layer: 1, img: 'Global/Special_Tiles/Rails/Fence.png', placeableOnThis: [73, 74, 75], size: 1, hideInGamemode: 'Payload'},
     69: { name: 'IceTile', img: 'Global/Special_Tiles/IceTile/00000000.png', size: 1 },
     70: { name: 'SnowTile', img: 'Global/Special_Tiles/SnowTile/00000000.png', size: 1 },
     71: { name: 'TreasurePad1', img: 'Global/Objectives/TreasurePad1.png', showInGamemode: 'Treasure_Hunt', placeableOn: [-100], placeableOnThis: [-100], size: 1, layer: 1},
     72: { name: 'TreasurePad2', img: 'Global/Objectives/TreasurePad2.png', showInGamemode: 'Treasure_Hunt', placeableOn: [-100], placeableOnThis: [-100], size: 1, layer: 1},
-    73: { name: 'RedTrain', img: 'Global/Special_Tiles/RedTrain/Train_Fence.png', placeableOn: [68], size: 1},
-    74: { name: 'YellowTrain', img: 'Global/Special_Tiles/YellowTrain/Train_Fence.png', placeableOn: [68], size: 1},
-    75: { name: 'GreenTrain', img: 'Global/Special_Tiles/GreenTrain/Train_Fence.png', placeableOn: [68], size: 1},
+    73: { name: 'RedTrain', img: 'Global/Special_Tiles/RedTrain/Train_Fence.png', placeableOn: [68], size: 1, hideInGamemode: 'Payload'},
+    74: { name: 'YellowTrain', img: 'Global/Special_Tiles/YellowTrain/Train_Fence.png', placeableOn: [68], size: 1, hideInGamemode: 'Payload'},
+    75: { name: 'GreenTrain', img: 'Global/Special_Tiles/GreenTrain/Train_Fence.png', placeableOn: [68], size: 1, hideInGamemode: 'Payload'},
     76: { name: 'Box_Loaded', img: 'Global/Objectives/Box_Loaded.png', showInGamemode: 'Loaded_SD', size: 1},
+    77: { name: 'Payload Blue Rail', layer: 1, img: 'Circus/Gamemode_Specifics/Payload/Theme_1/blue_Horizontal.png', showInGamemode: 'Payload', placeableOnThis: [78], size: 1 },
+    78: { name: 'Payload Blue Train', layer: 2, img: 'Circus/Gamemode_Specifics/Payload/Theme_1/blue_train_H.png', showInGamemode: 'Payload', placeableOn: [-100], size: 1 },
+    79: { name: 'Payload Red Rail', layer: 1, img: 'Circus/Gamemode_Specifics/Payload/Theme_1/red_Horizontal.png', showInGamemode: 'Payload', placeableOnThis: [80], size: 1 },
+    80: { name: 'Payload Red Train', layer: 2, img: 'Circus/Gamemode_Specifics/Payload/Theme_1/red_train_H.png', showInGamemode: 'Payload', placeableOn: [-100], size: 1 },
 };;
 }
 

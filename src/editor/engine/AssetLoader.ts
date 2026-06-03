@@ -250,7 +250,8 @@ async loadTileImages() {
                 }
     
                 if (def.getImg) {
-                    const imgData = def.getImg(this.gamemode, 0, this.mapHeight, envToUse);
+                    const gm = this.gamemode === 'custom' ? 'Gem_Grab' : this.gamemode;
+                    const imgData = def.getImg(gm, 0, this.mapHeight, envToUse);
                     if (!imgData) {
                         onLoad();
                         return;

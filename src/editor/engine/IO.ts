@@ -451,6 +451,7 @@ export const IOMixin = {
         }
     },
     async createMapPNG(scale = 4, format = 'image/png', quality = 1.0) {
+        this.isExporting = true;
         // === HD EXPORT: temporarily scale up tileSize/padding for crisp output ===
         const EXPORT_SCALE = scale; 
         const originalTileSize = this.tileSize;
@@ -656,6 +657,7 @@ export const IOMixin = {
             // Always restore original editor tile size тАФ export must never affect the live canvas
             this.tileSize = originalTileSize;
             this.canvasPadding = originalPadding;
+            this.isExporting = false;
         }
     },
     async exportMap() {

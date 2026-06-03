@@ -15,7 +15,8 @@ export class FenceAutoTiler {
             [FENCE_LOGIC_TYPES.SIMPLE_BLOCK]: this.handleSimpleBlockLogic,
             [FENCE_LOGIC_TYPES.BINARY_CODE]: this.handleBinaryCodeLogic,
             [FENCE_LOGIC_TYPES.SIX_PIECE]: this.handleSixPieceLogic,
-            [FENCE_LOGIC_TYPES.FOUR_PIECE]: this.handleFourPieceLogic
+            [FENCE_LOGIC_TYPES.FOUR_PIECE]: this.handleFourPieceLogic,
+            [FENCE_LOGIC_TYPES.PAYLOAD_RAILS]: this.handlePayloadRailsLogic
         };
     }
 
@@ -27,11 +28,15 @@ export class FenceAutoTiler {
         }
 
         // Determine which logic to use based on environment
+        const isPayload = tileGrid && tileGrid[y] && tileGrid[y][x] && [77, 79].includes(tileGrid[y][x]);
         let logicType = isBorder 
             ? BORDER_FENCE_LOGIC_BY_ENVIRONMENT[lookupEnv] 
             : isFence 
                 ? FENCE_LOGIC_BY_ENVIRONMENT[lookupEnv] 
                 : FENCE_LOGIC_TYPES.FOUR_PIECE;
+        if (isPayload) {
+            logicType = FENCE_LOGIC_TYPES.PAYLOAD_RAILS;
+        }
         
         // Safe fallback if environment lookup yields undefined
         if (logicType === undefined) {
@@ -49,7 +54,7 @@ export class FenceAutoTiler {
         const connections = this.getConnections(x, y, tileGrid, isFence, isBorder, lookupEnv);
         
         // Call the appropriate logic handler
-        const result = isBorder ? 'B' + logicHandler.call(this, connections) : logicHandler.call(this, connections);
+        const result = isBorder ? 'B' + logicHandler.call(this, connections, x, y, tileGrid) : logicHandler.call(this, connections, x, y, tileGrid);
         return result;
     }
 
@@ -63,6 +68,7 @@ export class FenceAutoTiler {
             const tileId = tileGrid[cy][cx];
             if (environment === 'Brawl_Arena') return tileId === 40 || tileId === 43 || tileId === 44;
             if (environment === 'Rails' || environment === 'Train') return tileId === 68;
+            if (environment === 'Payload') return tileId === 77 || tileId === 79;
             if (isBorder) return tileId === 45;
             return isFence ? (tileId === 7) : (tileId === 9); // Assuming 7 is fence and 9 is rope
         };
@@ -134,5 +140,100 @@ export class FenceAutoTiler {
         if (top) return 'T';
         if (right) return 'R';
         return 'Fence';
+    }
+
+    checkTrainDirection(x, y, tileGrid, dx, dy) {
+        // Train IDs: 78 (Blue), 80 (Red)
+        const isTrain = (cx, cy) => {
+            if (cx < 0 || cy < 0 || cy >= tileGrid.length || cx >= tileGrid[0].length) return false;
+            return tileGrid[cy][cx] === 78 || tileGrid[cy][cx] === 80;
+        };
+
+        if (isTrain(x - dx, y - dy)) return false;
+        if (isTrain(x, y)) return false;
+
+        let cx = x;
+        let cy = y;
+        let railId = tileGrid[y][x];
+        let prevX = x - dx;
+        let prevY = y - dy;
+        
+        while (true) {
+            let nextX = -1, nextY = -1;
+            const dirs = [[0,1], [0,-1], [1,0], [-1,0]];
+            for (let [ddx, ddy] of dirs) {
+                const nx = cx + ddx;
+                const ny = cy + ddy;
+                if (nx === prevX && ny === prevY) continue;
+                if (nx < 0 || ny < 0 || ny >= tileGrid.length || nx >= tileGrid[0].length) continue;
+                if (tileGrid[ny][nx] === railId) {
+                    nextX = nx;
+                    nextY = ny;
+                    break;
+                }
+            }
+            if (nextX === -1) break;
+            prevX = cx;
+            prevY = cy;
+            cx = nextX;
+            cy = nextY;
+        }
+
+        const fDx = cx - prevX;
+        const fDy = cy - prevY;
+        
+        if (isTrain(cx, cy)) return true;
+        if (isTrain(cx + fDx, cy + fDy)) return true;
+
+        return false;
+    }
+
+    handlePayloadRailsLogic(connections, x, y, tileGrid) {
+        const { top, right, bottom, left } = connections;
+        if (top && right && !bottom && !left) return 'TR';
+        if (top && left && !bottom && !right) return 'TL';
+        if (bottom && right && !top && !left) return 'BR';
+        if (bottom && left && !top && !right) return 'BL';
+        
+        const tileId = (tileGrid && tileGrid[y]) ? tileGrid[y][x] : 0;
+        const isBlue = tileId === 77;
+        
+        if (top && !right && !bottom && !left) {
+            let reversed = this.checkTrainDirection(x, y, tileGrid, 0, -1);
+            if (isBlue) {
+                return reversed ? 'End_B' : 'End_T';
+            } else {
+                return reversed ? 'End_T' : 'End_B';
+            }
+        }
+        if (bottom && !right && !top && !left) {
+            let reversed = this.checkTrainDirection(x, y, tileGrid, 0, 1);
+            if (isBlue) {
+                return reversed ? 'End_T' : 'End_B';
+            } else {
+                return reversed ? 'End_B' : 'End_T';
+            }
+        }
+        if (left && !right && !top && !bottom) {
+            let reversed = this.checkTrainDirection(x, y, tileGrid, -1, 0);
+            if (isBlue) {
+                return reversed ? 'End_R' : 'End_L';
+            } else {
+                return reversed ? 'End_L' : 'End_R';
+            }
+        }
+        if (right && !left && !top && !bottom) {
+            let reversed = this.checkTrainDirection(x, y, tileGrid, 1, 0);
+            if (isBlue) {
+                return reversed ? 'End_L' : 'End_R';
+            } else {
+                return reversed ? 'End_R' : 'End_L';
+            }
+        }
+        // T-junctions and cross: no dedicated sprites, fall back to dominant axis
+        if (top && bottom) return 'Ver';
+        if (left && right) return 'Horizontal';
+        if (top || bottom) return 'Ver';
+        return 'Horizontal';
     }
 }

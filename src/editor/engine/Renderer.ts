@@ -294,11 +294,91 @@ export const RendererMixin = {
                 };
                 return;
             }
+        } else if (tileId === 77 || tileId === 79) {
+            const isBlue = tileId === 77;
+            const themePath = this.environment === 'Mortuary' ? 'Theme_2' : 'Theme_1';
+            const imageName = this.fenceLogicHandler.getFenceImageName(x, y, this.tileGrid[1], 'Payload');
+            const spriteName = `${isBlue ? 'blue' : 'red'}_${imageName}`;
+            const imagePath = `Resources/Circus/Gamemode_Specifics/Payload/${themePath}/${spriteName}.png`;
+
+            img = this.tileImages[imagePath];
+
+            if (!img) {
+                img = new Image();
+                img.onload = () => this.scheduleDraw();
+                img.src = imagePath;
+                img.onerror = () => {
+                    console.error(`Failed to load payload rail image: ${imagePath}`);
+                    img.src = `Resources/Circus/Gamemode_Specifics/Payload/Theme_1/${isBlue ? 'blue_Horizontal' : 'red_Horizontal'}.png`;
+                };
+                this.tileImages[imagePath] = img;
+            }
+
+            if (!img.complete || img.naturalWidth === 0) {
+                img.onload = () => {
+                    this.scheduleDraw();
+                };
+                return;
+            }
+        } else if (tileId === 78 || tileId === 80) {
+            const isBlue = tileId === 78;
+            const themePath = this.environment === 'Mortuary' ? 'Theme_2' : 'Theme_1';
+            
+            const railId = isBlue ? 77 : 79;
+            let dx = 0, dy = 0;
+            const checkEnd = (ex: number, ey: number, pDx: number, pDy: number) => {
+                if (ex < 0 || ey < 0 || ex >= this.mapWidth || ey >= this.mapHeight) return false;
+                if (!this.tileGrid[1] || !this.tileGrid[1][ey] || this.tileGrid[1][ey][ex] !== railId) return false;
+                let conns = 0;
+                if (ey > 0 && this.tileGrid[1][ey-1][ex] === railId) conns++;
+                if (ey < this.mapHeight - 1 && this.tileGrid[1][ey+1][ex] === railId) conns++;
+                if (ex > 0 && this.tileGrid[1][ey][ex-1] === railId) conns++;
+                if (ex < this.mapWidth - 1 && this.tileGrid[1][ey][ex+1] === railId) conns++;
+                if (conns !== 1) return false;
+                
+                if (pDx === 1 && ex < this.mapWidth - 1 && this.tileGrid[1][ey][ex+1] === railId) return true;
+                if (pDx === -1 && ex > 0 && this.tileGrid[1][ey][ex-1] === railId) return true;
+                if (pDy === 1 && ey < this.mapHeight - 1 && this.tileGrid[1][ey+1][ex] === railId) return true;
+                if (pDy === -1 && ey > 0 && this.tileGrid[1][ey-1][ex] === railId) return true;
+                return false;
+            };
+
+            if (checkEnd(x+1, y, 1, 0)) { dx = 1; dy = 0; }
+            else if (checkEnd(x-1, y, -1, 0)) { dx = -1; dy = 0; }
+            else if (checkEnd(x, y+1, 0, 1)) { dx = 0; dy = 1; }
+            else if (checkEnd(x, y-1, 0, -1)) { dx = 0; dy = -1; }
+            
+            let isVertical = (dx === 0 && dy !== 0);
+            
+            const colorPrefix = isBlue ? 'blue' : 'red';
+            const orientation = isVertical ? 'V' : 'H';
+            const spriteName = `${colorPrefix}_train_${orientation}`;
+            const imagePath = `Resources/Circus/Gamemode_Specifics/Payload/${themePath}/${spriteName}.png`;
+            img = this.tileImages[imagePath];
+
+            if (!img) {
+                img = new Image();
+                img.onload = () => this.scheduleDraw();
+                img.src = imagePath;
+                img.onerror = () => {
+                    console.error(`Failed to load payload train image: ${imagePath}`);
+                    img.src = `Resources/Circus/Gamemode_Specifics/Payload/Theme_1/${isBlue ? 'sprite_1' : 'sprite_3'}.png`;
+                };
+                this.tileImages[imagePath] = img;
+            }
+
+            if (!img.complete || img.naturalWidth === 0) {
+                img.onload = () => {
+                    this.scheduleDraw();
+                };
+                return;
+            }
         } else {
             // Handle position-dependent tiles like objectives
             const def = this.tileDefinitions[tileId];
             if (def && def.getImg) {
-                const imgData = def.getImg(this.gamemode, y, this.mapHeight, this.environment);
+                const gm = this.gamemode === 'custom' ? 'Gem_Grab' : this.gamemode;
+                const imgData = def.getImg(gm, y, this.mapHeight, this.environment);
                 if (imgData && imgData.img) {
                     const imgPath = `Resources/${imgData.img.replace('${env}', this.environment)}`;
                     // Use a unique cache key that includes position for position-dependent tiles
@@ -349,7 +429,15 @@ export const RendererMixin = {
             const isRope = tileId === 9;
             const isBorder = tileId === 45;
             const isTrain = [73, 74, 75].includes(tileId);
-            if (isFence || isRope || isBorder) {
+            const isPayloadRail = (tileId === 77 || tileId === 79);
+            const isPayloadTrain = (tileId === 78 || tileId === 80);
+            if (isPayloadRail) {
+                // Payload rails are flat ground tiles (like Track / Rails)
+                dimensions = this.tileData['Track'] || { scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0, opacity: 1, zIndex: 2 };
+            } else if (isPayloadTrain) {
+                // Payload train wagons sit on top of the rail, slightly larger
+                dimensions = { scaleX: 1.4, scaleY: 1.9, offsetX: -20, offsetY: -57, opacity: 1, zIndex: 5 };
+            } else if (isFence || isRope || isBorder) {
                 let envToUse = this.environment;
                 if (isBorder) {
                     const bDef = this.tileDefinitions[45];
@@ -377,7 +465,7 @@ export const RendererMixin = {
             } else if (isTrain) {
                 const imageName = this.fenceLogicHandler.getFenceImageName(x, y, this.tileGrid[1], 'Train');
                 dimensions = this.tileData['Train_' + imageName];
-            } else {
+            } else if (!isPayloadRail && !isPayloadTrain) {
                 dimensions = this.environmentTileData[this.environment]?.[def.name] ||
                     this.tileData[def.name];
             }
@@ -404,7 +492,70 @@ export const RendererMixin = {
         ctx.globalAlpha = opacity;
 
         // Draw the tile
-        ctx.drawImage(img, drawX, drawY, width, height);
+        if (tileId !== 78 && tileId !== 80) {
+            ctx.drawImage(img, drawX, drawY, width, height);
+        }
+
+        // CUSTOM DRAWING FOR PAYLOAD TRAINS
+        if (tileId === 78 || tileId === 80) {
+            const isBlue = tileId === 78;
+            const railId = isBlue ? 77 : 79;
+            let dx = 0, dy = 0;
+            const checkEnd = (ex: number, ey: number, pDx: number, pDy: number) => {
+                if (ex < 0 || ey < 0 || ex >= this.mapWidth || ey >= this.mapHeight) return false;
+                if (!this.tileGrid[1] || !this.tileGrid[1][ey] || this.tileGrid[1][ey][ex] !== railId) return false;
+                let conns = 0;
+                if (ey > 0 && this.tileGrid[1][ey-1][ex] === railId) conns++;
+                if (ey < this.mapHeight - 1 && this.tileGrid[1][ey+1][ex] === railId) conns++;
+                if (ex > 0 && this.tileGrid[1][ey][ex-1] === railId) conns++;
+                if (ex < this.mapWidth - 1 && this.tileGrid[1][ey][ex+1] === railId) conns++;
+                if (conns !== 1) return false;
+                
+                if (pDx === 1 && ex < this.mapWidth - 1 && this.tileGrid[1][ey][ex+1] === railId) return true;
+                if (pDx === -1 && ex > 0 && this.tileGrid[1][ey][ex-1] === railId) return true;
+                if (pDy === 1 && ey < this.mapHeight - 1 && this.tileGrid[1][ey+1][ex] === railId) return true;
+                if (pDy === -1 && ey > 0 && this.tileGrid[1][ey-1][ex] === railId) return true;
+                return false;
+            };
+
+            if (checkEnd(x+1, y, 1, 0)) { dx = 1; dy = 0; }
+            else if (checkEnd(x-1, y, -1, 0)) { dx = -1; dy = 0; }
+            else if (checkEnd(x, y+1, 0, 1)) { dx = 0; dy = 1; }
+            else if (checkEnd(x, y-1, 0, -1)) { dx = 0; dy = -1; }
+            
+            ctx.save();
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = isBlue ? '#2954a2' : '#c32227';
+            ctx.fillStyle = isBlue ? '#2954a2' : '#c32227';
+            
+            const pureX = x * tileSize + this.canvasPadding;
+            const pureY = y * tileSize + this.canvasPadding;
+            const sqSize = tileSize / 3;
+            const sqX = pureX + (tileSize - sqSize) / 2;
+            const sqY = pureY + (tileSize - sqSize) / 2;
+            
+            if (!this.isExporting) {
+                ctx.fillRect(sqX, sqY, sqSize, sqSize);
+            }
+            
+            if (img && img.complete && img.naturalWidth > 0) {
+                const pad = 2;
+                if (!this.isExporting) {
+                    ctx.drawImage(img, sqX + pad, sqY + pad, sqSize - pad*2, sqSize - pad*2);
+                }
+                
+                if (dx === -1) {
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(img, -(drawX + 2*dx*tileSize + width), drawY + 2*dy*tileSize, width, height);
+                } else if (dy === -1) {
+                    ctx.scale(1, -1);
+                    ctx.drawImage(img, drawX + 2*dx*tileSize, -(drawY + 2*dy*tileSize + height), width, height);
+                } else {
+                    ctx.drawImage(img, drawX + 2*dx*tileSize, drawY + 2*dy*tileSize, width, height);
+                }
+            }
+            ctx.restore();
+        }
 
         // Reset opacity
         ctx.globalAlpha = 1;

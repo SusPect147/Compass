@@ -139,7 +139,7 @@ export const MapDataMixin = {
         if (this.viewPanActive)
             return; // Critical blocker: block all tile placements while panning
         this._errorsDirty = true;
-        const id = tileId ?? this.activeToolBrush.id;
+        let id = tileId ?? this.activeToolBrush.id;
         const def = this.tileDefinitions[id];
         if (!def)
             return;
@@ -157,6 +157,21 @@ export const MapDataMixin = {
         let topmostTile = this.getTopmostTileAt(x, y);
         let targetTileId = topmostTile ? topmostTile.tileId : 0;
 
+        // Auto-adopt color for Payload rails
+        if (id === 77 || id === 79) {
+            const adjacentRails = [];
+            if (y > 0 && this.tileGrid[1] && this.tileGrid[1][y-1]) adjacentRails.push(this.tileGrid[1][y-1][x]);
+            if (y < this.mapHeight - 1 && this.tileGrid[1] && this.tileGrid[1][y+1]) adjacentRails.push(this.tileGrid[1][y+1][x]);
+            if (x > 0 && this.tileGrid[1] && this.tileGrid[1][y]) adjacentRails.push(this.tileGrid[1][y][x-1]);
+            if (x < this.mapWidth - 1 && this.tileGrid[1] && this.tileGrid[1][y]) adjacentRails.push(this.tileGrid[1][y][x+1]);
+            
+            if (id === 77 && adjacentRails.includes(79)) {
+                id = 79;
+            } else if (id === 79 && adjacentRails.includes(77)) {
+                id = 77;
+            }
+        }
+
         // Overwrite mode logic
         if (this.overwriteMode && targetTileId !== 0 && targetTileId !== id) {
             // Check if placeable on empty first, so we don't accidentally erase something we can't replace
@@ -171,6 +186,92 @@ export const MapDataMixin = {
         if (!canPlace) {
             // Cannot place this tile here
             return;
+        }
+
+        // PAYLOAD TRAIN SPECIFIC RESTRICTION:
+        // Must be placed on an empty cell adjacent to an End piece of the track,
+        // and only ONE train per rail path!
+        if (id === 78 || id === 80) {
+            const railId = id === 78 ? 77 : 79;
+            let validDx = 0, validDy = 0;
+            
+            const checkEnd = (ex: number, ey: number, dx: number, dy: number) => {
+                if (ex < 0 || ey < 0 || ex >= this.mapWidth || ey >= this.mapHeight) return false;
+                if (!this.tileGrid[1] || !this.tileGrid[1][ey] || this.tileGrid[1][ey][ex] !== railId) return false;
+                
+                let conns = 0;
+                if (ey > 0 && this.tileGrid[1][ey-1][ex] === railId) conns++;
+                if (ey < this.mapHeight - 1 && this.tileGrid[1][ey+1][ex] === railId) conns++;
+                if (ex > 0 && this.tileGrid[1][ey][ex-1] === railId) conns++;
+                if (ex < this.mapWidth - 1 && this.tileGrid[1][ey][ex+1] === railId) conns++;
+                
+                if (conns !== 1) return false;
+                
+                if (dx === 1 && ex < this.mapWidth - 1 && this.tileGrid[1][ey][ex+1] === railId) return true;
+                if (dx === -1 && ex > 0 && this.tileGrid[1][ey][ex-1] === railId) return true;
+                if (dy === 1 && ey < this.mapHeight - 1 && this.tileGrid[1][ey+1][ex] === railId) return true;
+                if (dy === -1 && ey > 0 && this.tileGrid[1][ey-1][ex] === railId) return true;
+                return false;
+            };
+
+            if (checkEnd(x+1, y, 1, 0)) { validDx = 1; validDy = 0; }
+            else if (checkEnd(x-1, y, -1, 0)) { validDx = -1; validDy = 0; }
+            else if (checkEnd(x, y+1, 0, 1)) { validDx = 0; validDy = 1; }
+            else if (checkEnd(x, y-1, 0, -1)) { validDx = 0; validDy = -1; }
+            
+            if (validDx === 0 && validDy === 0) {
+                return; // Invalid placement
+            }
+            
+            // Trace the track to ensure no other train is placed on it
+            const trackRails = new Set<string>();
+            const queue = [[x + validDx, y + validDy]];
+            trackRails.add(`${x+validDx},${y+validDy}`);
+            
+            while (queue.length > 0) {
+                const [cx, cy] = queue.shift()!;
+                const dirs = [[0,1], [0,-1], [1,0], [-1,0]];
+                for (let [ddx, ddy] of dirs) {
+                    const nx = cx + ddx;
+                    const ny = cy + ddy;
+                    if (nx < 0 || ny < 0 || nx >= this.mapWidth || ny >= this.mapHeight) continue;
+                    if (!trackRails.has(`${nx},${ny}`) && this.tileGrid[1] && this.tileGrid[1][ny] && this.tileGrid[1][ny][nx] === railId) {
+                        trackRails.add(`${nx},${ny}`);
+                        queue.push([nx, ny]);
+                    }
+                }
+            }
+            
+            let hasOtherTrain = false;
+            for (let ty = 0; ty < this.mapHeight; ty++) {
+                for (let tx = 0; tx < this.mapWidth; tx++) {
+                    if (tx === x && ty === y) continue;
+                    let isTrain = false;
+                    for (let l = 1; l <= 2; l++) {
+                        if (this.tileGrid[l] && this.tileGrid[l][ty] && (this.tileGrid[l][ty][tx] === 78 || this.tileGrid[l][ty][tx] === 80)) {
+                            isTrain = true;
+                            break;
+                        }
+                    }
+                    if (isTrain) {
+                        let tDx = 0, tDy = 0;
+                        if (checkEnd(tx+1, ty, 1, 0)) { tDx = 1; tDy = 0; }
+                        else if (checkEnd(tx-1, ty, -1, 0)) { tDx = -1; tDy = 0; }
+                        else if (checkEnd(tx, ty+1, 0, 1)) { tDx = 0; tDy = 1; }
+                        else if (checkEnd(tx, ty-1, 0, -1)) { tDx = 0; tDy = -1; }
+                        
+                        if (trackRails.has(`${tx},${ty}`) || ((tDx !== 0 || tDy !== 0) && trackRails.has(`${tx+tDx},${ty+tDy}`))) {
+                            hasOtherTrain = true;
+                            break;
+                        }
+                    }
+                }
+                if (hasOtherTrain) break;
+            }
+            
+            if (hasOtherTrain) {
+                return; // Another train exists on this track
+            }
         }
         const isPlacingOnExisting = topmostTile !== null;
         // Determine which layer to place on
@@ -203,13 +304,16 @@ export const MapDataMixin = {
         }
         // Handle special cases for objectives
         if (def.getImg) {
-            const imgData = def.getImg(this.gamemode, y, this.mapHeight, this.environment);
+            const gm = this.gamemode === 'custom' ? 'Gem_Grab' : this.gamemode;
+            const imgData = def.getImg(gm, y, this.mapHeight, this.environment);
             if (!imgData)
                 return; // Invalid for current gamemode
         }
         // Only show Bolt in Siege mode
-        if (def.showInGamemode && !def.showInGamemode.includes(this.gamemode))
-            return;
+        if (this.gamemode !== 'custom') {
+            if (def.showInGamemode && !def.showInGamemode.includes(this.gamemode))
+                return;
+        }
         // Save state before making changes if requested
         if (saveState) {
             this.saveState();
@@ -289,6 +393,15 @@ export const MapDataMixin = {
         const def = this.tileDefinitions[tileId];
         if (!def && !this.smartSymmetry)
             return tileId;
+            
+        // Handle Payload Rails/Trains color swapping
+        if (this.gamemode === 'Payload' && direction === 'diagonal') {
+            if (tileId === 77) return 79; // Blue Rail -> Red Rail
+            if (tileId === 79) return 77; // Red Rail -> Blue Rail
+            if (tileId === 78) return 80; // Blue Train -> Red Train
+            if (tileId === 80) return 78; // Red Train -> Blue Train
+        }
+        
         // Handle jump pad mirroring
         if (def.name.startsWith('Jump')) {
             const mirrorMaps = {
@@ -306,6 +419,13 @@ export const MapDataMixin = {
             const mirroredDef = Object.entries(this.tileDefinitions)
                 .find(([_, d]) => d.name === `Jump ${mirroredDirection}`);
             return mirroredDef ? parseInt(mirroredDef[0]) : tileId;
+        }
+        // PAYLOAD SYMMETRY (Blue <-> Red)
+        switch (tileId) {
+            case 77: return 79;
+            case 79: return 77;
+            case 78: return 80;
+            case 80: return 78;
         }
         // ПРИНУДИТЕЛЬНАЯ ЗЕРКАЛЬНОСТЬ ДЛЯ СПАВНОВ И БАЗ (чтобы синее не переносилось на красную сторону)
         switch (tileId) {
@@ -668,14 +788,22 @@ export const MapDataMixin = {
                         shouldPrune = true;
                     }
                     // Check list restrictions
-                    if (!shouldPrune && def.showInGamemode) {
-                        const allowed = Array.isArray(def.showInGamemode) ? def.showInGamemode : [def.showInGamemode];
-                        if (!allowed.includes(this.gamemode))
-                            shouldPrune = true;
+                    if (this.gamemode !== 'custom') {
+                        if (!shouldPrune && def.showInGamemode) {
+                            const allowed = Array.isArray(def.showInGamemode) ? def.showInGamemode : [def.showInGamemode];
+                            if (!allowed.includes(this.gamemode))
+                                shouldPrune = true;
+                        }
+                        if (!shouldPrune && def.hideInGamemode) {
+                            const hidden = Array.isArray(def.hideInGamemode) ? def.hideInGamemode : [def.hideInGamemode];
+                            if (hidden.includes(this.gamemode))
+                                shouldPrune = true;
+                        }
                     }
                     // Check procedural image availability restrictions
                     if (!shouldPrune && def.getImg) {
-                        const hasImg = def.getImg(this.gamemode, y, this.mapHeight, this.environment);
+                        const gm = this.gamemode === 'custom' ? 'Gem_Grab' : this.gamemode;
+                        const hasImg = def.getImg(gm, y, this.mapHeight, this.environment);
                         if (!hasImg)
                             shouldPrune = true;
                     }

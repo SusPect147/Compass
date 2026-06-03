@@ -372,4 +372,219 @@
             stToggle.checked = false;
         }
     }
+
+    // =============================================================
+    // 8. CUSTOM DROP-DOWN SELECTORS (PINNING / FAVORITES)
+    // =============================================================
+    function setupCustomSelect(selectId: string) {
+        const nativeSelect = document.getElementById(selectId) as HTMLSelectElement;
+        if (!nativeSelect) return;
+
+        // Hide native select
+        nativeSelect.style.display = 'none';
+
+        // Create wrapper and trigger button
+        const wrapper = document.createElement('div');
+        wrapper.className = 'custom-select-wrapper';
+
+        const trigger = document.createElement('div');
+        trigger.className = 'custom-select-trigger';
+        trigger.tabIndex = 0;
+
+        nativeSelect.parentNode?.insertBefore(wrapper, nativeSelect);
+        wrapper.appendChild(nativeSelect);
+        wrapper.appendChild(trigger);
+
+        // Get favorites key
+        const favKey = `cp_fav_${selectId}`;
+        const getFavorites = (): string[] => {
+            try {
+                return JSON.parse(localStorage.getItem(favKey) || '[]');
+            } catch {
+                return [];
+            }
+        };
+        const setFavorites = (favs: string[]) => {
+            localStorage.setItem(favKey, JSON.stringify(favs));
+        };
+
+        // Function to update trigger display text and styles
+        function updateTriggerText() {
+            const selectedOpt = nativeSelect.options[nativeSelect.selectedIndex];
+            if (selectedOpt) {
+                trigger.textContent = selectedOpt.textContent;
+                trigger.style.color = selectedOpt.style.color || '';
+            } else {
+                trigger.textContent = 'Select...';
+                trigger.style.color = '';
+            }
+        }
+
+        // Initialize trigger text
+        updateTriggerText();
+
+        // Listen for change events on native select to keep trigger in sync
+        nativeSelect.addEventListener('change', updateTriggerText);
+
+        // Capture programmatic property overrides to keep trigger in sync
+        try {
+            const originalDescriptor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+            if (originalDescriptor) {
+                Object.defineProperty(nativeSelect, 'value', {
+                    get() {
+                        return originalDescriptor.get?.call(this);
+                    },
+                    set(val) {
+                        originalDescriptor.set?.call(this, val);
+                        updateTriggerText();
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn(`Could not intercept select.value for ${selectId}:`, e);
+        }
+
+        // Handle dropdown display
+        let activeDropdown: HTMLDivElement | null = null;
+
+        function closeDropdown() {
+            if (activeDropdown) {
+                activeDropdown.remove();
+                activeDropdown = null;
+                wrapper.classList.remove('is-open');
+            }
+        }
+
+        // Global click listener to close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!wrapper.contains(e.target as Node)) {
+                closeDropdown();
+            }
+        });
+
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (activeDropdown) {
+                closeDropdown();
+                return;
+            }
+
+            // Close all other open custom dropdowns first
+            document.querySelectorAll('.custom-select-wrapper').forEach(w => {
+                if (w !== wrapper) {
+                    w.classList.remove('is-open');
+                }
+            });
+            document.querySelectorAll('.custom-select-dropdown').forEach(d => d.remove());
+
+            wrapper.classList.add('is-open');
+
+            // Create dropdown element
+            const dropdown = document.createElement('div');
+            dropdown.className = 'custom-select-dropdown';
+            document.body.appendChild(dropdown);
+            activeDropdown = dropdown;
+
+            // Position the dropdown right below the trigger
+            const rect = trigger.getBoundingClientRect();
+            dropdown.style.top = `${rect.bottom + window.scrollY}px`;
+            dropdown.style.left = `${rect.left + window.scrollX}px`;
+            dropdown.style.width = `${rect.width}px`;
+
+            // Build items
+            function renderOptions() {
+                if (!dropdown) return;
+                dropdown.innerHTML = '';
+
+                const favorites = getFavorites();
+                const optionsArray = Array.from(nativeSelect.options);
+
+                // Sort options: favorites first, then original order
+                const sortedOptions = [...optionsArray].sort((a, b) => {
+                    const aFav = favorites.includes(a.value);
+                    const bFav = favorites.includes(b.value);
+                    if (aFav && !bFav) return -1;
+                    if (!aFav && bFav) return 1;
+                    return 0; // preserve original relative order
+                });
+
+                sortedOptions.forEach(opt => {
+                    const optDiv = document.createElement('div');
+                    optDiv.className = 'custom-select-option';
+                    if (opt.value === nativeSelect.value) {
+                        optDiv.classList.add('is-selected');
+                    }
+
+                    const isFav = favorites.includes(opt.value);
+                    if (isFav) {
+                        optDiv.classList.add('is-favorited');
+                    }
+
+                    // Option color styling
+                    if (opt.style.color) {
+                        optDiv.style.color = opt.style.color;
+                    }
+
+                    // Content
+                    const labelSpan = document.createElement('span');
+                    labelSpan.textContent = opt.textContent;
+                    optDiv.appendChild(labelSpan);
+
+                    const starSpan = document.createElement('span');
+                    starSpan.className = 'custom-select-star';
+                    starSpan.innerHTML = '★'; // Unicode star
+                    optDiv.appendChild(starSpan);
+
+                    // Left click: select option
+                    optDiv.addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+                        nativeSelect.value = opt.value;
+                        nativeSelect.dispatchEvent(new Event('change'));
+                        closeDropdown();
+                    });
+
+                    // Right click: pin / unpin favorite
+                    optDiv.addEventListener('contextmenu', (ev) => {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+
+                        let currentFavs = getFavorites();
+                        if (currentFavs.includes(opt.value)) {
+                            currentFavs = currentFavs.filter(v => v !== opt.value);
+                        } else {
+                            currentFavs.push(opt.value);
+                        }
+                        setFavorites(currentFavs);
+
+                        // Re-render immediately to update visual order and stars
+                        renderOptions();
+                    });
+
+                    dropdown.appendChild(optDiv);
+                });
+            }
+
+            renderOptions();
+        });
+
+        trigger.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                trigger.click();
+            } else if (e.key === 'Escape') {
+                closeDropdown();
+            }
+        });
+    }
+
+    // Initialize custom dropdowns after DOM is loaded or immediately
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            setupCustomSelect('gamemode');
+            setupCustomSelect('environment');
+        });
+    } else {
+        setupCustomSelect('gamemode');
+        setupCustomSelect('environment');
+    }
 })();

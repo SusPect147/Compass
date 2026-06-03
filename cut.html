@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sprite Element Extractor (Multi-Select & Themes)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 340px;
+            background: #1e293b;
+            padding: 24px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 10;
+        }
+        h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 800;
+            color: #38bdf8;
+            letter-spacing: 0.5px;
+        }
+        .main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            position: relative;
+            overflow: hidden;
+            background-image: 
+                linear-gradient(45deg, #1e293b 25%, transparent 25%, transparent 75%, #1e293b 75%, #1e293b),
+                linear-gradient(45deg, #1e293b 25%, transparent 25%, transparent 75%, #1e293b 75%, #1e293b);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+            cursor: grab;
+        }
+        .main:active {
+            cursor: grabbing;
+        }
+        .canvas-container {
+            position: relative;
+            transform-origin: top left;
+        }
+        canvas {
+            display: block;
+            image-rendering: pixelated; /* for crisp sprites */
+        }
+        #overlayCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+        }
+        .btn {
+            background: #0284c7;
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        .btn:hover { background: #0369a1; transform: translateY(-1px); }
+        .btn:active { transform: translateY(1px); }
+        .btn:disabled {
+            background: #475569;
+            color: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .btn-success {
+            background: #10b981;
+        }
+        .btn-success:hover {
+            background: #059669;
+        }
+        .info-text {
+            color: #94a3b8;
+            font-size: 13px;
+            text-align: left;
+            margin-top: 12px;
+            line-height: 1.5;
+        }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(30, 41, 59, 0.9);
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+        .controls button {
+            background: #334155;
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .controls button:hover { background: #475569; }
+        
+        #selectionList {
+            flex: 1;
+            overflow-y: auto;
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 10px;
+            border: 1px solid #334155;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-content: flex-start;
+        }
+        .mini-preview {
+            width: 48px;
+            height: 48px;
+            border: 2px solid #334155;
+            border-radius: 6px;
+            background-color: #000;
+            background-image: 
+                linear-gradient(45deg, #1e293b 25%, transparent 25%, transparent 75%, #1e293b 75%, #1e293b),
+                linear-gradient(45deg, #1e293b 25%, transparent 25%, transparent 75%, #1e293b 75%, #1e293b);
+            background-size: 10px 10px;
+            background-position: 0 0, 5px 5px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .mini-preview:hover {
+            border-color: #ef4444; /* red border on hover to indicate delete */
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>✂️ Sprite Cutter (Multi)</h2>
+        <input type="file" id="fileInput" accept="image/png, image/jpeg" style="display: none;">
+        <button class="btn" onclick="document.getElementById('fileInput').click()">Загрузить картинку</button>
+        
+        <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+            <h3 style="font-size: 16px; margin: 0 0 8px 0; color: #cbd5e1;">Выделено: <span id="selCount">0</span></h3>
+            
+            <div id="selectionList">
+                <!-- Mini canvas previews will appear here -->
+            </div>
+            
+            <p class="info-text">
+                <b>Левый клик</b> — выделить элемент (кликните по выделенному, чтобы убрать).<br><br>
+                <b>Правый клик/Колесико мыши</b> — перемещение по холсту.<br><br>
+                <em>Сайт сам разделит картинки на 2 темы (по рядам: верхний и нижний).</em>
+            </p>
+        </div>
+        
+        <button class="btn btn-success" id="downloadBtn" disabled>Скачать ZIP архивом</button>
+    </div>
+    
+    <div class="main" id="mainArea">
+        <div class="canvas-container" id="canvasContainer">
+            <canvas id="mainCanvas"></canvas>
+            <canvas id="overlayCanvas"></canvas>
+        </div>
+        <div class="controls">
+            <button onclick="zoom(0.2)">+</button>
+            <button onclick="zoom(-0.2)">-</button>
+            <button onclick="resetZoom()">↺</button>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const mainCanvas = document.getElementById('mainCanvas');
+        const overlayCanvas = document.getElementById('overlayCanvas');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const selCountText = document.getElementById('selCount');
+        const selectionList = document.getElementById('selectionList');
+        
+        const mainCtx = mainCanvas.getContext('2d', {willReadFrequently: true});
+        const overlayCtx = overlayCanvas.getContext('2d');
+        
+        let img = new Image();
+        let imgData = null;
+        let selections = [];
+        let currentFileName = "sprites";
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            currentFileName = file.name.split('.')[0];
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                img.onload = () => {
+                    mainCanvas.width = img.width;
+                    mainCanvas.height = img.height;
+                    overlayCanvas.width = img.width;
+                    overlayCanvas.height = img.height;
+                    mainCtx.clearRect(0, 0, img.width, img.height);
+                    mainCtx.drawImage(img, 0, 0);
+                    imgData = mainCtx.getImageData(0, 0, img.width, img.height);
+                    
+                    selections = [];
+                    updateSelections();
+                    resetZoom();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        overlayCanvas.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return; // Только левый клик выделяет
+            if (!imgData) return;
+            
+            const rect = overlayCanvas.getBoundingClientRect();
+            const scaleX = overlayCanvas.width / rect.width;
+            const scaleY = overlayCanvas.height / rect.height;
+            
+            const x = Math.floor((e.clientX - rect.left) * scaleX);
+            const y = Math.floor((e.clientY - rect.top) * scaleY);
+
+            // Проверка, кликнули ли мы по уже существующему выделению (чтобы удалить)
+            let removedIndex = -1;
+            for (let i = 0; i < selections.length; i++) {
+                let sq = selections[i];
+                if (x >= sq.x && x < sq.x + sq.size && y >= sq.y && y < sq.y + sq.size) {
+                    removedIndex = i;
+                    break;
+                }
+            }
+
+            if (removedIndex !== -1) {
+                selections.splice(removedIndex, 1);
+                updateSelections();
+                return;
+            }
+
+            // Добавление нового выделения
+            const bounds = getBoundingBox(imgData, x, y);
+            if (bounds) {
+                const boxW = bounds.maxX - bounds.minX + 1;
+                const boxH = bounds.maxY - bounds.minY + 1;
+                const size = Math.max(boxW, boxH);
+                const cx = bounds.minX + boxW / 2;
+                const cy = bounds.minY + boxH / 2;
+
+                const sqMinX = Math.round(cx - size / 2);
+                const sqMinY = Math.round(cy - size / 2);
+                
+                selections.push({ x: sqMinX, y: sqMinY, size: size, bounds: bounds });
+                updateSelections();
+            }
+        });
+
+        // Breadth-first search
+        function getBoundingBox(dataObj, startX, startY) {
+            const w = dataObj.width;
+            const h = dataObj.height;
+            const data = dataObj.data;
+            
+            const startIndex = (startY * w + startX) * 4;
+            if (data[startIndex + 3] < 10) return null; // Transparent
+
+            const visited = new Uint8Array(w * h);
+            const qX = new Uint32Array(w * h);
+            const qY = new Uint32Array(w * h);
+            
+            let head = 0;
+            let tail = 0;
+            
+            qX[tail] = startX;
+            qY[tail] = startY;
+            tail++;
+            visited[startY * w + startX] = 1;
+            
+            let minX = startX, maxX = startX, minY = startY, maxY = startY;
+            
+            while (head < tail) {
+                const x = qX[head];
+                const y = qY[head];
+                head++;
+                
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+                
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        if (dx === 0 && dy === 0) continue;
+                        const nx = x + dx;
+                        const ny = y + dy;
+                        
+                        if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                            const idx = ny * w + nx;
+                            if (visited[idx] === 0) {
+                                visited[idx] = 1;
+                                const alpha = data[idx * 4 + 3];
+                                if (alpha > 10) { 
+                                    qX[tail] = nx;
+                                    qY[tail] = ny;
+                                    tail++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return { minX, maxX, minY, maxY };
+        }
+
+        function updateSelections() {
+            // Перерисовываем overlay
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            if (imgData) {
+                overlayCtx.fillStyle = "rgba(15, 23, 42, 0.7)";
+                overlayCtx.fillRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            }
+            
+            selections.forEach(sq => {
+                // Очищаем область для подсветки элемента
+                overlayCtx.clearRect(sq.x, sq.y, sq.size, sq.size);
+                
+                // Рисуем пунктирную рамку
+                overlayCtx.strokeStyle = "#10b981";
+                overlayCtx.lineWidth = 2;
+                overlayCtx.setLineDash([5, 5]);
+                overlayCtx.strokeRect(sq.x, sq.y, sq.size, sq.size);
+            });
+            
+            // Обновляем счетчик и список превьюшек
+            selCountText.textContent = selections.length;
+            selectionList.innerHTML = '';
+            
+            selections.forEach((sq, index) => {
+                const canvas = document.createElement('canvas');
+                canvas.className = 'mini-preview';
+                canvas.width = sq.size;
+                canvas.height = sq.size;
+                canvas.title = "Нажмите, чтобы удалить";
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(mainCanvas, sq.x, sq.y, sq.size, sq.size, 0, 0, sq.size, sq.size);
+                
+                canvas.onclick = () => {
+                    selections.splice(index, 1);
+                    updateSelections();
+                };
+                
+                selectionList.appendChild(canvas);
+            });
+            
+            downloadBtn.disabled = selections.length === 0;
+        }
+
+        downloadBtn.addEventListener('click', async () => {
+            if (selections.length === 0) return;
+            
+            const zip = new JSZip();
+            
+            // Сортировка и группировка по темам (рядам)
+            // Сначала сортируем по Y
+            let sorted = [...selections].sort((a, b) => (a.y + a.size/2) - (b.y + b.size/2));
+            let rows = [];
+            if (sorted.length > 0) {
+                let currentRow = [sorted[0]];
+                let currentY = sorted[0].y + sorted[0].size/2;
+                for (let i = 1; i < sorted.length; i++) {
+                    let sq = sorted[i];
+                    let y = sq.y + sq.size/2;
+                    // Порог для определения нового ряда (темы) - 40 пикселей по высоте
+                    if (Math.abs(y - currentY) < 40) { 
+                        currentRow.push(sq);
+                    } else {
+                        rows.push(currentRow);
+                        currentRow = [sq];
+                        currentY = y;
+                    }
+                }
+                rows.push(currentRow);
+            }
+            
+            // Сортируем каждый ряд по X (слева направо)
+            rows.forEach(row => {
+                row.sort((a, b) => (a.x + a.size/2) - (b.x + b.size/2));
+            });
+            
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            rows.forEach((row, rowIndex) => {
+                // Если ряда 2, они будут Theme_1 и Theme_2
+                const themeName = `Theme_${rowIndex + 1}`;
+                const folder = zip.folder(themeName);
+                
+                row.forEach((sq, colIndex) => {
+                    tempCanvas.width = sq.size;
+                    tempCanvas.height = sq.size;
+                    tempCtx.clearRect(0, 0, sq.size, sq.size);
+                    tempCtx.drawImage(
+                        mainCanvas, 
+                        sq.x, sq.y, sq.size, sq.size,
+                        0, 0, sq.size, sq.size
+                    );
+                    
+                    const dataUrl = tempCanvas.toDataURL('image/png');
+                    const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
+                    
+                    // Называем файлы sprite_1.png, sprite_2.png
+                    folder.file(`sprite_${colIndex + 1}.png`, base64Data, {base64: true});
+                });
+            });
+            
+            const content = await zip.generateAsync({type: "blob"});
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(content);
+            link.download = `${currentFileName}_extracted.zip`;
+            link.click();
+        });
+        
+        // Панорамирование и Зум
+        const mainArea = document.getElementById('mainArea');
+        const canvasContainer = document.getElementById('canvasContainer');
+        let scale = 1;
+        let isDragging = false;
+        let startPanX = 0, startPanY = 0;
+        let translateX = 0, translateY = 0;
+
+        function updateTransform() {
+            canvasContainer.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        }
+
+        function zoom(amount) {
+            scale = Math.min(Math.max(0.1, scale + amount), 10);
+            updateTransform();
+        }
+
+        function resetZoom() {
+            scale = 1;
+            if (img && img.width) {
+                const rect = mainArea.getBoundingClientRect();
+                translateX = Math.max(0, (rect.width - img.width) / 2);
+                translateY = Math.max(0, (rect.height - img.height) / 2);
+            } else {
+                translateX = 0;
+                translateY = 0;
+            }
+            updateTransform();
+        }
+
+        mainArea.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const scaleAmount = e.deltaY < 0 ? 0.1 : -0.1;
+            zoom(scaleAmount);
+        }, { passive: false });
+
+        mainArea.addEventListener('mousedown', (e) => {
+            if (e.button === 0 && e.target === overlayCanvas) return;
+            if (e.button !== 0 && e.button !== 1 && e.button !== 2) return;
+            e.preventDefault();
+            isDragging = true;
+            startPanX = e.clientX - translateX;
+            startPanY = e.clientY - translateY;
+        });
+
+        mainArea.addEventListener('contextmenu', e => e.preventDefault());
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            translateX = e.clientX - startPanX;
+            translateY = e.clientY - startPanY;
+            updateTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+    </script>
+</body>
+</html>
