@@ -82,7 +82,7 @@ let isGridVisible = true;
 let isSnapEnabled = true;
 let currentCropMode = 'ghost'; 
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function initCustomTiles() {
     initStudioControls();
     initEquipControls();
     refreshEquippedBanner();
@@ -92,7 +92,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Listen to global filters
     document.getElementById('packSearch')?.addEventListener('input', renderPacks);
     document.getElementById('packSortFilter')?.addEventListener('change', renderPacks);
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCustomTiles);
+} else {
+    initCustomTiles();
+}
 
 /**
  * Setup Confirm/Cancel buttons for Equip Modal and Unequip banner

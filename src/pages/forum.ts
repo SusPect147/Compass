@@ -843,4 +843,8 @@ async function handleDeleteMessage(msgId) {
 }
 
 // Start the page
-window.addEventListener('DOMContentLoaded', initForum);
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', initForum);
+} else {
+    initForum();
+}

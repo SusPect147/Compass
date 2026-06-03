@@ -3,7 +3,7 @@ import { showSharpnessDownload } from '../core/sharpness-modal.js';
 import { drawStaticMapPreview } from '../utils/canvas-drawer.js';
 import { supabase } from '../core/supabase-client.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+function initShare() {
     const modeSelector = document.getElementById('modeSelector');
     const studioEditor = document.getElementById('studioEditor');
     const backBtn = document.getElementById('backToModesBtn');
@@ -991,4 +991,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const dataUrl = canvas.toDataURL('image/png', 1.0);
         showSharpnessDownload(dataUrl, `compass_art_${currentMode}`);
     });
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initShare);
+} else {
+    initShare();
+}

@@ -2,7 +2,7 @@
 import { drawStaticMapPreview } from '../utils/canvas-drawer.js';
 import { supabase } from '../core/supabase-client.js';
 import { showSharpnessDownload } from '../core/sharpness-modal.js';
-document.addEventListener('DOMContentLoaded', async () => {
+async function initView() {
     const urlParams = new URLSearchParams(window.location.search);
     const mapId = urlParams.get('id');
     if (!mapId)
@@ -1259,4 +1259,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     function format(str) {
         return str ? str.replace(/_/g, ' ') : 'Unknown';
     }
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initView);
+} else {
+    initView();
+}

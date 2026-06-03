@@ -510,10 +510,16 @@ function injectPremiumCardStyles() {
     document.head.appendChild(style);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function initExplore() {
     const filters = ['gamemodeFilter', 'environmentFilter', 'sizeFilter', 'sortFilter'];
     filters.forEach(id => document.getElementById(id)?.addEventListener('change', applyFilters));
     document.getElementById('mapSearch')?.addEventListener('input', applyFilters);
 
     initializeGallery();
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initExplore);
+} else {
+    initExplore();
+}

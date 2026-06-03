@@ -1025,7 +1025,7 @@ async function openGlobalCollabModal() {
     };
 }
 
-window.addEventListener('DOMContentLoaded', () => {
+function initDashboard() {
     document.getElementById('mapSearch')?.addEventListener('input', applyFilters);
     ['gamemodeFilter', 'environmentFilter', 'sizeFilter'].forEach(id => {
         document.getElementById(id)?.addEventListener('change', applyFilters);
@@ -1036,4 +1036,10 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     loadMyMaps();
-});
+}
+
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', initDashboard);
+} else {
+    initDashboard();
+}
