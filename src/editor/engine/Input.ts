@@ -284,9 +284,10 @@ export const InputMixin = {
         // Zoom relative to the container center
         const mapEditor = this.canvas.closest('.map-editor') || this.canvas.parentElement?.parentElement;
         if (mapEditor) {
-            // On phones, pan/zoom gestures are locked out unless the Pen
-            // (Overwrite Mode) tool is active — prevents accidental map
-            // movement/zooming while the user is trying to draw.
+            // On phones, wheel/pinch ZOOM is locked out unless the Pen
+            // (Overwrite Mode) tool is active — prevents accidental zooming
+            // while the user is trying to draw. Panning is a separate concern,
+            // gated only by the Hand Tool (viewPanActive) below, matching desktop.
             const gesturesLocked = () => this.isMobileDevice() && !this.overwriteMode;
 
             mapEditor.addEventListener('wheel', (e) => {
@@ -364,11 +365,11 @@ export const InputMixin = {
                 e.preventDefault();
             });
 
-            // Touch Start panning
+            // Touch Start panning — Hand Tool (Pan) alone enables this, matching
+            // desktop parity (left-click-drag pans whenever Hand Tool is active,
+            // no extra tool requirement). Only pinch/wheel zoom is gated behind Pen.
             editorEl.addEventListener('touchstart', (e) => {
                 if (!this.viewPanActive || e.touches.length !== 1) return;
-                // Phones: require Pen (Overwrite Mode) to be active before allowing panning
-                if (this.isMobileDevice() && !this.overwriteMode) return;
 
                 isPanning = true;
                 panMoved = false;

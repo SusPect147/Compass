@@ -604,12 +604,17 @@
                 min-height: 0 !important;
                 max-height: none !important;
                 border-radius: 8px !important;
-                /* .map-editor is a native overflow:auto scroll container used
-                   for panning (scrollLeft/scrollTop). Without this, the browser's
-                   OWN native touch-scroll/pinch handling can move the map even
-                   when our JS gating (Pen/Overwrite required) blocks our own pan
-                   handlers — touch-action:none hands ALL gesture handling to JS. */
-                touch-action: none !important;
+                /* .map-editor is normally a native overflow:auto scroll container
+                   (used for panning via scrollLeft/scrollTop). On mobile we force
+                   it to overflow:hidden so the BROWSER can never natively scroll it
+                   (all panning is done by our own JS setting scrollLeft/scrollTop,
+                   which still works fine with overflow:hidden). Combined with
+                   touch-action:pan-y, a vertical swipe that starts over the map
+                   is no longer "claimed" by this element, so it correctly bubbles
+                   up and scrolls the page instead of getting stuck — while pinch
+                   and horizontal native gestures stay disabled (JS handles those). */
+                overflow: hidden !important;
+                touch-action: pan-y !important;
             }
 
             /* ── 4. Tools panel — hidden on mobile. Mirroring (Diagonal/
