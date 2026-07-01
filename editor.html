@@ -553,16 +553,16 @@
                 min-height: unset !important;
             }
             .e1-tiles-panel .panel-drag-handle::after { display: none !important; }
-            /* Tiles grid — vertical scrollable grid */
+            /* Tiles grid — fully expanded, no inner scroll (page itself scrolls) */
             .e1-tiles-panel .tiles-grid {
                 flex: 0 0 auto !important;
                 overflow-x: hidden !important;
-                overflow-y: auto !important;
+                overflow-y: visible !important;
                 scrollbar-width: none !important;
                 padding: 0 0.2rem 0.2rem !important;
                 -webkit-overflow-scrolling: touch;
-                height: 150px !important;
-                max-height: 200px !important;
+                height: auto !important;
+                max-height: none !important;
             }
             .e1-tiles-panel .tiles-grid::-webkit-scrollbar { display: none !important; }
             .e1-tiles-panel #tileSelector {
@@ -593,7 +593,7 @@
                 position: relative !important;
                 width: 100% !important;
                 height: auto !important;
-                min-height: 250px !important;
+                min-height: 62vh !important;
                 max-height: none !important;
                 flex: 1 1 0 !important;
                 padding: 0.3rem !important;
@@ -604,9 +604,19 @@
                 min-height: 0 !important;
                 max-height: none !important;
                 border-radius: 8px !important;
+                /* .map-editor is a native overflow:auto scroll container used
+                   for panning (scrollLeft/scrollTop). Without this, the browser's
+                   OWN native touch-scroll/pinch handling can move the map even
+                   when our JS gating (Pen/Overwrite required) blocks our own pan
+                   handlers — touch-action:none hands ALL gesture handling to JS. */
+                touch-action: none !important;
             }
 
-            /* ── 4. Tools panel — hide (moved to bottom actions) ── */
+            /* ── 4. Tools panel — hidden on mobile. Mirroring (Diagonal/
+                   Vertical/Horizontal) and every other tool here already has
+                   its own dedicated label in mob-quick-tools below, which
+                   toggles the very same checkboxes via `for=` — no duplicate
+                   elements, no duplicate IDs. ── */
             #ph-tools {
                 order: 4;
                 height: auto !important;
@@ -779,7 +789,10 @@
             body:has(#overwriteBtn:checked) label[for="overwriteBtn"],
             body:has(#guidesBtn:checked) label[for="guidesBtn"],
             body:has(#handToolBtn:checked) label[for="handToolBtn"],
-            body:has(#errorsBtn:checked) label[for="errorsBtn"] {
+            body:has(#errorsBtn:checked) label[for="errorsBtn"],
+            body:has(#mirrorDiagonal:checked) label[for="mirrorDiagonal"],
+            body:has(#mirrorVertical:checked) label[for="mirrorVertical"],
+            body:has(#mirrorHorizontal:checked) label[for="mirrorHorizontal"] {
                 background: rgba(167, 139, 250, 0.25) !important;
                 border-color: rgba(167, 139, 250, 0.5) !important;
                 color: #fff !important;
@@ -790,6 +803,14 @@
             .mob-quick-tools { order: 0; }
             .e1-statusbar-center { order: 1; }
             .map-link { order: 2; }
+
+            /* ── Layering fix: the hamburger (3-line) side menu must render
+                   ABOVE the bottom toolbar strip (erase/undo/redo/replace/etc).
+                   .top-bar creates its own stacking context (position+z-index),
+                   so the fixed nav drawer nested inside it is capped at that
+                   context's level — raise it above .e1-statusbar's z-index. ── */
+            .top-bar { z-index: 900 !important; }
+            .e1-statusbar { z-index: 50 !important; }
         }
     </style>
 </head>
@@ -867,6 +888,7 @@
                                     <option value="siege">Siege</option>
                                     <option value="volley">Volley Brawl</option>
                                     <option value="basket">Basket Brawl</option>
+                                    <option style="color:#ff8bfa" value="custom">Custom</option>
                                 </select>
                             </div>
                             <div class="select-inline">
@@ -1096,6 +1118,18 @@
                 </label>
                 <label class="mob-qt-btn mob-qt-toggle" for="handToolBtn" title="Pan">
                     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v5m-4-1V5a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8M6 14v-2a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8c0 2.76 2.24 5 5 5h5.5c2.76 0 5-2.24 5-5v-3a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path></svg> Pan
+                </label>
+                <!-- Dedicated mobile mirroring buttons — toggle the SAME
+                     checkboxes as the desktop Tools panel via for=, no
+                     duplicate elements/IDs. -->
+                <label class="mob-qt-btn mob-qt-toggle" for="mirrorDiagonal" title="Mirror Diagonal">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20L20 4"></path><path d="M4 20h6"></path><path d="M4 20v-6"></path><path d="M20 4h-6"></path><path d="M20 4v6"></path></svg> Diagonal
+                </label>
+                <label class="mob-qt-btn mob-qt-toggle" for="mirrorVertical" title="Mirror Vertical">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V4"></path><path d="M6 8l6-6 6 6"></path><path d="M6 16l6 6 6-6"></path></svg> Vertical
+                </label>
+                <label class="mob-qt-btn mob-qt-toggle" for="mirrorHorizontal" title="Mirror Horizontal">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16"></path><path d="M8 6L2 12l6 6"></path><path d="M16 6l6 6-6 6"></path></svg> Horizontal
                 </label>
             </div>
             <div class="e1-statusbar-left" style="flex: 1;">

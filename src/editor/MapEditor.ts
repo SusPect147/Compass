@@ -169,14 +169,18 @@ export class MapEditor {
         if (!this.headless) {
             this.initializeUI();
             this.initializeEventListeners();
-            // Set initial zoom to fit the map
-            this.autoScaleViewport();
-            this.applyDeviceZoomSettings();
         }
 
+        // Canvas pixel dimensions must reflect the map size BEFORE we compute
+        // the fit-to-container zoom below — otherwise autoScaleViewport() would
+        // measure against stale/default canvas dimensions.
         this.updateCanvasSize();
 
         if (!this.headless) {
+            // Set initial zoom to fit the map inside its container
+            this.autoScaleViewport();
+            this.applyDeviceZoomSettings();
+
             // Center the map in the editor after layout settles
             requestAnimationFrame(() => {
                 this.updateCanvasZoom();

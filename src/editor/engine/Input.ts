@@ -115,8 +115,23 @@ export const InputMixin = {
 
         // Map setting listeners — BUG-02: null-check
         if (mapSizeSelect) {
-            mapSizeSelect.addEventListener('change', (e) => {
-                this.setSize(e.target.value);
+            mapSizeSelect.addEventListener('change', async (e) => {
+                const value = e.target.value;
+
+                if (value === 'custom') {
+                    const result = await this.promptCustomMapSize();
+                    if (!result) {
+                        // User cancelled — restore the dropdown to the actual current size
+                        const currentKey = Object.entries(this.mapSizes)
+                            .find(([, v]) => v.width === this.mapWidth && v.height === this.mapHeight)?.[0];
+                        if (currentKey) mapSizeSelect.value = currentKey;
+                        this.updateSelectOptionDots();
+                        return;
+                    }
+                    this.mapSizes.custom = { width: result.width, height: result.height };
+                }
+
+                await this.setSize(value);
                 this.updateSelectOptionDots();
             });
         }
@@ -269,7 +284,13 @@ export const InputMixin = {
         // Zoom relative to the container center
         const mapEditor = this.canvas.closest('.map-editor') || this.canvas.parentElement?.parentElement;
         if (mapEditor) {
+            // On phones, pan/zoom gestures are locked out unless the Pen
+            // (Overwrite Mode) tool is active — prevents accidental map
+            // movement/zooming while the user is trying to draw.
+            const gesturesLocked = () => this.isMobileDevice() && !this.overwriteMode;
+
             mapEditor.addEventListener('wheel', (e) => {
+                if (gesturesLocked()) return;
                 e.preventDefault();
                 const zoomFactor = e.deltaY < 0 ? 1.08 : 0.925;
                 const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoomLevel * zoomFactor));
@@ -284,6 +305,7 @@ export const InputMixin = {
             let initialZoom = 1;
 
             mapEditor.addEventListener('touchstart', (e) => {
+                if (gesturesLocked()) return;
                 if (e.touches.length === 2) {
                     e.preventDefault(); // Prevent default browser zoom/pinch
                     initialPinchDist = Math.hypot(
@@ -295,6 +317,7 @@ export const InputMixin = {
             }, { passive: false });
 
             mapEditor.addEventListener('touchmove', (e) => {
+                if (gesturesLocked()) return;
                 if (e.touches.length === 2) {
                     e.preventDefault(); // Block scrolling & default scaling
                     const dist = Math.hypot(
@@ -344,6 +367,8 @@ export const InputMixin = {
             // Touch Start panning
             editorEl.addEventListener('touchstart', (e) => {
                 if (!this.viewPanActive || e.touches.length !== 1) return;
+                // Phones: require Pen (Overwrite Mode) to be active before allowing panning
+                if (this.isMobileDevice() && !this.overwriteMode) return;
 
                 isPanning = true;
                 panMoved = false;

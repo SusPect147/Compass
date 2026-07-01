@@ -598,6 +598,78 @@ export const MapDataMixin = {
         }
         this.draw();
     },
+    promptCustomMapSize() {
+        return new Promise((resolve) => {
+            if (this.headless) { resolve(null); return; }
+
+            let modal = document.getElementById('customMapSizeModal');
+            if (!modal) {
+                const html = `
+                    <div class="modal-overlay" id="customMapSizeModal" style="z-index: 9999; display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); align-items: center; justify-content: center;">
+                        <div class="modal-container" style="background: #1e1e24; border-radius: 12px; width: 90%; max-width: 380px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);">
+                            <header style="display:flex; justify-content:space-between; align-items:center; padding: 1rem 1.5rem; background: rgba(0,0,0,0.2); border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                <h2 style="margin:0; font-size:1.1rem; font-weight:600; color:#fff;">Custom Map Size</h2>
+                                <button id="closeCustomSizeBtn" style="background:none; border:none; color:#fff; font-size:1.5rem; cursor:pointer; line-height:1;">&times;</button>
+                            </header>
+                            <div style="display:flex; flex-direction:column; gap:1rem; padding:1.5rem;">
+                                <p style="font-size:0.82rem; color:rgba(255,255,255,0.6); margin:0;">Enter the map size in tiles. Values are clamped between 5 and 100.</p>
+                                <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                                    <label style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:rgba(255,255,255,0.4);">Width (tiles)</label>
+                                    <input type="number" id="customMapWidthInput" min="5" max="100" value="21" style="width:100%; box-sizing:border-box; padding:0.6rem 0.75rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#fff; font-size:0.9rem;">
+                                </div>
+                                <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                                    <label style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:rgba(255,255,255,0.4);">Height (tiles)</label>
+                                    <input type="number" id="customMapHeightInput" min="5" max="100" value="33" style="width:100%; box-sizing:border-box; padding:0.6rem 0.75rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#fff; font-size:0.9rem;">
+                                </div>
+                            </div>
+                            <footer style="display:flex; gap:1rem; padding:1.2rem; background:rgba(0,0,0,0.1); border-top:1px solid rgba(255,255,255,0.05);">
+                                <button id="cancelCustomSizeBtn" style="flex:1; padding:0.75rem; background:rgba(255,255,255,0.1); border:none; border-radius:6px; color:#fff; cursor:pointer;">Cancel</button>
+                                <button id="applyCustomSizeBtn" style="flex:1; padding:0.75rem; background:#8b5cf6; border:none; border-radius:6px; color:#fff; cursor:pointer; font-weight:600;">Apply</button>
+                            </footer>
+                        </div>
+                    </div>`;
+                const div = document.createElement('div');
+                div.innerHTML = html;
+                document.body.appendChild(div);
+                modal = document.getElementById('customMapSizeModal');
+            }
+
+            const widthInput = document.getElementById('customMapWidthInput');
+            const heightInput = document.getElementById('customMapHeightInput');
+            const applyBtn = document.getElementById('applyCustomSizeBtn');
+            const cancelBtn = document.getElementById('cancelCustomSizeBtn');
+            const closeBtn = document.getElementById('closeCustomSizeBtn');
+
+            if (!modal || !widthInput || !heightInput || !applyBtn || !cancelBtn || !closeBtn) {
+                resolve(null);
+                return;
+            }
+
+            // Pre-fill with the existing custom size (if any), else the current map size
+            const existing = this.mapSizes.custom;
+            widthInput.value  = String((existing && existing.width)  || this.mapWidth  || 21);
+            heightInput.value = String((existing && existing.height) || this.mapHeight || 33);
+
+            modal.style.display = 'flex';
+
+            const cleanup = (result) => {
+                modal.style.display = 'none';
+                applyBtn.onclick = null;
+                cancelBtn.onclick = null;
+                closeBtn.onclick = null;
+                resolve(result);
+            };
+
+            applyBtn.onclick = () => {
+                const w = Math.max(5, Math.min(100, parseInt(widthInput.value, 10) || 21));
+                const h = Math.max(5, Math.min(100, parseInt(heightInput.value, 10) || 33));
+                cleanup({ width: w, height: h });
+            };
+            cancelBtn.onclick = () => cleanup(null);
+            closeBtn.onclick = () => cleanup(null);
+        });
+    },
+
     async setSize(size, changing = true) {
         const newSize = this.mapSizes[size];
         if (!newSize)

@@ -112,9 +112,9 @@ applyDeviceZoomSettings() {
         this.maxZoom   = Math.min(this.maxZoom, 2);   // limit deep zoom-in on mobile
         this.delta     = Math.min(this.delta, 1);     // smaller per-wheel/pinch delta for smoother changes
 
-        // Clamp current zoom to new bounds
-        this.zoomLevel = 0.4;
-        this.updateCanvasZoom();
+        // Phones: fit the whole map inside its container instead of guessing a fixed
+        // zoom value, so the map never overflows the container on first load.
+        this.autoScaleViewport();
     },
 
 isMobileDevice() {

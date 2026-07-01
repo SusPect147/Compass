@@ -63,6 +63,59 @@
                 </div>
                 <div class="updates-list">
                     <div class="update-item">
+                        <span class="update-date">01.07.2026</span>
+                        <span class="update-text">
+                            • Mobile editor: map now auto-fits inside its container on load instead of overflowing.<br>
+                            • Mobile editor: map pan/zoom (touch drag, pinch, and native scroll) is now locked unless the Pen (Overwrite) tool is active.<br>
+                            • Mobile editor: tile picker now shows the full list without an inner scrollbar.<br>
+                            • Mobile editor: restored Mirroring (Diagonal/Vertical/Horizontal) with dedicated quick-tool buttons.<br>
+                            • Mobile editor: taller map container and fixed the hamburger menu rendering behind the bottom toolbar.<br>
+                            • Added a Custom map size option — set width/height in tiles directly from the Map Size dropdown.
+                        </span>
+                    </div>
+                    <div class="update-item" style="margin-top: 1rem;">
+                        <span class="update-date">03.06.2026</span>
+                        <span class="update-text">
+                            • Fixed DOMContentLoaded race condition for module scripts.<br>
+                            • Adjusted train tile constraints and hid export progress indicators.<br>
+                            • Added Custom Gamemode support.<br>
+                            • Implemented right-click favorite dropdown pinning.
+                        </span>
+                    </div>
+                    <div class="update-item" style="margin-top: 1rem;">
+                        <span class="update-date">31.05.2026</span>
+                        <span class="update-text">
+                            • Launched Share Art Studio with canvas pan/zoom via CSS transform, dynamic themes, and image fitting.<br>
+                            • Added arrow types, standard strategy colors, opacity slider, and transparent background option.<br>
+                            • Replaced file upload with a map picker for Share Art.<br>
+                            • Added Share Art hub page and extracted Sharpness modal into a reusable component.<br>
+                            • Updated rendering layer hierarchy: Background → Spawns → Goals → Objects.<br>
+                            • Fixed map picker modal styles, exact hitboxes, panning limits, and top goal layering.<br>
+                            • Fixed canvas-drawer variable redeclaration and reduced arrow hitbox size.<br>
+                            • Mobile UI fixes and TypeScript refactoring.
+                        </span>
+                    </div>
+                    <div class="update-item" style="margin-top: 1rem;">
+                        <span class="update-date">25.05.2026</span>
+                        <span class="update-text">
+                            • Fixed map preview rendering by batching fetches in chunks of 4 to prevent payload errors.<br>
+                            • Fixed map render timeout caused by requestAnimationFrame stalling on inactive tabs.<br>
+                            • Fixed AssetLoader promise deadlocks and waitForImage hanging.<br>
+                            • Added optimistic UI for votes and switched to pre-aggregated views.<br>
+                            • Optimized Gallery and My Maps with batch map_data fetching.
+                        </span>
+                    </div>
+                    <div class="update-item" style="margin-top: 1rem;">
+                        <span class="update-date">24.05.2026</span>
+                        <span class="update-text">
+                            • Fixed custom gamemode tile overrides and UI issues.<br>
+                            • Fixed diagonal block error detection and tiles panel z-index overlap.<br>
+                            • Fixed layout reset button, custom tiles validation, and save errors.<br>
+                            • Moved reset button to status bar and fixed Validator corner squeeze against map borders.<br>
+                            • Fixed custom tiles RLS, manual crop mode, tiles panel persistence, and z-index layering.
+                        </span>
+                    </div>
+                    <div class="update-item" style="margin-top: 1rem;">
                         <span class="update-date">23.05.2026</span>
                         <span class="update-text">
                             • Added Overwrite mode for replacing existing tiles.<br>
