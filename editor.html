@@ -552,19 +552,18 @@
                 min-height: unset !important;
             }
             .e1-tiles-panel .panel-drag-handle::after { display: none !important; }
-            /* Tiles grid — capped height with INNER scroll so the map sits
-                   right below and is visible without scrolling the page */
+            /* Tiles grid — fully expanded, NO inner scrollbar; the page
+                   itself scrolls vertically now */
             .e1-tiles-panel .tiles-grid {
                 flex: 0 0 auto !important;
-                overflow-x: hidden !important;
-                overflow-y: auto !important;
+                overflow: visible !important;
                 scrollbar-width: none !important;
                 padding: 0 0.2rem 0.2rem !important;
-                -webkit-overflow-scrolling: touch;
                 height: auto !important;
-                max-height: 21vh !important;
+                max-height: none !important;
             }
-            .e1-tiles-panel .tiles-grid::-webkit-scrollbar { display: none !important; }
+            .e1-tiles-panel .tiles-grid::-webkit-scrollbar,
+            .e1-tiles-panel *::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
             .e1-tiles-panel #tileSelector {
                 display: grid !important;
                 grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)) !important;
