@@ -19,7 +19,7 @@ autoScaleViewport() {
             const mapPixelH = this.mapHeight * this.tileSize;
             const scaleX = containerWidth / mapPixelW;
             const scaleY = containerHeight / mapPixelH;
-            const target = Math.min(scaleX, scaleY, this.maxZoom);
+            const target = Math.min(scaleX, scaleY, this.maxZoom) * 0.92;
             this.zoomLevel = Math.max(this.minZoom, Math.min(this.maxZoom, target));
             this.updateCanvasZoom();
             // Always re-center on phones after auto-fit: some callers change the

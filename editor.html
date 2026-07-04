@@ -447,10 +447,11 @@
 
         @media (max-width: 768px) {
 
-            /* Shell becomes a vertical scrolling column */
+            /* Shell: natural height so the WHOLE page scrolls vertically */
             .e1-shell {
-                height: 100dvh;
-                overflow: hidden;
+                height: auto;
+                min-height: 100dvh;
+                overflow: visible;
                 display: flex;
                 flex-direction: column;
             }
@@ -462,16 +463,13 @@
                 padding: 0 0.75rem !important;
             }
 
-            /* Main: vertical scrollable */
+            /* Main: no inner scroll — the document itself scrolls now */
             .e1-main {
-                flex: 1 1 0;
+                flex: 1 0 auto;
                 flex-direction: column !important;
-                overflow-y: auto;
-                overflow-x: hidden;
+                overflow: visible;
                 min-height: 0;
-                scrollbar-width: none;
             }
-            .e1-main::-webkit-scrollbar { display: none; }
 
             /* Flatten stacking */
             .e1-left-col, .e1-map-area { display: contents; }
