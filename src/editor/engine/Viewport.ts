@@ -8,15 +8,37 @@ export const ViewportMixin = {
 autoScaleViewport() {
         if (this.headless) return;
         const container = this.canvas.closest('.map-editor') || this.canvas.parentElement;
-        const containerWidth = container.clientWidth - 40;
-        const containerHeight = container.clientHeight - 40;
-        
-        const scaleX = containerWidth / this.canvas.width;
-        const scaleY = containerHeight / this.canvas.height;
+        if (this.isMobileDevice()) {
+            // Phones: fit the actual MAP (excluding the transparent canvasPadding
+            // border) to the container with a tiny margin, so the initial view
+            // fills the container instead of showing a small map. The padding may
+            // overflow the container edges — panning/zoom handles that fine.
+            const containerWidth = container.clientWidth - 12;
+            const containerHeight = container.clientHeight - 12;
+            const mapPixelW = this.mapWidth * this.tileSize;
+            const mapPixelH = this.mapHeight * this.tileSize;
+            const scaleX = containerWidth / mapPixelW;
+            const scaleY = containerHeight / mapPixelH;
+            const target = Math.min(scaleX, scaleY, this.maxZoom);
+            this.zoomLevel = Math.max(this.minZoom, Math.min(this.maxZoom, target));
+            this.updateCanvasZoom();
+            // Always re-center on phones after auto-fit: some callers change the
+            // zoom without recentering, which leaves the view shifted sideways
+            // (gap on one side, map cut off on the other). Double rAF so layout
+            // fully settles before measuring scroll offsets.
+            requestAnimationFrame(() => requestAnimationFrame(() => this.centerCanvas()));
+            return;
+        } else {
+            const containerWidth = container.clientWidth - 40;
+            const containerHeight = container.clientHeight - 40;
 
-        const target = Math.min(scaleX, scaleY, this.maxZoom) * 0.8;
-        this.zoomLevel = Math.max(this.minZoom, Math.min(this.maxZoom, target));
-        
+            const scaleX = containerWidth / this.canvas.width;
+            const scaleY = containerHeight / this.canvas.height;
+
+            const target = Math.min(scaleX, scaleY, this.maxZoom) * 0.8;
+            this.zoomLevel = Math.max(this.minZoom, Math.min(this.maxZoom, target));
+        }
+
         this.updateCanvasZoom();
     },
 

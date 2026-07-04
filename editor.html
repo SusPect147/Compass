@@ -476,12 +476,13 @@
             /* Flatten stacking */
             .e1-left-col, .e1-map-area { display: contents; }
 
-            /* ── 1. Settings section — top of scroll ── */
+            /* ── Settings section — moved BELOW the map on mobile so tiles
+                   and map are instantly reachable without scrolling ── */
             #ph-settings {
-                order: 1;
+                order: 5;
                 flex: 0 0 auto;
                 height: auto !important;
-                padding: 0.3rem 0.3rem 0;
+                padding: 0.3rem 0.3rem 0.5rem;
                 display: block;
                 width: 100%;
             }
@@ -522,9 +523,9 @@
                 padding: 0 0.4rem !important;
             }
 
-            /* ── 2. Tiles — 2-row horizontal scroll ── */
+            /* ── 1. Tiles — compact strip at the very top, inner scroll ── */
             .e1-tiles-float {
-                order: 2;
+                order: 1;
                 position: relative !important;
                 top: auto !important; left: auto !important;
                 width: 100% !important;
@@ -553,47 +554,54 @@
                 min-height: unset !important;
             }
             .e1-tiles-panel .panel-drag-handle::after { display: none !important; }
-            /* Tiles grid — fully expanded, no inner scroll (page itself scrolls) */
+            /* Tiles grid — capped height with INNER scroll so the map sits
+                   right below and is visible without scrolling the page */
             .e1-tiles-panel .tiles-grid {
                 flex: 0 0 auto !important;
                 overflow-x: hidden !important;
-                overflow-y: visible !important;
+                overflow-y: auto !important;
                 scrollbar-width: none !important;
                 padding: 0 0.2rem 0.2rem !important;
                 -webkit-overflow-scrolling: touch;
                 height: auto !important;
-                max-height: none !important;
+                max-height: 21vh !important;
             }
             .e1-tiles-panel .tiles-grid::-webkit-scrollbar { display: none !important; }
             .e1-tiles-panel #tileSelector {
                 display: grid !important;
-                grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)) !important;
-                gap: 4px !important;
-                padding: 4px !important;
+                grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)) !important;
+                gap: 3px !important;
+                padding: 3px !important;
                 width: 100% !important;
                 height: auto !important;
                 align-content: flex-start !important;
             }
             .e1-tiles-panel .tile-category-grid {
-                grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)) !important;
-                gap: 4px !important;
+                grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)) !important;
+                gap: 3px !important;
             }
             .e1-tiles-panel #tileSelector .tile-btn {
-                width: 46px !important;
-                min-width: 46px !important;
-                height: 46px !important;
+                width: 34px !important;
+                min-width: 34px !important;
+                height: 34px !important;
                 flex-shrink: 0 !important;
             }
+            .e1-tiles-panel .tile-category-header {
+                padding: 0.15rem 0.3rem !important;
+                font-size: 0.6rem !important;
+                min-height: unset !important;
+            }
+            .e1-tiles-panel .tile-category-header svg { width: 11px !important; height: 11px !important; }
             /* Opacity slider — hide on mobile */
             .e1-tiles-panel .opacity-control { display: none !important; }
 
-            /* ── 3. Map — takes generous fixed height ── */
+            /* ── 2. Map — right after tiles, much taller ── */
             .e1-map-area .map-wrapper {
-                order: 3;
+                order: 2;
                 position: relative !important;
                 width: 100% !important;
                 height: auto !important;
-                min-height: 62vh !important;
+                min-height: 74vh !important;
                 max-height: none !important;
                 flex: 1 1 0 !important;
                 padding: 0.3rem !important;
@@ -629,9 +637,9 @@
                 display: none !important;
             }
 
-            /* ── 5. Selections — compact horizontal tabs ── */
+            /* ── 3. Selections — compact horizontal tabs ── */
             #ph-selections {
-                order: 5;
+                order: 3;
                 flex: 0 0 auto;
                 height: auto !important;
                 padding: 0 0.3rem 0;
@@ -657,27 +665,27 @@
             #ph-selections .select-btn {
                 flex: 1 1 0 !important;
                 width: auto !important;
-                min-height: 36px !important;
-                height: 36px !important;
-                padding: 0 0.2rem !important;
+                min-height: 30px !important;
+                height: 30px !important;
+                padding: 0 0.15rem !important;
                 justify-content: center !important;
-                gap: 0.2rem !important;
-                font-size: 0.58rem !important;
+                gap: 1px !important;
+                font-size: 0.52rem !important;
                 flex-direction: column !important;
             }
             #ph-selections .select-btn img {
-                width: 16px !important;
-                height: 16px !important;
+                width: 13px !important;
+                height: 13px !important;
             }
-            #ph-selections .select-btn mob { display: block !important; font-size: 0.53rem !important; }
+            #ph-selections .select-btn mob { display: block !important; font-size: 0.48rem !important; }
 
             /* ── 6. Status bar — bottom action buttons ── */
             .e1-statusbar {
                 order: 6;
                 flex: 0 0 auto;
                 flex-direction: column !important;
-                padding: 0.3rem 0.3rem env(safe-area-inset-bottom, 0.3rem) !important;
-                gap: 0.3rem !important;
+                padding: 0.25rem 0.25rem env(safe-area-inset-bottom, 0.25rem) !important;
+                gap: 0.25rem !important;
                 min-height: unset !important;
                 background: color-mix(in srgb, var(--bg-secondary, #0f0f17) 92%, transparent);
                 border-top: 1px solid rgba(255,255,255,0.05);
@@ -696,10 +704,10 @@
             .e1-statusbar .text-btn {
                 flex: 1 1 auto !important;
                 text-align: center !important;
-                padding: 0.45rem 0.3rem !important;
-                font-size: 0.78rem !important;
-                min-height: 38px !important;
-                border-radius: 8px !important;
+                padding: 0.28rem 0.3rem !important;
+                font-size: 0.7rem !important;
+                min-height: 30px !important;
+                border-radius: 7px !important;
             }
             /* Clear spans full width */
             #clearBtn {
@@ -716,10 +724,24 @@
             .e1-statusbar .link-container {
                 margin: 0 !important;
                 display: flex !important;
+                flex-direction: row !important; /* editor.css forces column ≤900px — keep one line */
                 align-items: center !important;
                 gap: 0.35rem !important;
                 flex-wrap: nowrap !important;
                 width: 100%;
+            }
+            /* Smaller copy button on phones */
+            .e1-statusbar .copy-btn {
+                width: 22px !important;
+                height: 22px !important;
+                min-width: 22px !important;
+                padding: 3px !important;
+                border-radius: 5px !important;
+                align-self: center !important;
+            }
+            .e1-statusbar .copy-btn svg {
+                width: 11px !important;
+                height: 11px !important;
             }
             .e1-statusbar .link-container > span {
                 color: rgba(255,255,255,0.35);
@@ -748,8 +770,8 @@
             /* ── Mobile quick tools strip ── */
             .mob-quick-tools {
                 display: grid !important;
-                grid-template-columns: repeat(5, 1fr) !important;
-                gap: 0.25rem !important;
+                grid-template-columns: repeat(6, 1fr) !important;
+                gap: 0.2rem !important;
                 width: 100% !important;
                 order: 0;
             }
@@ -757,18 +779,18 @@
 
             .mob-qt-btn {
                 flex: 1 1 0;
-                min-width: 48px;
-                height: 36px;
+                min-width: 0;
+                height: 29px;
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
                 justify-content: center !important;
-                gap: 2px !important;
+                gap: 1px !important;
                 border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 7px;
+                border-radius: 6px;
                 background: rgba(255,255,255,0.04);
                 color: rgba(255,255,255,0.6);
-                font-size: 0.48rem;
+                font-size: 0.42rem;
                 font-weight: 600;
                 text-transform: uppercase;
                 letter-spacing: 0.04em;
@@ -780,8 +802,9 @@
                 font-family: inherit;
             }
             .mob-qt-btn img, .mob-qt-btn svg {
-                width: 15px !important;
-                height: 15px !important;
+                width: 12px !important;
+                height: 12px !important;
+                margin: 0 auto !important;
                 object-fit: contain;
                 filter: brightness(0) invert(1) brightness(150%);
             }
