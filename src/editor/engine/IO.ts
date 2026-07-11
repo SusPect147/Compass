@@ -162,6 +162,7 @@ export const IOMixin = {
             if (isDirectEdit && user && data.user_id === user.id) {
                 console.info(`[Compass] Activating DIRECT EDIT mode on loaded map ID: ${mapId}`);
                 this.loadedMapId = mapId;
+                this.updateVersionsButton();
                 if (nameInput)
                     nameInput.value = data.name || 'Untitled Map';
             }
@@ -365,23 +366,28 @@ export const IOMixin = {
             if (this.loadedMapId) {
                 console.info(`[Compass] Attempting database UPDATE on existing Map ID: ${this.loadedMapId}`);
                 
-                // --- COMPACT OLD VERSION ARCHIVE ---
+                // --- PAST VERSION ARCHIVE (keeps up to 5 versions) ---
                 try {
                     const { data: oldMap } = await supabase.from('maps').select('map_data').eq('id', this.loadedMapId).single();
                     if (oldMap && oldMap.map_data) {
-                        // Delete previous 'old version' to prevent DB overload (do it smartly)
-                        await supabase.from('map_suggestions').delete()
-                            .eq('map_id', this.loadedMapId)
-                            .eq('contributor_id', user.id)
-                            .eq('contributor_name', '╤Б╤В╨░╤А╨░╤П ╨▓╨╡╤А╤Б╨╕╤П');
-                        
-                        // Archive the old map data
+                        // Archive the old map data as a "past version"
                         await supabase.rpc('archive_map_version', {
                             p_map_id: this.loadedMapId,
                             p_owner_id: user.id,
-                            p_label: '╤Б╤В╨░╤А╨░╤П ╨▓╨╡╤А╤Б╨╕╤П',
+                            p_label: 'старая версия',
                             p_map_data: oldMap.map_data
                         });
+                        // Trim history: keep only the 5 most recent past versions
+                        const labels = this._versionLabels();
+                        const { data: verRows } = await supabase.from('map_suggestions')
+                            .select('id, contributor_name, created_at')
+                            .eq('map_id', this.loadedMapId)
+                            .order('created_at', { ascending: false });
+                        const versions = (verRows || []).filter(r => labels.includes((r.contributor_name || '').trim()));
+                        if (versions.length > 5) {
+                            const surplus = versions.slice(5).map(r => r.id);
+                            await supabase.from('map_suggestions').delete().in('id', surplus);
+                        }
                     }
                 } catch(e) {
                     console.warn('[Compass] Failed to archive old version:', e);
@@ -438,6 +444,7 @@ export const IOMixin = {
                 if (savedMapId && !this.collabLinkId) {
                     this.loadedMapId = savedMapId;
                 }
+                this.updateVersionsButton();
             }
             const mapLinkElement = document.getElementById('mapLink');
             if (mapLinkElement && savedMapId) {
@@ -1000,6 +1007,102 @@ export const IOMixin = {
         } catch (e) {
             console.error(e);
             alert('Failed to save finished collab map to your account: ' + e.message);
+        }
+    },
+
+    // ══════════════════════════════════════════════════════════════
+    // 🕓 PAST VERSIONS (in-editor panel)
+    // ══════════════════════════════════════════════════════════════
+    _versionLabels() {
+        return ['старая версия', 'Previous Version', 'Прошлая версия', 'Предыдущая версия', '╤Б╤В╨░╤А╨░╤П ╨▓╨╡╤А╤Б╨╕╤П'];
+    },
+
+    updateVersionsButton() {
+        const btn = document.getElementById('versionsBtn');
+        if (!btn)
+            return;
+        btn.style.display = this.loadedMapId ? '' : 'none';
+        btn.textContent = '🕓 ' + window.cp_translate('Past Versions');
+    },
+
+    async openVersionsPanel() {
+        if (!this.loadedMapId) {
+            window.cpToast(window.cp_translate('Save the map first — past versions appear after the first save.'), 'info');
+            return;
+        }
+        document.getElementById('cpVersionsOverlay')?.remove();
+        const overlay = document.createElement('div');
+        overlay.id = 'cpVersionsOverlay';
+        overlay.style.cssText = `position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,0.55);
+            backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center;`;
+        const card = document.createElement('div');
+        card.style.cssText = `background:linear-gradient(145deg, rgba(24,24,36,0.98), rgba(12,12,18,0.97));
+            border:1px solid rgba(255,255,255,0.1); border-radius:18px; width:min(540px, 92vw);
+            max-height:80vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.6); color:#fff;`;
+        card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:1.1rem 1.4rem; border-bottom:1px solid rgba(255,255,255,0.06);">
+                <h3 style="margin:0; font-size:1.05rem;">🕓 ${window.cp_translate('Past Versions')}</h3>
+                <button id="cpVersionsClose" style="background:none; border:none; color:rgba(255,255,255,0.5); font-size:1.4rem; cursor:pointer;">&times;</button>
+            </div>
+            <div id="cpVersionsBody" style="padding:1rem 1.4rem; overflow-y:auto; display:flex; flex-direction:column; gap:0.7rem;">
+                <span style="opacity:0.6; font-size:0.85rem;">⏳</span>
+            </div>`;
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+        card.querySelector('#cpVersionsClose').onclick = () => overlay.remove();
+        const body = card.querySelector('#cpVersionsBody');
+        try {
+            const { data: rows, error } = await supabase
+                .from('map_suggestions')
+                .select('id, contributor_name, created_at, map_data')
+                .eq('map_id', this.loadedMapId)
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            const labels = this._versionLabels();
+            const versions = (rows || []).filter(r => labels.includes((r.contributor_name || '').trim()));
+            if (versions.length === 0) {
+                body.innerHTML = `<span style="opacity:0.55; font-size:0.85rem;">${window.cp_translate('No past versions yet. They appear automatically after you save changes to the map.')}</span>`;
+                return;
+            }
+            body.innerHTML = '';
+            versions.forEach((v, idx) => {
+                const row = document.createElement('div');
+                row.style.cssText = `display:flex; justify-content:space-between; align-items:center; gap:10px;
+                    background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:0.7rem 0.9rem;`;
+                const date = new Date(v.created_at).toLocaleString();
+                row.innerHTML = `
+                    <div style="display:flex; flex-direction:column;">
+                        <span style="font-weight:700; font-size:0.85rem; color:#facc15;">🕓 ${window.cp_translate('Version')} ${versions.length - idx}</span>
+                        <span style="font-size:0.72rem; opacity:0.5;">${date}</span>
+                    </div>
+                    <button class="cp-restore-btn" style="background:rgba(0,210,255,0.12); border:1px solid rgba(0,210,255,0.35);
+                        color:#7dd3fc; border-radius:9px; padding:6px 14px; font-size:0.78rem; font-weight:700; cursor:pointer;">
+                        ${window.cp_translate('Restore into editor')}
+                    </button>`;
+                row.querySelector('.cp-restore-btn').onclick = async () => {
+                    const ok = await window.cpConfirm(window.cp_translate('Load this version into the editor? Your current canvas will be replaced (you can undo with Ctrl+Z).'));
+                    if (!ok)
+                        return;
+                    try {
+                        this.saveState(); // make the swap undoable
+                        this.tileGrid = v.map_data;
+                        this._errorsDirty = true;
+                        this.draw();
+                        overlay.remove();
+                        window.cpToast(window.cp_translate('✅ Version loaded into the editor. Press Save Map to make it permanent.'), 'success');
+                    }
+                    catch (e) {
+                        console.error(e);
+                        alert(window.cp_translate('❌ Failed to load version:') + ' ' + e.message);
+                    }
+                };
+                body.appendChild(row);
+            });
+        }
+        catch (e) {
+            console.error(e);
+            body.innerHTML = `<span style="color:#f87171; font-size:0.85rem;">❌ ${e.message}</span>`;
         }
     }
 };

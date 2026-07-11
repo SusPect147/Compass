@@ -1251,6 +1251,7 @@ function resetStudio() {
     if (statusEl) statusEl.textContent = '';
     document.getElementById('studioTileGrid')?.classList.remove('assign-mode');
     document.getElementById('variantPickerPop')?.remove();
+    closeManualCut();
     const nameInput = document.getElementById('packNameInput') as HTMLInputElement;
     const publicCheck = document.getElementById('packPublicCheck') as HTMLInputElement;
     if (nameInput) nameInput.value = '';
@@ -1340,26 +1341,29 @@ function tr(key) {
 }
 
 function initSlicePanel() {
-    const uploadBtn = document.getElementById('sliceUploadBtn');
-    const sliceInput = document.getElementById('sliceFileInput');
+    const dropzone = document.getElementById('sliceDropzone');
+    const sliceInput = document.getElementById('sliceFileInput') as HTMLInputElement;
     const choiceBox = document.getElementById('sliceChoice');
-    const previewImg = document.getElementById('slicePreviewImg');
+    const previewImg = document.getElementById('slicePreviewImg') as HTMLImageElement;
     const autoBtn = document.getElementById('autoSliceBtn');
+    const gridBtn = document.getElementById('gridSliceBtn');
     const manualBtn = document.getElementById('manualSliceBtn');
+    const manualDoneBtn = document.getElementById('manualDoneBtn');
     const statusEl = document.getElementById('sliceStatus');
     const addVariantBtn = document.getElementById('addVariantTileBtn');
-    if (!uploadBtn || !sliceInput)
+    if (!dropzone || !sliceInput)
         return;
     // Localize static split-panel labels
     document.querySelectorAll('#studioModal [data-i18n]').forEach(el => {
         el.textContent = tr(el.getAttribute('data-i18n'));
     });
-    uploadBtn.onclick = () => sliceInput.click();
-    sliceInput.onchange = (e) => {
-        const file = e.target.files?.[0];
-        sliceInput.value = '';
+    const loadSliceFile = (file) => {
         if (!file)
             return;
+        if (file.type && !/^image\//.test(file.type)) {
+            alert(tr('Failed to load image.'));
+            return;
+        }
         if (file.size > 8 * 1024 * 1024) {
             alert(tr('Original file size too large! Max limit 5MB for cropping.'));
             return;
@@ -1372,16 +1376,45 @@ function initSlicePanel() {
                 previewImg.src = url;
             if (choiceBox)
                 choiceBox.style.display = 'flex';
+            closeManualCut();
             if (statusEl)
                 statusEl.textContent = `${img.naturalWidth}×${img.naturalHeight}px — ` + tr('choose how to cut the image');
         };
         img.onerror = () => alert(tr('Failed to load image.'));
         img.src = url;
     };
+    // Click or keyboard opens the file picker
+    dropzone.addEventListener('click', () => sliceInput.click());
+    dropzone.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            sliceInput.click();
+        }
+    });
+    // Drag & drop straight onto the dropzone
+    ['dragenter', 'dragover'].forEach(ev => dropzone.addEventListener(ev, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.add('dragover');
+    }));
+    ['dragleave', 'drop'].forEach(ev => dropzone.addEventListener(ev, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove('dragover');
+    }));
+    dropzone.addEventListener('drop', (e) => {
+        loadSliceFile(e.dataTransfer?.files?.[0]);
+    });
+    sliceInput.onchange = (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        sliceInput.value = '';
+        loadSliceFile(file);
+    };
     if (autoBtn) {
         autoBtn.onclick = () => {
             if (!sliceSourceImg)
                 return;
+            closeManualCut();
             if (statusEl)
                 statusEl.textContent = tr('Slicing image…');
             // Let the status paint before the heavy loop
@@ -1403,14 +1436,189 @@ function initSlicePanel() {
             }, 30);
         };
     }
+    if (gridBtn) {
+        gridBtn.onclick = () => {
+            if (!sliceSourceImg)
+                return;
+            closeManualCut();
+            const cw = Math.max(2, parseInt((document.getElementById('gridCellW') as HTMLInputElement)?.value, 10) || 32);
+            const ch = Math.max(2, parseInt((document.getElementById('gridCellH') as HTMLInputElement)?.value, 10) || 32);
+            if (statusEl)
+                statusEl.textContent = tr('Slicing image…');
+            setTimeout(() => {
+                try {
+                    const pieces = gridSliceImage(sliceSourceImg, cw, ch);
+                    renderSliceFragments(pieces);
+                    if (statusEl) {
+                        statusEl.textContent = pieces.length
+                            ? `${tr('Fragments found:')} ${pieces.length}. ${tr('Click a fragment, then click a tile on the left to assign it.')}`
+                            : tr('The grid produced no fragments — every cell is fully transparent.');
+                    }
+                }
+                catch (err) {
+                    console.error('[Compass] Grid slice failed:', err);
+                    if (statusEl)
+                        statusEl.textContent = tr('Failed to slice the image.');
+                }
+            }, 30);
+        };
+    }
     if (manualBtn) {
         manualBtn.onclick = () => {
-            alert(tr('Manual cutting is coming soon! For now use auto-slice or the classic per-tile cropper.'));
+            if (!sliceSourceImg) {
+                window.cpToast(tr('Upload an image first.'), 'info');
+                return;
+            }
+            openManualCut();
         };
+    }
+    if (manualDoneBtn) {
+        manualDoneBtn.onclick = () => closeManualCut();
     }
     if (addVariantBtn) {
         addVariantBtn.onclick = openVariantPicker;
     }
+}
+
+/**
+ * Grid slice: cuts the image into fixed-size cells (cellW × cellH),
+ * skipping cells that are fully transparent.
+ */
+function gridSliceImage(img, cellW, cellH) {
+    const W = img.naturalWidth, H = img.naturalHeight;
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0);
+    const pieces = [];
+    for (let y = 0; y < H; y += cellH) {
+        for (let x = 0; x < W; x += cellW) {
+            const w = Math.min(cellW, W - x);
+            const h = Math.min(cellH, H - y);
+            const cell = ctx.getImageData(x, y, w, h).data;
+            let hasContent = false;
+            for (let i = 3; i < cell.length; i += 4) {
+                if (cell[i] > 10) {
+                    hasContent = true;
+                    break;
+                }
+            }
+            if (!hasContent)
+                continue; // skip fully transparent cells
+            const c = document.createElement('canvas');
+            c.width = w;
+            c.height = h;
+            c.getContext('2d').drawImage(canvas, x, y, w, h, 0, 0, w, h);
+            pieces.push({ canvas: c, w, h });
+            if (pieces.length > 512)
+                throw new Error('Too many fragments');
+        }
+    }
+    return pieces;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ✂️ MANUAL CUTTING — drag rectangles over the image
+   ══════════════════════════════════════════════════════════════ */
+let manualCutActive = false;
+
+function openManualCut() {
+    const wrap = document.getElementById('manualCutWrap');
+    const stage = document.getElementById('manualCutStage');
+    const canvas = document.getElementById('manualCutCanvas') as HTMLCanvasElement;
+    if (!wrap || !stage || !canvas || !sliceSourceImg)
+        return;
+    // Clear leftover selection marks from a previous session
+    stage.querySelectorAll('.manual-cut-rect-mark').forEach(m => m.remove());
+    const W = sliceSourceImg.naturalWidth, H = sliceSourceImg.naturalHeight;
+    canvas.width = W;
+    canvas.height = H;
+    canvas.getContext('2d').drawImage(sliceSourceImg, 0, 0);
+    wrap.style.display = 'flex';
+    manualCutActive = true;
+    const statusEl = document.getElementById('sliceStatus');
+    if (statusEl)
+        statusEl.textContent = tr('Drag rectangles on the image — each selection becomes a fragment.');
+    if (canvas.dataset.cpBound)
+        return; // pointer listeners already attached
+    canvas.dataset.cpBound = '1';
+    const box = document.getElementById('manualSelectBox');
+    let startX = 0, startY = 0, dragging = false;
+    const imgSize = () => ({ W: canvas.width, H: canvas.height });
+    const toImageCoords = (e) => {
+        const { W, H } = imgSize();
+        const r = canvas.getBoundingClientRect();
+        const x = Math.max(0, Math.min(W, (e.clientX - r.left) * (W / r.width)));
+        const y = Math.max(0, Math.min(H, (e.clientY - r.top) * (H / r.height)));
+        return { x, y };
+    };
+    canvas.addEventListener('pointerdown', (e) => {
+        if (!manualCutActive)
+            return;
+        e.preventDefault();
+        try { canvas.setPointerCapture(e.pointerId); } catch (_) { }
+        const p = toImageCoords(e);
+        startX = p.x;
+        startY = p.y;
+        dragging = true;
+        if (box) {
+            box.style.display = 'block';
+            box.style.width = '0px';
+            box.style.height = '0px';
+        }
+    });
+    canvas.addEventListener('pointermove', (e) => {
+        if (!dragging || !box)
+            return;
+        const { W, H } = imgSize();
+        const p = toImageCoords(e);
+        const r = canvas.getBoundingClientRect();
+        const sx = r.width / W, sy = r.height / H;
+        box.style.left = Math.min(startX, p.x) * sx + 'px';
+        box.style.top = Math.min(startY, p.y) * sy + 'px';
+        box.style.width = Math.abs(p.x - startX) * sx + 'px';
+        box.style.height = Math.abs(p.y - startY) * sy + 'px';
+    });
+    canvas.addEventListener('pointerup', (e) => {
+        if (!dragging)
+            return;
+        dragging = false;
+        if (box)
+            box.style.display = 'none';
+        const { W, H } = imgSize();
+        const p = toImageCoords(e);
+        const x0 = Math.round(Math.min(startX, p.x));
+        const y0 = Math.round(Math.min(startY, p.y));
+        const w = Math.round(Math.abs(p.x - startX));
+        const h = Math.round(Math.abs(p.y - startY));
+        if (w < 3 || h < 3)
+            return; // ignore accidental clicks
+        const c = document.createElement('canvas');
+        c.width = w;
+        c.height = h;
+        c.getContext('2d').drawImage(canvas, x0, y0, w, h, 0, 0, w, h);
+        appendSliceFragments([{ canvas: c, w, h }]);
+        // Leave a subtle mark where the fragment was cut from
+        const r = canvas.getBoundingClientRect();
+        const mark = document.createElement('div');
+        mark.className = 'manual-cut-rect-mark';
+        mark.style.left = (x0 * r.width / W) + 'px';
+        mark.style.top = (y0 * r.height / H) + 'px';
+        mark.style.width = (w * r.width / W) + 'px';
+        mark.style.height = (h * r.height / H) + 'px';
+        stage.appendChild(mark);
+        const st = document.getElementById('sliceStatus');
+        if (st)
+            st.textContent = `${tr('Fragments found:')} ${sliceFragments.length + 1}. ${tr('Click a fragment, then click a tile on the left to assign it.')}`;
+    });
+}
+
+function closeManualCut() {
+    manualCutActive = false;
+    const wrap = document.getElementById('manualCutWrap');
+    if (wrap)
+        wrap.style.display = 'none';
 }
 
 /**
@@ -1509,15 +1717,22 @@ function autoSliceImage(img) {
 }
 
 function renderSliceFragments(pieces) {
-    const grid = document.getElementById('sliceFragmentsGrid');
-    if (!grid)
-        return;
-    // Cleanup previous
+    // Cleanup previous fragments, then append the new batch
     sliceFragments.forEach(f => URL.revokeObjectURL(f.url));
     sliceFragments = [];
     selectedFragment = null;
     document.getElementById('studioTileGrid')?.classList.remove('assign-mode');
-    grid.innerHTML = '';
+    const grid = document.getElementById('sliceFragmentsGrid');
+    if (grid)
+        grid.innerHTML = '';
+    appendSliceFragments(pieces);
+}
+
+// Appends fragment cards WITHOUT clearing the existing ones (used by manual cutting)
+function appendSliceFragments(pieces) {
+    const grid = document.getElementById('sliceFragmentsGrid');
+    if (!grid)
+        return;
     pieces.forEach((piece) => {
         piece.canvas.toBlob((blob) => {
             if (!blob)

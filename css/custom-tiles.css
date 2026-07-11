@@ -474,22 +474,144 @@
     letter-spacing: 0.1em;
 }
 
-.upload-image-btn {
+/* Clean, quiet dropzone: click to browse or drag & drop an image */
+.slice-dropzone {
     width: 100%;
-    background: linear-gradient(135deg, rgba(0, 210, 255, 0.15), rgba(138, 43, 226, 0.15));
-    border: 1px dashed rgba(0, 210, 255, 0.4);
-    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.75);
     border-radius: 12px;
-    padding: 0.9rem;
-    font-size: 0.85rem;
-    font-weight: 700;
+    padding: 1rem 0.8rem;
     cursor: pointer;
-    transition: all 0.2s;
+    text-align: center;
+    transition: border-color 0.15s ease, background 0.15s ease;
+    user-select: none;
 }
 
-.upload-image-btn:hover {
+.slice-dropzone svg {
+    opacity: 0.55;
+    margin-bottom: 2px;
+}
+
+.slice-dropzone .dz-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.slice-dropzone .dz-sub {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.slice-dropzone:hover,
+.slice-dropzone:focus-visible {
+    background: rgba(255, 255, 255, 0.055);
+    border-color: rgba(255, 255, 255, 0.32);
+    outline: none;
+}
+
+.slice-dropzone.dragover {
+    background: rgba(0, 210, 255, 0.07);
     border-color: var(--neon-blue);
-    box-shadow: 0 0 16px rgba(0, 210, 255, 0.2);
+}
+
+/* Grid-slice row: button + cell size inputs */
+.grid-slice-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+}
+
+.grid-slice-row .slice-choice-btn {
+    flex: 1;
+}
+
+.grid-slice-inputs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 0 6px;
+}
+
+.grid-slice-inputs span {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.75rem;
+}
+
+.grid-slice-inputs input {
+    width: 44px;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 0.78rem;
+    text-align: center;
+    outline: none;
+    -moz-appearance: textfield;
+}
+
+.grid-slice-inputs input::-webkit-outer-spin-button,
+.grid-slice-inputs input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Manual cutting workspace */
+.manual-cut-wrap {
+    display: flex;
+    flex-direction: column;
+}
+
+.manual-hint {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.45);
+    line-height: 1.45;
+    margin: 0 0 0.5rem;
+}
+
+.manual-cut-stage {
+    position: relative;
+    background-image:
+        linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(255,255,255,0.05) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.05) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.05) 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+    touch-action: none;
+}
+
+.manual-cut-stage canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    cursor: crosshair;
+}
+
+.manual-select-box {
+    position: absolute;
+    border: 1.5px dashed var(--neon-blue);
+    background: rgba(0, 210, 255, 0.12);
+    pointer-events: none;
+    z-index: 3;
+}
+
+.manual-cut-rect-mark {
+    position: absolute;
+    border: 1px solid rgba(57, 255, 20, 0.55);
+    background: rgba(57, 255, 20, 0.07);
+    pointer-events: none;
+    z-index: 2;
 }
 
 .slice-choice {
@@ -1327,8 +1449,3 @@
 .theme-chip .chip-remove:hover {
     color: #ff4b4b;
 }
-
-
-
-
-

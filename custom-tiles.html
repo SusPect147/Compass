@@ -161,21 +161,50 @@
                     <!-- RIGHT: image upload + auto-slice fragments -->
                     <div class="studio-split-right">
                         <div class="split-right-head">
-                            <label>Texture source</label>
-                            <button type="button" class="upload-image-btn" id="sliceUploadBtn">
-                                🖼️ <span data-i18n="Upload image">Upload image</span>
-                            </button>
+                            <label data-i18n="Texture source">Texture source</label>
+                            <!-- Dropzone: click to browse, or drag & drop an image -->
+                            <div class="slice-dropzone" id="sliceDropzone" tabindex="0" role="button">
+                                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                    <polyline points="21 15 16 10 5 21"></polyline>
+                                </svg>
+                                <span class="dz-title" data-i18n="Upload image">Upload image</span>
+                                <span class="dz-sub" data-i18n="Click or drag & drop a PNG here">Click or drag &amp; drop a PNG here</span>
+                            </div>
                         </div>
 
-                        <!-- Choice: auto-slice or manual (shown after an image is uploaded) -->
+                        <!-- Cutting modes (shown after an image is uploaded) -->
                         <div class="slice-choice" id="sliceChoice" style="display: none;">
                             <div class="slice-preview-wrap">
                                 <img id="slicePreviewImg" alt="preview">
                             </div>
-                            <button type="button" class="slice-choice-btn primary" id="autoSliceBtn">✂️ <span
+                            <button type="button" class="slice-choice-btn primary" id="autoSliceBtn"><span
                                     data-i18n="Auto-slice tiles">Auto-slice tiles</span></button>
-                            <button type="button" class="slice-choice-btn" id="manualSliceBtn">🖐 <span
-                                    data-i18n="Cut manually (soon)">Cut manually (soon)</span></button>
+                            <div class="grid-slice-row">
+                                <button type="button" class="slice-choice-btn" id="gridSliceBtn"><span
+                                        data-i18n="Slice by grid">Slice by grid</span></button>
+                                <div class="grid-slice-inputs" title="Cell size (px)">
+                                    <input type="number" id="gridCellW" value="32" min="2" max="1024">
+                                    <span>×</span>
+                                    <input type="number" id="gridCellH" value="32" min="2" max="1024">
+                                </div>
+                            </div>
+                            <button type="button" class="slice-choice-btn" id="manualSliceBtn"><span
+                                    data-i18n="Cut manually">Cut manually</span></button>
+                        </div>
+
+                        <!-- Manual cutting workspace -->
+                        <div class="manual-cut-wrap" id="manualCutWrap" style="display: none;">
+                            <p class="manual-hint" data-i18n="Drag rectangles on the image — each selection becomes a fragment.">
+                                Drag rectangles on the image — each selection becomes a fragment.</p>
+                            <div class="manual-cut-stage" id="manualCutStage">
+                                <canvas id="manualCutCanvas"></canvas>
+                                <div class="manual-select-box" id="manualSelectBox" style="display:none;"></div>
+                            </div>
+                            <button type="button" class="slice-choice-btn" id="manualDoneBtn" style="margin-top:0.5rem;"><span
+                                    data-i18n="Finish manual cutting">Finish manual cutting</span></button>
                         </div>
 
                         <!-- Result cards -->

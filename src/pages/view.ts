@@ -1017,6 +1017,14 @@ async function initView() {
         // ════════════════════════════════════════════════════════
         if (currentUserId && currentUserId === data.user_id) {
             const suggestionsSection = document.getElementById('suggestionsSection');
+            const versionsSection = document.getElementById('versionsSection');
+            if (versionsSection) {
+                versionsSection.style.display = 'block';
+                // Localize the static section header
+                versionsSection.querySelectorAll('[data-vtr]').forEach((el: any) => {
+                    el.textContent = window.cp_translate(el.getAttribute('data-vtr'));
+                });
+            }
             if (suggestionsSection) {
                 suggestionsSection.style.display = 'block';
                 await loadSuggestions();
@@ -1028,25 +1036,42 @@ async function initView() {
                 const sCount = document.getElementById('suggestionsCount');
                 if (!sList)
                     return;
-                const { data: suggestions, error: sugErr } = await supabase
+                const vList = document.getElementById('versionsList');
+                const vCount = document.getElementById('versionsCount');
+                const { data: allSugRows, error: sugErr } = await supabase
                     .from('map_suggestions')
                     .select('*')
                     .eq('map_id', mapId)
                     .order('created_at', { ascending: false });
                 if (sugErr)
                     throw sugErr;
+                // Split friend suggestions from archived "past versions" of the map
+                const VERSION_LABELS = ['старая версия', 'Previous Version', 'Прошлая версия', 'Предыдущая версия', '╤Б╤В╨░╤А╨░╤П ╨▓╨╡╤А╤Б╨╕╤П'];
+                const isVersionRow = (row) => VERSION_LABELS.includes((row.contributor_name || '').trim());
+                const suggestions = (allSugRows || []).filter(r => !isVersionRow(r));
+                const versionRows = (allSugRows || []).filter(isVersionRow);
                 if (sCount)
-                    sCount.textContent = (suggestions?.length || 0).toString();
-                if (!suggestions || suggestions.length === 0) {
+                    sCount.textContent = suggestions.length.toString();
+                if (vCount)
+                    vCount.textContent = versionRows.length.toString();
+                sList.innerHTML = '';
+                if (vList)
+                    vList.innerHTML = '';
+                if (suggestions.length === 0) {
                     sList.innerHTML = `
                         <p style="opacity: 0.4; font-style: italic; font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">
                             ${window.cp_translate('No suggestions yet. Invite a friend using the collab link!')}
                         </p>
                     `;
-                    return;
                 }
-                sList.innerHTML = '';
-                suggestions.forEach(s => {
+                if (vList && versionRows.length === 0) {
+                    vList.innerHTML = `
+                        <p style="opacity: 0.4; font-style: italic; font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">
+                            ${window.cp_translate('No past versions yet. They appear automatically after you save changes to the map.')}
+                        </p>
+                    `;
+                }
+                [...suggestions, ...versionRows].forEach(s => {
                     const item = document.createElement('div');
                     item.className = 'comment-card suggestion-item';
                     item.style.cssText = `
@@ -1061,7 +1086,7 @@ async function initView() {
                         transition: all 0.2s;
                     `;
                     const dateStr = new Date(s.created_at).toLocaleString();
-                    const isPrevious = s.contributor_name.includes('Previous Version') || s.contributor_name.includes('Предыдущая версия');
+                    const isPrevious = isVersionRow(s);
                     item.innerHTML = `
                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                             <div style="display:flex; flex-direction:column;">
@@ -1177,7 +1202,7 @@ async function initView() {
                             const { data: archResult, error: archErr } = await supabase.rpc('archive_map_version', {
                                 p_map_id: mapId,
                                 p_owner_id: currentUserId,
-                                p_label: window.cp_translate('Previous Version'),
+                                p_label: 'старая версия', // canonical "past version" marker
                                 p_map_data: data.map_data,
                             });
                             if (archErr) throw archErr;
@@ -1220,7 +1245,7 @@ async function initView() {
                             delBtn.disabled = false;
                         }
                     };
-                    sList.appendChild(item);
+                    ((isPrevious && vList) ? vList : sList).appendChild(item);
                 });
 
             }
