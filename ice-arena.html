@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radar</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #060907;
+    --surface: #0a0f0c;
+    --line: rgba(0, 255, 136, .14);
+    --accent: #00e28a;
+    --accent-soft: #7dffbe;
+    --text: #d7e8de;
+    --muted: #6d8579;
+    --danger: #ff7b7b;
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 28px 16px 40px;
+    overflow-x: hidden;
+  }
+  #bgParticles {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  }
+  header { text-align: center; margin-bottom: 22px; }
+  header h1 {
+    font-size: 26px; font-weight: 300; letter-spacing: 12px;
+    color: var(--accent-soft); text-indent: 12px;
+  }
+  .topstats {
+    display: flex; gap: 32px; justify-content: center; margin-top: 10px;
+    font-size: 13px; color: var(--muted); letter-spacing: .5px;
+  }
+  .topstats b { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+  main { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+
+  /* ---------- Arena ---------- */
+  #arenaCol { display: flex; flex-direction: column; gap: 16px; }
+  #arena {
+    position: relative; width: 600px; height: 600px;
+    border-radius: 50%; overflow: hidden;
+    background: var(--surface);
+    border: 1px solid rgba(0, 255, 136, .35);
+  }
+  #zoomWrap { position: absolute; inset: 0; will-change: transform; transform-origin: 0 0; }
+  #zones { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+  #zones polygon { stroke-width: 1; stroke-linejoin: round; }
+  #zones polygon.winner { animation: winflash .5s ease-in-out 4; }
+  @keyframes winflash { 50% { filter: brightness(1.8); } }
+  #zlabels { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+  .zlabel {
+    position: absolute; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    text-align: center; white-space: nowrap;
+  }
+  .zlabel .ava {
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600;
+    background: rgba(6, 9, 7, .55);
+  }
+  .zlabel .znm { font-size: 12px; font-weight: 600; letter-spacing: .4px; }
+  .zlabel .zpc { font-size: 14px; font-weight: 700; color: #f2fbf6; }
+  .zlabel .zbt { font-size: 11px; color: rgba(242, 251, 246, .65); }
+
+  #fx { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+
+  #timerOverlay {
+    position: absolute; inset: 0; z-index: 5; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 120px; font-weight: 200; color: rgba(0, 255, 136, .30);
+    font-variant-numeric: tabular-nums; user-select: none;
+  }
+  #timerOverlay.urgent { color: rgba(255, 90, 90, .6); animation: tpulse .9s ease-in-out infinite; }
+  @keyframes tpulse { 50% { transform: scale(1.12); } }
+
+  #banner {
+    position: absolute; left: 50%; top: 50%; z-index: 6;
+    transform: translate(-50%, -50%) scale(.92); opacity: 0; pointer-events: none;
+    background: rgba(6, 9, 7, .94); border: 1px solid rgba(0, 255, 136, .4);
+    border-radius: 10px; padding: 18px 36px; text-align: center;
+    transition: transform .25s ease, opacity .25s ease;
+    white-space: nowrap;
+  }
+  #banner.show { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  #banner .bt1 { font-size: 19px; font-weight: 600; letter-spacing: .5px; }
+  #banner .bt2 { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+  #restartOverlay {
+    position: absolute; inset: 0; z-index: 7; display: none;
+    align-items: center; justify-content: center; flex-direction: column; gap: 18px;
+    background: rgba(4, 6, 5, .88); text-align: center;
+  }
+  #restartOverlay.show { display: flex; }
+  #restartOverlay p { font-size: 16px; color: var(--danger); font-weight: 600; letter-spacing: .5px; }
+  #restartBtn {
+    font-size: 14px; font-weight: 600; padding: 11px 32px; border-radius: 8px;
+    cursor: pointer; letter-spacing: .5px;
+    border: 1px solid var(--accent); color: var(--accent); background: transparent;
+    transition: background .2s ease, color .2s ease;
+  }
+  #restartBtn:hover { background: var(--accent); color: #04120b; }
+  #restartBtn:focus-visible { outline: 2px solid var(--accent-soft); outline-offset: 2px; }
+
+  /* ---------- Bet panel ---------- */
+  #betPanel {
+    width: 600px; background: transparent; border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+  }
+  #betPanel.locked { opacity: .4; pointer-events: none; }
+  .betRow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  #betInput {
+    width: 104px; padding: 9px 12px; font-size: 15px; font-weight: 600;
+    background: transparent; color: var(--text);
+    border: 1px solid var(--line); border-radius: 7px; outline: none;
+    transition: border-color .2s ease;
+  }
+  #betInput:focus { border-color: var(--accent); }
+  .qbtn, #placeBet {
+    padding: 8px 13px; font-size: 13px; font-weight: 600; border-radius: 7px;
+    cursor: pointer; letter-spacing: .3px;
+    border: 1px solid var(--line); background: transparent; color: var(--muted);
+    transition: color .2s ease, border-color .2s ease, background .2s ease;
+  }
+  .qbtn:hover { color: var(--text); border-color: rgba(0, 255, 136, .4); }
+  .qbtn:focus-visible, #placeBet:focus-visible { outline: 2px solid var(--accent-soft); outline-offset: 2px; }
+  #placeBet {
+    border-color: var(--accent); color: var(--accent);
+    padding: 8px 24px; font-size: 14px;
+  }
+  #placeBet:hover { background: var(--accent); color: #04120b; }
+  .betInfo { font-size: 12.5px; color: var(--muted); display: flex; gap: 20px; }
+  .betInfo b { color: var(--text); font-weight: 600; }
+  #betMsg { font-size: 12.5px; color: var(--danger); min-height: 16px; }
+
+  /* ---------- Sidebar ---------- */
+  aside { width: 300px; display: flex; flex-direction: column; gap: 16px; }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .card h3 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 3px;
+    color: var(--muted); margin-bottom: 10px; font-weight: 600;
+  }
+  .tableWrap { max-height: 360px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(0,255,136,.25) transparent; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th {
+    text-align: left; color: var(--muted); font-weight: 600; font-size: 10.5px;
+    padding: 3px 4px; text-transform: uppercase; letter-spacing: 1px;
+    position: sticky; top: 0; background: var(--bg);
+  }
+  td { padding: 7px 4px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  .pava {
+    width: 22px; height: 22px; border-radius: 50%; display: inline-flex;
+    align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
+    margin-right: 7px; vertical-align: middle; background: transparent;
+  }
+  .pname { font-weight: 600; }
+  #histList { list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; }
+  #histList li {
+    padding: 7px 4px; border-top: 1px solid var(--line);
+    display: flex; justify-content: space-between; gap: 8px;
+  }
+  #histList li:first-child { border-top: none; }
+  #histList .hwin { font-weight: 600; }
+  #histList .hamt { color: var(--accent); font-weight: 600; }
+  .empty { color: var(--muted); font-size: 12.5px; font-style: italic; }
+</style>
+</head>
+<body>
+<canvas id="bgParticles"></canvas>
+<header>
+  <h1>RADAR</h1>
+  <div class="topstats">
+    <span>Раунд <b id="roundNum">1</b></span>
+    <span>Банк <b id="bankAmt">0</b></span>
+    <span>Игроков <b id="botCount">—</b></span>
+    <span id="phaseLabel">Фаза ставок</span>
+  </div>
+</header>
+
+<main>
+  <div id="arenaCol">
+    <div id="arena">
+      <div id="zoomWrap">
+        <svg id="zones" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div id="zlabels"></div>
+        <canvas id="fx" width="600" height="600"></canvas>
+      </div>
+      <div id="timerOverlay"></div>
+      <div id="banner"><div class="bt1"></div><div class="bt2"></div></div>
+      <div id="restartOverlay">
+        <p>Монеты закончились</p>
+        <button id="restartBtn">Начать заново</button>
+      </div>
+    </div>
+
+    <div id="betPanel">
+      <div class="betRow">
+        <input id="betInput" type="number" min="10" step="10" value="100" aria-label="Ставка">
+        <button class="qbtn" data-q="+10">+10</button>
+        <button class="qbtn" data-q="+50">+50</button>
+        <button class="qbtn" data-q="+100">+100</button>
+        <button class="qbtn" data-q="half">½</button>
+        <button class="qbtn" data-q="x2">×2</button>
+        <button class="qbtn" data-q="allin">All-in</button>
+        <button id="placeBet">Сделать ставку</button>
+      </div>
+      <div class="betRow" style="justify-content: space-between;">
+        <div class="betInfo">
+          <span>Баланс <b id="myBalance">1000</b></span>
+          <span>Ставка <b id="myBet">—</b></span>
+        </div>
+        <div id="betMsg"></div>
+      </div>
+    </div>
+  </div>
+
+  <aside>
+    <div class="card">
+      <h3>Участники</h3>
+      <div class="tableWrap">
+        <table>
+          <thead><tr><th>Игрок</th><th>Баланс</th><th>Ставка</th><th>Шанс</th><th>Победы</th></tr></thead>
+          <tbody id="playersBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h3>История</h3>
+      <ul id="histList"><li class="empty">Пока пусто</li></ul>
+    </div>
+  </aside>
+</main>
+
+<script>
+'use strict';
+(function () {
+
+  // ---------- Constants ----------
+  var W = 600, H = 600, CX = 300, CY = 300, R = 288;
+  var TAU = Math.PI * 2;
+  var BET_TIME = 10000, MIN_BET = 10, START_BAL = 1000;
+  var DOT_RMIN = 24, DOT_R = 9;
+  var STOP_W = 0.12;        // rad/s - line considered stopped
+  var DOT_SLOWDOWN = 6;     // seconds of dot deceleration after the line stops
+  var ZOOM_MAX = 2.1;       // zoom level reached at the end of deceleration
+  var MIN_BOTS = 2, MAX_BOTS = 17;
+
+  // circle approximated by a 72-gon; zones are chaotic straight cuts of it
+  var CIRCLE_POLY = (function () {
+    var pts = [];
+    for (var i = 0; i < 72; i++) {
+      var a = i / 72 * TAU;
+      pts.push([CX + R * Math.cos(a), CY + R * Math.sin(a)]);
+    }
+    return pts;
+  })();
+
+  // ---------- Participants ----------
+  function mkP(id, name, color, style) {
+    return { id: id, name: name, color: color, style: style,
+             isBot: style !== null, balance: START_BAL, bet: 0, db: 0, wins: 0, active: false };
+  }
+  var BOT_NAMES = ['Тихоня', 'Громила', 'Джокер', 'Штиль', 'Вихрь', 'Клинок', 'Призрак', 'Барон',
+                   'Лис', 'Сова', 'Танк', 'Комета', 'Шторм', 'Аскет', 'Пират', 'Молния', 'Ястреб'];
+  var BOT_STYLES = ['cautious', 'aggressive', 'random'];
+  var player = mkP(0, 'Вы', '#4fd8ff', null);
+  player.active = true;
+  var P = [player];
+  for (var bi = 0; bi < BOT_NAMES.length; bi++) {
+    var hue = (110 + bi * 47) % 360;
+    P.push(mkP(bi + 1, BOT_NAMES[bi], 'hsl(' + hue + ', 68%, 64%)', BOT_STYLES[bi % 3]));
+  }
+
+  function activeBots() {
+    return P.filter(function (p) { return p.isBot && p.active; });
+  }
+
+  // ---------- State ----------
+  var state = 'BETTING'; // BETTING -> LAUNCHING -> SPINNING -> RESULT -> BETTING
+  var round = 0;
+  var betEnd = 0, betTimerInt = null, botTimers = [];
+  var bettors = [], finalZones = [];
+  var cutAngles = [0.7];
+  var spin = null;
+  var confetti = [];
+  var history = [];
+  var zoomCur = 1, zoomTarget = 1;
+  var lastDotPos = [CX, CY];
+
+  // ---------- DOM ----------
+  var $ = function (id) { return document.getElementById(id); };
+  var zonesSvg = $('zones'), zlabelsEl = $('zlabels'), zoomWrap = $('zoomWrap');
+  var timerEl = $('timerOverlay'), bannerEl = $('banner');
+  var fx = $('fx'), ctx = fx.getContext('2d');
+  var zoneEls = {};
+
+  // ---------- Background particles ----------
+  var bgc = $('bgParticles'), bctx = bgc.getContext('2d');
+  var particles = [];
+  function resizeBg() {
+    bgc.width = window.innerWidth;
+    bgc.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resizeBg);
+  resizeBg();
+  (function initParticles() {
+    for (var i = 0; i < 70; i++) {
+      particles.push({
+        x: Math.random() * bgc.width,
+        y: Math.random() * bgc.height,
+        vx: (Math.random() - 0.5) * 18,
+        vy: (Math.random() - 0.5) * 18,
+        r: 0.6 + Math.random() * 1.8,
+        a: 0.05 + Math.random() * 0.22,
+        tw: Math.random() * TAU
+      });
+    }
+  })();
+  function updateDrawParticles(dt, now) {
+    bctx.clearRect(0, 0, bgc.width, bgc.height);
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.x < -5) p.x = bgc.width + 5; else if (p.x > bgc.width + 5) p.x = -5;
+      if (p.y < -5) p.y = bgc.height + 5; else if (p.y > bgc.height + 5) p.y = -5;
+      var tw = 0.75 + 0.25 * Math.sin(now / 900 + p.tw);
+      bctx.globalAlpha = p.a * tw;
+      bctx.fillStyle = '#00e28a';
+      bctx.beginPath(); bctx.arc(p.x, p.y, p.r, 0, TAU); bctx.fill();
+    }
+    bctx.globalAlpha = 1;
+  }
+
+  // ---------- Polygon geometry ----------
+  function polyArea(pts) { // signed
+    var a = 0;
+    for (var i = 0; i < pts.length; i++) {
+      var p = pts[i], q = pts[(i + 1) % pts.length];
+      a += p[0] * q[1] - q[0] * p[1];
+    }
+    return a / 2;
+  }
+
+  function polyCentroid(pts) {
+    var a = 0, cx = 0, cy = 0;
+    for (var i = 0; i < pts.length; i++) {
+      var p = pts[i], q = pts[(i + 1) % pts.length];
+      var cr = p[0] * q[1] - q[0] * p[1];
+      a += cr; cx += (p[0] + q[0]) * cr; cy += (p[1] + q[1]) * cr;
+    }
+    a /= 2;
+    if (Math.abs(a) < 1e-9) return pts.length ? pts[0].slice() : [0, 0];
+    return [cx / (6 * a), cy / (6 * a)];
+  }
+
+  function clipHalf(pts, dx, dy, t, keepLess) {
+    var out = [];
+    for (var i = 0; i < pts.length; i++) {
+      var p = pts[i], q = pts[(i + 1) % pts.length];
+      var dp = p[0] * dx + p[1] * dy - t, dq = q[0] * dx + q[1] * dy - t;
+      if (!keepLess) { dp = -dp; dq = -dq; }
+      if (dp <= 0) out.push(p);
+      if ((dp < 0 && dq > 0) || (dp > 0 && dq < 0)) {
+        var s = dp / (dp - dq);
+        out.push([p[0] + (q[0] - p[0]) * s, p[1] + (q[1] - p[1]) * s]);
+      }
+    }
+    return out;
+  }
+
+  function splitPoly(poly, frac, ang) {
+    var dx = Math.cos(ang), dy = Math.sin(ang);
+    var lo = Infinity, hi = -Infinity;
+    for (var i = 0; i < poly.length; i++) {
+      var v = poly[i][0] * dx + poly[i][1] * dy;
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
+    }
+    var target = Math.abs(polyArea(poly)) * frac;
+    for (var it = 0; it < 42; it++) {
+      var mid = (lo + hi) / 2;
+      var a = Math.abs(polyArea(clipHalf(poly, dx, dy, mid, true)));
+      if (a < target) lo = mid; else hi = mid;
+    }
+    var t = (lo + hi) / 2;
+    return [clipHalf(poly, dx, dy, t, true), clipHalf(poly, dx, dy, t, false)];
+  }
+
+  function partition(list, poly, depth) {
+    if (!list.length) return [];
+    if (list.length === 1) return [{ p: list[0].p, poly: poly }];
+    var total = 0;
+    for (var i = 0; i < list.length; i++) total += list[i].w;
+    var f = Math.max(0.003, Math.min(0.997, list[0].w / total));
+    var parts = splitPoly(poly, f, cutAngles[depth % cutAngles.length]);
+    return [{ p: list[0].p, poly: parts[0] }].concat(partition(list.slice(1), parts[1], depth + 1));
+  }
+
+  function pointInPoly(x, y, pts) {
+    var inside = false;
+    for (var i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      var xi = pts[i][0], yi = pts[i][1], xj = pts[j][0], yj = pts[j][1];
+      if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+    }
+    return inside;
+  }
+
+  // ---------- Zones ----------
+  function currentBettors() {
+    return P.filter(function (p) { return p.active && p.bet >= MIN_BET; });
+  }
+  function pot() {
+    return currentBettors().reduce(function (s, p) { return s + p.bet; }, 0);
+  }
+
+  function computeZones(list) {
+    if (!list.length) return [];
+    return partition(list, CIRCLE_POLY, 0);
+  }
+
+  function ensureZoneEls(p) {
+    if (zoneEls[p.id]) return zoneEls[p.id];
+    var poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    poly.setAttribute('fill', p.color);
+    poly.setAttribute('fill-opacity', '0.16');
+    poly.setAttribute('stroke', p.color);
+    poly.setAttribute('stroke-opacity', '0.55');
+    poly.style.display = 'none';
+    zonesSvg.appendChild(poly);
+    var label = document.createElement('div');
+    label.className = 'zlabel';
+    label.style.display = 'none';
+    label.innerHTML =
+      '<div class="ava" style="border:1px solid ' + p.color + ';color:' + p.color + '">' + p.name.charAt(0) + '</div>' +
+      '<div class="znm" style="color:' + p.color + '">' + p.name + '</div>' +
+      '<div class="zpc"></div>' +
+      '<div class="zbt"></div>';
+    zlabelsEl.appendChild(label);
+    zoneEls[p.id] = { poly: poly, label: label };
+    return zoneEls[p.id];
+  }
+
+  function renderZonesGeom() {
+    var list = [], totalDb = 0;
+    P.forEach(function (p) {
+      if (p.db > 0.5) { list.push({ p: p, w: p.db }); totalDb += p.db; }
+    });
+    var zs = computeZones(list);
+    P.forEach(function (p) {
+      var el = ensureZoneEls(p), z = null;
+      for (var i = 0; i < zs.length; i++) if (zs[i].p === p) { z = zs[i]; break; }
+      if (!z || z.poly.length < 3) {
+        el.poly.style.display = 'none';
+        el.label.style.display = 'none';
+        return;
+      }
+      el.poly.style.display = '';
+      el.label.style.display = '';
+      var ptsStr = '';
+      for (var j = 0; j < z.poly.length; j++) {
+        ptsStr += z.poly[j][0].toFixed(1) + ',' + z.poly[j][1].toFixed(1) + ' ';
+      }
+      el.poly.setAttribute('points', ptsStr);
+      var c = polyCentroid(z.poly);
+      var area = Math.abs(polyArea(z.poly));
+      var sc = Math.max(0.34, Math.min(1, Math.sqrt(area) / 200));
+      el.label.style.left = c[0] + 'px';
+      el.label.style.top = c[1] + 'px';
+      el.label.style.transform = 'translate(-50%,-50%) scale(' + sc + ')';
+      el.label.querySelector('.zpc').textContent = Math.round(p.db / totalDb * 100) + '%';
+      el.label.querySelector('.zbt').textContent = Math.round(p.db);
+    });
+  }
+
+  // ---------- Table / header / history ----------
+  function renderTable() {
+    var total = pot(), rows = '';
+    P.forEach(function (p) {
+      if (!p.active) return;
+      var chance = (p.bet >= MIN_BET && total > 0) ? Math.round(p.bet / total * 100) + '%' : '—';
+      rows += '<tr>' +
+        '<td><span class="pava" style="border:1px solid ' + p.color + ';color:' + p.color + '">' + p.name.charAt(0) + '</span>' +
+        '<span class="pname" style="color:' + p.color + '">' + p.name + '</span></td>' +
+        '<td>' + p.balance + '</td>' +
+        '<td>' + (p.bet >= MIN_BET ? p.bet : '—') + '</td>' +
+        '<td>' + chance + '</td>' +
+        '<td>' + p.wins + '</td></tr>';
+    });
+    $('playersBody').innerHTML = rows;
+    $('bankAmt').textContent = total;
+    $('roundNum').textContent = round;
+    $('botCount').textContent = 1 + activeBots().length;
+    $('myBalance').textContent = player.balance;
+    $('myBet').textContent = player.bet >= MIN_BET ? player.bet : '—';
+  }
+
+  function renderHistory() {
+    var ul = $('histList');
+    if (!history.length) { ul.innerHTML = '<li class="empty">Пока пусто</li>'; return; }
+    ul.innerHTML = history.map(function (h) {
+      return '<li><span>Раунд ' + h.round + '</span>' +
+        '<span class="hwin" style="color:' + h.color + '">' + h.name + '</span>' +
+        '<span class="hamt">+' + h.amount + '</span></li>';
+    }).join('');
+  }
+
+  // ---------- Betting phase ----------
+  function pickActiveBots() {
+    // rebuy broke bots so the pool never dries up
+    P.forEach(function (p) {
+      if (p.isBot && p.balance < MIN_BET) p.balance = START_BAL;
+      p.active = !p.isBot; // player stays, bots off by default
+    });
+    var pool = P.filter(function (p) { return p.isBot; });
+    for (var i = pool.length - 1; i > 0; i--) { // shuffle
+      var j = (Math.random() * (i + 1)) | 0;
+      var t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+    }
+    var n = MIN_BOTS + ((Math.random() * (MAX_BOTS - MIN_BOTS + 1)) | 0); // 2..17
+    for (var k = 0; k < n; k++) pool[k].active = true;
+  }
+
+  function startBetting() {
+    state = 'BETTING';
+    round++;
+    $('phaseLabel').textContent = 'Фаза ставок';
+    P.forEach(function (p) { p.bet = 0; });
+    pickActiveBots();
+    // enough chaotic cut angles for up to 18 zones
+    cutAngles = [];
+    for (var ai = 0; ai < 20; ai++) cutAngles.push(Math.random() * Math.PI);
+    spin = null;
+    zoomTarget = 1;
+    confetti = [];
+    setPanelLocked(player.balance < MIN_BET);
+    $('betMsg').textContent = '';
+    var inp = $('betInput');
+    inp.value = Math.min(Math.max(MIN_BET, parseInt(inp.value, 10) || 100), Math.max(MIN_BET, player.balance));
+    renderTable();
+
+    botTimers.forEach(clearTimeout); botTimers = [];
+    activeBots().forEach(function (b) {
+      botTimers.push(setTimeout(function () {
+        if (state !== 'BETTING') return;
+        b.bet = botBetAmount(b);
+        renderTable();
+      }, 900 + Math.random() * 6800));
+    });
+
+    betEnd = performance.now() + BET_TIME;
+    timerEl.style.display = 'flex';
+    timerEl.classList.remove('urgent');
+    updateTimer();
+    if (betTimerInt) clearInterval(betTimerInt);
+    betTimerInt = setInterval(updateTimer, 100);
+  }
+
+  function updateTimer() {
+    var left = betEnd - performance.now();
+    if (left <= 0) {
+      clearInterval(betTimerInt); betTimerInt = null;
+      timerEl.style.display = 'none';
+      lockBets();
+      return;
+    }
+    var s = Math.ceil(left / 1000);
+    timerEl.textContent = s;
+    timerEl.classList.toggle('urgent', s <= 3);
+  }
+
+  function botBetAmount(b) {
+    var bal = b.balance, amt;
+    if (b.style === 'cautious') amt = MIN_BET + Math.random() * Math.min(bal * 0.07, 90);
+    else if (b.style === 'aggressive') amt = bal * (0.18 + Math.random() * 0.27);
+    else amt = MIN_BET + Math.random() * bal * 0.5;
+    return Math.max(MIN_BET, Math.min(bal, Math.round(amt)));
+  }
+
+  function onPlayerBet() {
+    activeBots().forEach(function (b) {
+      if (b.bet < MIN_BET) return;
+      var prob = b.style === 'aggressive' ? 0.6 : b.style === 'random' ? 0.5 : 0.3;
+      if (Math.random() < prob && betEnd - performance.now() > 2000) {
+        botTimers.push(setTimeout(function () {
+          if (state !== 'BETTING') return;
+          var nb = Math.min(b.balance, Math.round(b.bet * (1.25 + Math.random() * 0.75)));
+          if (nb > b.bet) { b.bet = nb; renderTable(); }
+        }, 300 + Math.random() * 1400));
+      }
+    });
+  }
+
+  function setPanelLocked(locked) {
+    $('betPanel').classList.toggle('locked', locked);
+  }
+
+  $('placeBet').addEventListener('click', function () {
+    if (state !== 'BETTING') return;
+    var v = Math.round(parseFloat($('betInput').value));
+    var msg = $('betMsg');
+    if (!isFinite(v) || v < MIN_BET) { msg.textContent = 'Минимальная ставка — ' + MIN_BET; return; }
+    if (v > player.balance) { msg.textContent = 'Недостаточно монет (баланс ' + player.balance + ')'; return; }
+    msg.textContent = '';
+    player.bet = v;
+    renderTable();
+    onPlayerBet();
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.qbtn'), function (btn) {
+    btn.addEventListener('click', function () {
+      if (state !== 'BETTING') return;
+      var inp = $('betInput');
+      var v = Math.round(parseFloat(inp.value)) || 0;
+      var q = btn.getAttribute('data-q');
+      if (q === '+10') v += 10;
+      else if (q === '+50') v += 50;
+      else if (q === '+100') v += 100;
+      else if (q === 'half') v = Math.round(v / 2);
+      else if (q === 'x2') v *= 2;
+      else if (q === 'allin') v = player.balance;
+      v = Math.max(MIN_BET, Math.min(v, Math.max(MIN_BET, player.balance)));
+      inp.value = v;
+    });
+  });
+
+  // ---------- Launch / spin ----------
+  function lockBets() {
+    botTimers.forEach(clearTimeout); botTimers = [];
+    bettors = currentBettors();
+    setPanelLocked(true);
+    if (!bettors.length) {
+      showBanner('Никто не поставил', 'Раунд пропущен', '#8aa596');
+      setTimeout(function () { hideBanner(); startBetting(); }, 1800);
+      return;
+    }
+    var list = bettors.slice().sort(function (a, b) { return a.id - b.id; })
+      .map(function (p) { return { p: p, w: p.bet }; });
+    finalZones = computeZones(list);
+    renderTable();
+    state = 'LAUNCHING';
+    $('phaseLabel').textContent = 'Запуск';
+
+    var w0 = 9 + Math.random() * 6;              // rad/s
+    var T = 4 + Math.random() * 3;               // seconds until the line stops
+    spin = {
+      angle: Math.random() * TAU,
+      dir: Math.random() < 0.5 ? 1 : -1,
+      w: w0, w0: w0,
+      k: Math.log(w0 / STOP_W) / T,
+      dotPhase: Math.random() * TAU,
+      dotFreq: 2.1 + Math.random() * 1.0,        // oscillations/s along the line
+      dotFactor: 1,                               // full speed while the line moves
+      stopping: false,
+      stopT: 0,
+      dotR: DOT_RMIN
+    };
+    setTimeout(function () {
+      if (state !== 'LAUNCHING') return;
+      state = 'SPINNING';
+      $('phaseLabel').textContent = 'Вращение';
+    }, 900);
+  }
+
+  function updateSpin(dt) {
+    spin.angle = (spin.angle + spin.dir * spin.w * dt) % TAU;
+    if (!spin.stopping) {
+      // line decays; dot keeps FULL speed until the line stops
+      spin.w *= Math.exp(-spin.k * dt);
+      spin.dotFactor = 1;
+      if (spin.w < STOP_W) { spin.stopping = true; spin.w = 0; spin.stopT = 0; }
+    } else {
+      // line stopped: dot decelerates smoothly over DOT_SLOWDOWN seconds,
+      // camera zooms toward the cross inside the dot
+      spin.stopT += dt;
+      var pr = Math.min(1, spin.stopT / DOT_SLOWDOWN);
+      spin.dotFactor = (1 - pr) * (1 - pr);       // smooth ease-out to zero
+      zoomTarget = 1 + (ZOOM_MAX - 1) * pr;
+      if (spin.stopT >= DOT_SLOWDOWN) { finishRound(); return; }
+    }
+    spin.dotPhase += TAU * spin.dotFreq * spin.dotFactor * dt;
+    spin.dotR = DOT_RMIN + (R - 14 - DOT_RMIN) * (0.5 - 0.5 * Math.cos(spin.dotPhase));
+  }
+
+  function drawLine(pulseAlpha) {
+    var ex = CX + Math.cos(spin.angle) * (R - 1), ey = CY + Math.sin(spin.angle) * (R - 1);
+    ctx.save();
+    ctx.globalAlpha = pulseAlpha != null ? pulseAlpha : 1;
+    ctx.strokeStyle = '#7dffbe'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(CX, CY); ctx.lineTo(ex, ey); ctx.stroke();
+    ctx.restore();
+  }
+
+  function dotPos() {
+    return [CX + Math.cos(spin.angle) * spin.dotR, CY + Math.sin(spin.angle) * spin.dotR];
+  }
+
+  function drawDot() {
+    // reticle-style puck: transparent inside, real lines mark the exact center
+    var pos = dotPos(), x = pos[0], y = pos[1];
+    ctx.save();
+    // soft outer ring
+    ctx.strokeStyle = 'rgba(0, 226, 138, 0.35)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(x, y, 15, 0, TAU); ctx.stroke();
+    // main ring (fill stays transparent)
+    ctx.strokeStyle = 'rgba(242, 251, 246, 0.95)'; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(x, y, 10, 0, TAU); ctx.stroke();
+    // crosshair: four lines converging on the center, with a gap so the middle is visible
+    ctx.strokeStyle = '#7dffbe'; ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(x - 16, y); ctx.lineTo(x - 4, y);
+    ctx.moveTo(x + 4, y); ctx.lineTo(x + 16, y);
+    ctx.moveTo(x, y - 16); ctx.lineTo(x, y - 4);
+    ctx.moveTo(x, y + 4); ctx.lineTo(x, y + 16);
+    ctx.stroke();
+    // pinpoint center
+    ctx.fillStyle = '#f2fbf6';
+    ctx.beginPath(); ctx.arc(x, y, 1.1, 0, TAU); ctx.fill();
+    ctx.restore();
+  }
+
+  // ---------- Confetti (restrained) ----------
+  var CCOLORS = ['#00e28a', '#7dffbe', '#f2fbf6'];
+  function spawnConfetti(cx, cy) {
+    for (var i = 0; i < 60; i++) {
+      var a = Math.random() * TAU, sp = 100 + Math.random() * 320;
+      confetti.push({
+        x: cx, y: cy,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 150,
+        rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 10,
+        size: 3 + Math.random() * 4,
+        color: CCOLORS[(Math.random() * CCOLORS.length) | 0],
+        life: 1.4 + Math.random() * 1.0
+      });
+    }
+  }
+  function updateConfetti(dt) {
+    for (var i = confetti.length - 1; i >= 0; i--) {
+      var c = confetti[i];
+      c.life -= dt;
+      if (c.life <= 0) { confetti.splice(i, 1); continue; }
+      c.vy += 560 * dt; c.vx *= 0.99;
+      c.x += c.vx * dt; c.y += c.vy * dt; c.rot += c.vr * dt;
+    }
+  }
+  function drawConfetti() {
+    for (var i = 0; i < confetti.length; i++) {
+      var c = confetti[i];
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, c.life);
+      ctx.translate(c.x, c.y); ctx.rotate(c.rot);
+      ctx.fillStyle = c.color;
+      ctx.fillRect(-c.size / 2, -c.size / 2, c.size, c.size * 0.6);
+      ctx.restore();
+    }
+  }
+
+  // ---------- Result ----------
+  function findWinner() {
+    var pos = dotPos(), x = pos[0], y = pos[1];
+    for (var i = 0; i < finalZones.length; i++) {
+      if (pointInPoly(x, y, finalZones[i].poly)) return finalZones[i];
+    }
+    var best = finalZones[0], bd = Infinity;
+    for (var j = 0; j < finalZones.length; j++) {
+      var c = polyCentroid(finalZones[j].poly);
+      var d = Math.hypot(c[0] - x, c[1] - y);
+      if (d < bd) { bd = d; best = finalZones[j]; }
+    }
+    return best;
+  }
+
+  function finishRound() {
+    state = 'RESULT';
+    $('phaseLabel').textContent = 'Результат';
+    var zr = findWinner();
+    var winner = zr.p;
+    var bank = bettors.reduce(function (s, p) { return s + p.bet; }, 0);
+
+    bettors.forEach(function (p) { p.balance -= p.bet; });
+    winner.balance += bank;
+    winner.wins++;
+
+    history.unshift({ round: round, name: winner.name, color: winner.color, amount: bank });
+    if (history.length > 5) history.pop();
+
+    var we = zoneEls[winner.id];
+    if (we) we.poly.classList.add('winner');
+    var pos = dotPos();
+    spawnConfetti(pos[0], pos[1]);
+    showBanner('Победитель: ' + winner.name, 'Выигрыш ' + bank + ' монет', winner.color);
+    renderTable();
+    renderHistory();
+
+    setTimeout(function () {
+      hideBanner();
+      if (we) we.poly.classList.remove('winner');
+      if (player.balance < MIN_BET) {
+        $('restartOverlay').classList.add('show');
+      } else {
+        startBetting();
+      }
+    }, 4000);
+  }
+
+  function showBanner(t1, t2, color) {
+    bannerEl.querySelector('.bt1').textContent = t1;
+    bannerEl.querySelector('.bt1').style.color = color || '#f2fbf6';
+    bannerEl.querySelector('.bt2').textContent = t2;
+    bannerEl.classList.add('show');
+  }
+  function hideBanner() { bannerEl.classList.remove('show'); }
+
+  $('restartBtn').addEventListener('click', function () {
+    P.forEach(function (p) { p.balance = START_BAL; p.wins = 0; p.bet = 0; p.db = 0; });
+    history = [];
+    round = 0;
+    renderHistory();
+    $('restartOverlay').classList.remove('show');
+    startBetting();
+  });
+
+  // ---------- Main loop ----------
+  var lastT = performance.now();
+  function frame(now) {
+    var dt = Math.min((now - lastT) / 1000, 0.033);
+    lastT = now;
+
+    updateDrawParticles(dt, now);
+
+    // tween displayed bets -> zones morph smoothly (~300 ms)
+    var alpha = 1 - Math.exp(-dt / 0.09);
+    var zonesDirty = false;
+    P.forEach(function (p) {
+      var tgt = (p.active && p.bet >= MIN_BET) ? p.bet : 0;
+      if (Math.abs(p.db - tgt) > 0.4) { p.db += (tgt - p.db) * alpha; zonesDirty = true; }
+      else if (p.db !== tgt) { p.db = tgt; zonesDirty = true; }
+    });
+    if (zonesDirty) renderZonesGeom();
+
+    if (state === 'SPINNING' && spin) updateSpin(dt);
+    if (spin) lastDotPos = dotPos();
+
+    // camera zoom toward the cross inside the dot
+    var zAlpha = 1 - Math.exp(-dt / 0.3);
+    zoomCur += (zoomTarget - zoomCur) * zAlpha;
+    if (zoomCur > 1.0005) {
+      var fxp = lastDotPos[0], fyp = lastDotPos[1];
+      zoomWrap.style.transform =
+        'translate(' + fxp.toFixed(2) + 'px,' + fyp.toFixed(2) + 'px) ' +
+        'scale(' + zoomCur.toFixed(4) + ') ' +
+        'translate(' + (-fxp).toFixed(2) + 'px,' + (-fyp).toFixed(2) + 'px)';
+    } else if (zoomWrap.style.transform) {
+      zoomWrap.style.transform = '';
+    }
+
+    updateConfetti(dt);
+
+    ctx.clearRect(0, 0, W, H);
+    if (spin) {
+      if (state === 'LAUNCHING') {
+        drawLine(0.35 + 0.35 * Math.sin(now / 90));
+      } else {
+        drawLine();
+      }
+      drawDot();
+    }
+    drawConfetti();
+
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- Go ----------
+  renderHistory();
+  startBetting();
+  requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>
