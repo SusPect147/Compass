@@ -361,6 +361,7 @@ export const IOMixin = {
                 payload.thumbnail_url = thumbnailUrl;
             }
             let savedMapId = null;
+            const wasUpdate = !!this.loadedMapId;
             if (this.loadedMapId) {
                 console.info(`[Compass] Attempting database UPDATE on existing Map ID: ${this.loadedMapId}`);
                 
@@ -430,6 +431,13 @@ export const IOMixin = {
                 if (error)
                     throw error;
                 savedMapId = data?.id;
+                // CRITICAL FIX: remember the freshly inserted map ID.
+                // Without this, every subsequent save INSERTed a brand-new map into the
+                // gallery instead of UPDATING this one and archiving the previous
+                // version into the map's version history.
+                if (savedMapId && !this.collabLinkId) {
+                    this.loadedMapId = savedMapId;
+                }
             }
             const mapLinkElement = document.getElementById('mapLink');
             if (mapLinkElement && savedMapId) {
@@ -437,7 +445,7 @@ export const IOMixin = {
                 mapLinkElement.innerText = `${currentLoc}?id=${savedMapId}`;
                 mapLinkElement.href = `${currentLoc}?id=${savedMapId}`;
             }
-            alert(this.loadedMapId ? window.cp_translate('Map updated successfully in secure database!') : window.cp_translate('Map saved successfully to Supabase database!'));
+            alert(wasUpdate ? window.cp_translate('Map updated successfully in secure database!') : window.cp_translate('Map saved successfully to Supabase database!'));
         }
         catch (error) {
             console.error('[Compass] Error saving map:', error);
@@ -958,7 +966,8 @@ export const IOMixin = {
             });
             
             alert(window.cp_translate('Collaboration finished! Map saved successfully.'));
-            window.location.href = './dashboard.html';
+            // Small delay so the corner notification is visible before navigating away
+            setTimeout(() => { window.location.href = './dashboard.html'; }, 1200);
         } catch (e) {
             console.error(e);
             alert('Failed to finish collab: ' + e.message);
@@ -985,7 +994,7 @@ export const IOMixin = {
                 error = fallbackError;
             }
             if (error) throw error;
-            
+
             alert(window.cp_translate('Collaboration finished! A copy of this map was saved to your My Maps.'));
             window.location.href = './dashboard.html';
         } catch (e) {

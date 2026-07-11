@@ -545,7 +545,7 @@ async function openCollabModal(map) {
 
 async function triggerMapDeletion(mapId, card) {
     const confirmMsg = window.cp_translate ? window.cp_translate("🗑️ Are you absolutely sure you want to delete this map forever?\n\nThis action CANNOT be undone.") : "🗑️ Are you absolutely sure you want to delete this map forever?\n\nThis action CANNOT be undone.";
-    if (!confirm(confirmMsg)) return;
+    if (!(await window.cpConfirm(confirmMsg, { danger: true }))) return;
 
     try {
         if (mapId.toString().startsWith('local_')) {

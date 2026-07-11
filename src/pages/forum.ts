@@ -826,7 +826,7 @@ async function handleSendMessage() {
 async function handleDeleteMessage(msgId) {
     if (!isAdmin) return;
     
-    const confirmDel = confirm(window.cp_translate("Are you absolutely sure you want to delete this message?"));
+    const confirmDel = await window.cpConfirm(window.cp_translate("Are you absolutely sure you want to delete this message?"), { danger: true });
     if (!confirmDel) return;
 
     try {

@@ -2417,7 +2417,10 @@ body.opacity-adjusting .zoom-controls-floating {
     font-size: 0.7rem;
     font-weight: 600;
     color: rgba(255, 255, 255, 0.7);
-    background: rgba(255, 255, 255, 0.05);
+    /* BUG FIX: headers are sticky siblings — a translucent background made the
+       previous header's text show through the next one while scrolling.
+       Use a fully OPAQUE background (theme color + light overlay) instead. */
+    background: linear-gradient(rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.06)), var(--bg-secondary, #0d0d18);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     cursor: pointer;
     user-select: none;
@@ -2427,7 +2430,7 @@ body.opacity-adjusting .zoom-controls-floating {
 }
 
 .tile-category-header:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)), var(--bg-secondary, #0d0d18);
 }
 
 .tile-category-header svg {

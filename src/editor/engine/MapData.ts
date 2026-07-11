@@ -332,54 +332,46 @@ export const MapDataMixin = {
         }
         // Handle mirroring
         if (this.mirrorVertical || this.mirrorHorizontal || this.mirrorDiagonal) {
-            // Calculate mirror positions first
-            const mirrorY = this.mapHeight - 1 - y;
-            const mirrorX = this.mapWidth - 1 - x;
-            // For 2x2 tiles, we need to adjust the mirror position
             const size = def.size || 1;
-            // Get mirrored tile ID (for jump pads)
+            // Root (top-left) coordinates of the mirrored footprint:
+            // rows [y, y+size-1] mirror to [H-size-y, H-1-y], so the root is H-size-y (same for columns)
+            const mY = this.mapHeight - size - y;
+            const mX = this.mapWidth - size - x;
+            // Get mirrored tile ID (for jump pads, payload rails, spawns etc.)
             const mirrorV = this.getMirroredTileId(id, 'vertical');
             const mirrorH = this.getMirroredTileId(id, 'horizontal');
             const mirrorD = this.getMirroredTileId(id, 'diagonal');
-            // Helper function to place a tile and its occupied spaces
+            // Helper: place a mirrored tile, overwriting whatever occupies the target cells
             const placeMirroredTile = (ty, tx, mid) => {
-                if (ty < 0 || ty >= this.mapHeight || tx < 0 || tx >= this.mapWidth)
+                // Full footprint must be inside the map
+                if (ty < 0 || tx < 0 || ty + size - 1 >= this.mapHeight || tx + size - 1 >= this.mapWidth)
                     return;
-                if (size === 2) {
-                    if (tx >= this.mapWidth - 1 || ty >= this.mapHeight - 1)
-                        return;
-                    // Check if any tiles are occupied
-                    for (let dy = 0; dy < 2; dy++) {
-                        for (let dx = 0; dx < 2; dx++) {
-                            if (this.tileGrid[targetLayer][ty + dy][tx + dx] !== 0)
-                                return;
-                        }
+                // Skip if the mirrored footprint overlaps the original tile (placement on/near the symmetry axis)
+                const overlaps = !(tx + size - 1 < x || tx > x + size - 1 || ty + size - 1 < y || ty > y + size - 1);
+                if (overlaps)
+                    return;
+                // Overwrite behavior: clear every occupied cell (resolving 2x2 roots/markers) so the mirror always lands
+                for (let dy = 0; dy < size; dy++) {
+                    for (let dx = 0; dx < size; dx++) {
+                        this.eraseTopmostAt(tx + dx, ty + dy);
                     }
-                    // BUG-05 fix: correct sub-cell IDs so findTopmostTileAt resolves them properly
-                    this.tileGrid[targetLayer][ty][tx] = mid;
+                }
+                this.tileGrid[targetLayer][ty][tx] = mid;
+                if (size === 2) {
+                    // Correct sub-cell IDs so findTopmostTileAt resolves them properly
                     this.tileGrid[targetLayer][ty][tx + 1] = -1;
                     this.tileGrid[targetLayer][ty + 1][tx] = -2;
                     this.tileGrid[targetLayer][ty + 1][tx + 1] = -3;
                 }
-                else {
-                    this.tileGrid[targetLayer][ty][tx] = mid;
-                }
             };
-            // Apply vertical mirroring - for 2x2 tiles, adjust by 1 tile back in rows
             if (this.mirrorVertical) {
-                const adjustedY = size === 2 ? mirrorY - 1 : mirrorY;
-                placeMirroredTile(adjustedY, x, mirrorV);
+                placeMirroredTile(mY, x, mirrorV);
             }
-            // Apply horizontal mirroring - for 2x2 tiles, adjust by 1 tile back in columns
             if (this.mirrorHorizontal) {
-                const adjustedX = size === 2 ? mirrorX - 1 : mirrorX;
-                placeMirroredTile(y, adjustedX, mirrorH);
+                placeMirroredTile(y, mX, mirrorH);
             }
-            // Apply diagonal mirroring - for 2x2 tiles, adjust by 1 tile back in both rows and columns
             if (this.mirrorDiagonal) {
-                const adjustedY = size === 2 ? mirrorY - 1 : mirrorY;
-                const adjustedX = size === 2 ? mirrorX - 1 : mirrorX;
-                placeMirroredTile(adjustedY, adjustedX, mirrorD);
+                placeMirroredTile(mY, mX, mirrorD);
             }
         }
         if (saveState) {
@@ -445,6 +437,37 @@ export const MapDataMixin = {
         }
         return tileId;
     },
+    // Low-level erase: removes the topmost tile covering (x, y) — root cell plus 2x2
+    // sub-cell markers — WITHOUT mirroring, history saving, redraws or broadcasts.
+    // Also cleans up orphaned 2x2 markers (-1/-2/-3) left behind by older bugs so
+    // "invisible" occupied cells never block future placements.
+    eraseTopmostAt(x, y) {
+        if (x < 0 || y < 0 || x >= this.mapWidth || y >= this.mapHeight)
+            return;
+        const found = this.findTopmostTileAt(x, y);
+        if (!found) {
+            // No resolvable tile here — clear stray sub-cell markers on all layers
+            for (let l = 0; l < this.layerCount; l++) {
+                if (this.tileGrid[l] && this.tileGrid[l][y] && this.tileGrid[l][y][x] < 0) {
+                    this.tileGrid[l][y][x] = 0;
+                }
+            }
+            return;
+        }
+        const { layerIndex, def, x: rootX, y: rootY } = found;
+        this.tileGrid[layerIndex][rootY][rootX] = 0;
+        if (this.tileAuthors && !this.isProcessingRemote) {
+            delete this.tileAuthors[`${rootY},${rootX}`];
+        }
+        if (def && def.size === 2) {
+            if (rootX + 1 < this.mapWidth)
+                this.tileGrid[layerIndex][rootY][rootX + 1] = 0;
+            if (rootY + 1 < this.mapHeight)
+                this.tileGrid[layerIndex][rootY + 1][rootX] = 0;
+            if (rootX + 1 < this.mapWidth && rootY + 1 < this.mapHeight)
+                this.tileGrid[layerIndex][rootY + 1][rootX + 1] = 0;
+        }
+    },
     eraseTile(x, y, saveState = true) {
         if (this.viewPanActive)
             return; // Critical blocker: block erase operations while panning
@@ -472,36 +495,29 @@ export const MapDataMixin = {
             if (rootX < this.mapWidth - 1 && rootY < this.mapHeight - 1)
                 this.tileGrid[layerIndex][rootY + 1][rootX + 1] = 0;
         }
-        // Handle mirroring for regular tiles
+        // Handle mirroring: erase the mirrored counterpart of the erased tile.
+        // Uses the ROOT of the erased tile (not the clicked cell) so clicking any
+        // cell of a 2x2 tile erases the mirror correctly, and resolves whatever tile
+        // actually occupies the mirror cells instead of blindly zeroing coordinates.
         if (this.mirrorVertical || this.mirrorHorizontal || this.mirrorDiagonal) {
-            const mirrorY = this.mapHeight - 1 - y;
-            const mirrorX = this.mapWidth - 1 - x;
-            // Find topmost tile at mirror position
-            const mirrorTopmost = this.findTopmostTileAt(mirrorX, mirrorY);
-            const mirrorLayer = mirrorTopmost ? mirrorTopmost.layerIndex : layerIndex;
-            if (this.mirrorVertical) {
-                if (def && def.size === 2) {
-                    this.tileGrid[mirrorLayer][mirrorY - 1][x] = 0;
-                    this.tileGrid[mirrorLayer][mirrorY - 1][x + 1] = 0;
-                    this.tileGrid[mirrorLayer][mirrorY][x + 1] = 0;
+            const size = def && def.size === 2 ? 2 : 1;
+            const mY = this.mapHeight - size - rootY;
+            const mX = this.mapWidth - size - rootX;
+            const eraseMirroredAt = (ty, tx) => {
+                for (let dy = 0; dy < size; dy++) {
+                    for (let dx = 0; dx < size; dx++) {
+                        this.eraseTopmostAt(tx + dx, ty + dy);
+                    }
                 }
-                this.tileGrid[mirrorLayer][mirrorY][x] = 0;
+            };
+            if (this.mirrorVertical) {
+                eraseMirroredAt(mY, rootX);
             }
             if (this.mirrorHorizontal) {
-                if (def && def.size === 2) {
-                    this.tileGrid[mirrorLayer][y + 1][mirrorX] = 0;
-                    this.tileGrid[mirrorLayer][y][mirrorX - 1] = 0;
-                    this.tileGrid[mirrorLayer][y + 1][mirrorX - 1] = 0;
-                }
-                this.tileGrid[mirrorLayer][y][mirrorX] = 0;
+                eraseMirroredAt(rootY, mX);
             }
             if (this.mirrorDiagonal) {
-                if (def && def.size === 2) {
-                    this.tileGrid[mirrorLayer][mirrorY - 1][mirrorX - 1] = 0;
-                    this.tileGrid[mirrorLayer][mirrorY - 1][mirrorX] = 0;
-                    this.tileGrid[mirrorLayer][mirrorY][mirrorX - 1] = 0;
-                }
-                this.tileGrid[mirrorLayer][mirrorY][mirrorX] = 0;
+                eraseMirroredAt(mY, mX);
             }
         }
         if (saveState) {
@@ -511,8 +527,8 @@ export const MapDataMixin = {
             this.broadcastMapUpdate({ type: 'erase', x, y });
         }
     },
-    clearMap(confirmed = false) {
-        if (confirmed || confirm('Are you sure you want to clear the map?')) {
+    async clearMap(confirmed = false) {
+        if (confirmed || await window.cpConfirm(window.cp_translate('Are you sure you want to clear the map?'), { danger: true })) {
             // Save state before making changes
             this.saveState();
             this.resetAllLayers();
@@ -674,7 +690,7 @@ export const MapDataMixin = {
         const newSize = this.mapSizes[size];
         if (!newSize)
             return;
-        if (!changing || this.undoStack.length === 0 || confirm('Changing map size will clear the current map. Continue?')) {
+        if (!changing || this.undoStack.length === 0 || await window.cpConfirm(window.cp_translate('Changing map size will clear the current map. Continue?'), { danger: true })) {
             this.mapSize = newSize;
             this.mapWidth = newSize.width;
             this.mapHeight = newSize.height;

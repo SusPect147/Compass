@@ -331,10 +331,10 @@ async function initView() {
             deleteBtn.style.display = 'inline-flex';
             deleteBtn.onclick = async () => {
                 const confirmMsg = "🚨 Are you SURE you want to PERMANENTLY delete this map? This cannot be undone!";
-                if (confirm(confirmMsg)) {
+                if (await window.cpConfirm(confirmMsg, { danger: true })) {
                     // Double confirm warning
                     const finalWarning = "⚠️ FINAL WARNING: Click OK to delete this map FOREVER from the server.";
-                    if (confirm(finalWarning)) {
+                    if (await window.cpConfirm(finalWarning, { danger: true })) {
                         try {
                             deleteBtn.disabled = true;
                             // Delete any existing likes on this map first to maintain relational integrity
@@ -348,7 +348,8 @@ async function initView() {
                             if (error)
                                 throw error;
                             alert(window.cp_translate("✅ Map deleted successfully!"));
-                            window.location.href = "./dashboard.html";
+                            // Small delay so the corner notification is visible before navigating away
+                            setTimeout(() => { window.location.href = "./dashboard.html"; }, 1200);
                         }
                         catch (deleteErr) {
                             console.error("Delete failed:", deleteErr);
@@ -898,7 +899,7 @@ async function initView() {
         async function handleDeleteComment(commentId) {
             if (!isAdmin)
                 return;
-            if (!confirm("Delete this comment?"))
+            if (!(await window.cpConfirm(window.cp_translate("Delete this comment?"), { danger: true })))
                 return;
             try {
                 const { error } = await supabase
@@ -1167,7 +1168,7 @@ async function initView() {
                     };
                     useBtn.onclick = async () => {
                         const confirmSwap = window.cp_translate("🔄 Are you sure you want to load this version as the primary map? Your current version will be archived below as a backup.");
-                        if (!confirm(confirmSwap))
+                        if (!(await window.cpConfirm(confirmSwap)))
                             return;
                         useBtn.disabled = true;
                         useBtn.textContent = '...';
@@ -1189,7 +1190,8 @@ async function initView() {
                             if (updErr)
                                 throw updErr;
                             alert(window.cp_translate("✅ Map successfully updated to selected version! Reloading..."));
-                            window.location.reload();
+                            // Small delay so the corner notification is visible before reloading
+                            setTimeout(() => window.location.reload(), 1200);
                         }
                         catch (err) {
                             console.error(err);
@@ -1200,7 +1202,7 @@ async function initView() {
                     };
                     delBtn.onclick = async () => {
                         const confirmDel = window.cp_translate("🗑️ Delete this suggestion permanently?");
-                        if (!confirm(confirmDel))
+                        if (!(await window.cpConfirm(confirmDel, { danger: true })))
                             return;
                         delBtn.disabled = true;
                         try {

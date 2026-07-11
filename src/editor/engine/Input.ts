@@ -276,6 +276,40 @@ export const InputMixin = {
         this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
         this.canvas.addEventListener('mouseleave', this.handleMouseLeave.bind(this));
         this.canvas.addEventListener('contextmenu', this.handleRightClick.bind(this));
+        // ── RMB HOLD-TO-PICK (anti-accident) ────────────────────────────
+        // Picking a tile with the right button now requires HOLDING it for
+        // ~0.45s without moving the mouse. A quick right click (or right-drag
+        // panning) no longer swaps the active brush by accident.
+        this.canvas.addEventListener('mousedown', (e) => {
+            if (e.button !== 2)
+                return;
+            if (this.replaceMode)
+                return; // Replace mode keeps its instant right-click behavior
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const pickEvent = e;
+            clearTimeout(this._rmbHoldTimer);
+            const cancel = () => {
+                clearTimeout(this._rmbHoldTimer);
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+            const onMove = (me) => {
+                // Any real movement = the user is panning, not picking
+                if (Math.abs(me.clientX - startX) > 4 || Math.abs(me.clientY - startY) > 4)
+                    cancel();
+            };
+            const onUp = (ue) => {
+                if (ue.button === 2)
+                    cancel();
+            };
+            this._rmbHoldTimer = setTimeout(() => {
+                cancel();
+                this.pickTileAtEvent(pickEvent);
+            }, this.rmbPickHoldMs ?? 450);
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
         this.canvas.addEventListener('dragstart', e => {
             e.preventDefault();
         });
@@ -468,8 +502,7 @@ export const InputMixin = {
     handleRightClick(event) {
         event.preventDefault();
 
-        // Right-click is used for panning вЂ” don't do tile actions during pan
-        // We only pick tile if not panning (panning is handled at editor level)
+        // Right-click is used for panning — don't do tile actions during pan
         const coords = this.getTileCoordinates(event);
         if (coords.x < 0 || coords.x >= this.mapWidth || coords.y < 0 || coords.y >= this.mapHeight) return;
 
@@ -477,7 +510,14 @@ export const InputMixin = {
             this.handleReplace(coords.x, coords.y);
             return;
         }
+        // NOTE: instant tile picking was moved to the RMB hold-to-pick handler
+        // (see setup: hold the right button ~0.45s to pick the tile under the cursor).
+    },
 
+    // Eyedropper: make the tile under the cursor the active brush
+    pickTileAtEvent(event) {
+        const coords = this.getTileCoordinates(event);
+        if (coords.x < 0 || coords.x >= this.mapWidth || coords.y < 0 || coords.y >= this.mapHeight) return;
         if (this.tileGrid[this.defaultTileLayer][coords.y][coords.x] < 1) return;
 
         this.activeToolBrush = { id: this.tileGrid[this.defaultTileLayer][coords.y][coords.x], ...this.tileDefinitions[this.tileGrid[this.defaultTileLayer][coords.y][coords.x]] };

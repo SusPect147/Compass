@@ -84,6 +84,7 @@ let currentCropMode = 'ghost';
 
 async function initCustomTiles() {
     initStudioControls();
+    initSlicePanel();
     initEquipControls();
     refreshEquippedBanner();
     await initUserData();
@@ -557,10 +558,10 @@ async function handleDeletePack(packId, packName, button) {
     if (!currentUserId) return;
 
     const confirmMsg = `🚨 Are you absolutely SURE you want to PERMANENTLY delete the tile pack "${packName}"?\nThis actions cannot be undone!`;
-    if (!confirm(confirmMsg)) return;
+    if (!(await window.cpConfirm(confirmMsg, { danger: true }))) return;
 
     const finalMsg = `⚠️ FINAL WARNING: Click OK to erase this pack and all its customized textures FOREVER.`;
-    if (!confirm(finalMsg)) return;
+    if (!(await window.cpConfirm(finalMsg, { danger: true }))) return;
 
     button.disabled = true;
     const orig = button.textContent;
@@ -678,27 +679,35 @@ let currentEditingPackData = {};
     resetStudio();
     currentEditingPackId = pack.id;
     currentEditingPackData = pack.tile_data || {};
-    
+
     const nameInput = document.getElementById('packNameInput') as HTMLInputElement;
     if (nameInput) nameInput.value = pack.name || '';
     const publicCheck = document.getElementById('packPublicCheck') as HTMLInputElement;
     if (publicCheck) publicCheck.checked = pack.is_public;
-    
-    // update grid with existing images
+
+    // Recreate variant tile cells ("Water 2" etc.) saved in this pack
     Object.keys(currentEditingPackData).forEach(key => {
-        const cell = document.querySelector(`.tile-edit-cell[data-id="${key}"]`);
-        if (cell) {
-            const img = cell.querySelector('.tile-cell-img') as HTMLImageElement;
-            if (img) img.src = (currentEditingPackData as any)[key];
-            cell.classList.add('customized');
-            if (!cell.querySelector('.customized-badge')) {
-                const b = document.createElement('div');
-                b.className = 'customized-badge';
-                cell.appendChild(b);
-            }
-        }
+        const sepIdx = key.lastIndexOf(VARIANT_SEP);
+        if (sepIdx === -1)
+            return;
+        const baseId = key.substring(0, sepIdx);
+        const n = key.substring(sepIdx + VARIANT_SEP.length);
+        const baseTile = CORE_TILES.find(t => t.id === baseId);
+        const label = baseTile
+            ? (baseId.startsWith('Water_') ? `Water ${n} · ${baseId.replace('Water_', '')}` : `${baseTile.label} ${n}`)
+            : `${baseId} ${n}`;
+        variantTiles.push({
+            id: key,
+            label,
+            src: baseTile ? baseTile.src : currentEditingPackData[key],
+            variantOf: baseId
+        });
     });
-    
+    if (variantTiles.length > 0)
+        renderStudioPresets();
+    // update grid with existing images
+    reapplyCustomizedMarks();
+
     document.getElementById('studioModal')?.classList.add('active');
 };
 
@@ -1228,6 +1237,20 @@ function resetStudio() {
     selectedTileKey = null;
     currentEditingPackId = null;
     currentEditingPackData = {};
+    // Reset slice panel state
+    sliceFragments.forEach(f => URL.revokeObjectURL(f.url));
+    sliceFragments = [];
+    selectedFragment = null;
+    variantTiles = [];
+    sliceSourceImg = null;
+    const fragGrid = document.getElementById('sliceFragmentsGrid');
+    if (fragGrid) fragGrid.innerHTML = '';
+    const choiceBox = document.getElementById('sliceChoice');
+    if (choiceBox) choiceBox.style.display = 'none';
+    const statusEl = document.getElementById('sliceStatus');
+    if (statusEl) statusEl.textContent = '';
+    document.getElementById('studioTileGrid')?.classList.remove('assign-mode');
+    document.getElementById('variantPickerPop')?.remove();
     const nameInput = document.getElementById('packNameInput') as HTMLInputElement;
     const publicCheck = document.getElementById('packPublicCheck') as HTMLInputElement;
     if (nameInput) nameInput.value = '';
@@ -1240,20 +1263,407 @@ function renderStudioPresets() {
     const grid = document.getElementById('studioTileGrid');
     if (!grid) return;
     grid.innerHTML = '';
-    CORE_TILES.forEach(tile => {
+    const buildCell = (tile, isVariant = false) => {
         const cell = document.createElement('div');
-        cell.className = 'tile-edit-cell';
+        cell.className = 'tile-edit-cell' + (isVariant ? ' variant-cell' : '');
         cell.setAttribute('data-id', tile.id);
         cell.innerHTML = `
             <img src="${tile.src}" class="tile-cell-img" alt="${tile.label}" data-no-theme="true">
             <span class="tile-cell-label">${tile.label}</span>
         `;
+        if (isVariant) {
+            const rm = document.createElement('button');
+            rm.className = 'variant-remove-btn';
+            rm.title = window.cp_translate('Remove variant');
+            rm.textContent = '✕';
+            rm.onclick = (e) => {
+                e.stopPropagation();
+                variantTiles = variantTiles.filter(v => v.id !== tile.id);
+                delete editedTileFiles[tile.id];
+                delete currentEditingPackData[tile.id];
+                renderStudioPresets();
+                reapplyCustomizedMarks();
+            };
+            cell.appendChild(rm);
+        }
         cell.onclick = () => {
+            // If a cut fragment is selected on the right — assign it to this tile.
+            if (selectedFragment) {
+                assignFragmentToTile(tile.id, cell);
+                return;
+            }
+            // Otherwise keep the classic behavior: pick a file and open the cropper.
             selectedTileKey = tile.id;
             document.getElementById('tileFileInput')?.click();
         };
         grid.appendChild(cell);
+    };
+    CORE_TILES.forEach(tile => buildCell(tile, false));
+    variantTiles.forEach(tile => buildCell(tile, true));
+}
+
+// Re-apply green "customized" marks after a grid re-render
+function reapplyCustomizedMarks() {
+    const marked = new Set([...Object.keys(currentEditingPackData), ...Object.keys(editedTileFiles)]);
+    marked.forEach(key => {
+        const cell = document.querySelector(`.tile-edit-cell[data-id="${key}"]`);
+        if (!cell)
+            return;
+        const img = cell.querySelector('.tile-cell-img');
+        if (img) {
+            if (editedTileFiles[key] instanceof Blob) {
+                img.src = URL.createObjectURL(editedTileFiles[key]);
+            }
+            else if (currentEditingPackData[key]) {
+                img.src = currentEditingPackData[key];
+            }
+        }
+        cell.classList.add('customized');
+        if (!cell.querySelector('.customized-badge')) {
+            const b = document.createElement('div');
+            b.className = 'customized-badge';
+            cell.appendChild(b);
+        }
     });
+}
+
+/* ==========================================
+   AUTO-SLICE PANEL (upload → cut → assign)
+   ========================================== */
+let selectedFragment = null; // { frag, cardEl }
+let sliceFragments = []; // [{ blob, url, w, h, assignedTo }]
+let variantTiles = []; // [{ id, label, src, variantOf }]
+let sliceSourceImg = null;
+
+function tr(key) {
+    return typeof window.cp_translate === 'function' ? window.cp_translate(key) : key;
+}
+
+function initSlicePanel() {
+    const uploadBtn = document.getElementById('sliceUploadBtn');
+    const sliceInput = document.getElementById('sliceFileInput');
+    const choiceBox = document.getElementById('sliceChoice');
+    const previewImg = document.getElementById('slicePreviewImg');
+    const autoBtn = document.getElementById('autoSliceBtn');
+    const manualBtn = document.getElementById('manualSliceBtn');
+    const statusEl = document.getElementById('sliceStatus');
+    const addVariantBtn = document.getElementById('addVariantTileBtn');
+    if (!uploadBtn || !sliceInput)
+        return;
+    // Localize static split-panel labels
+    document.querySelectorAll('#studioModal [data-i18n]').forEach(el => {
+        el.textContent = tr(el.getAttribute('data-i18n'));
+    });
+    uploadBtn.onclick = () => sliceInput.click();
+    sliceInput.onchange = (e) => {
+        const file = e.target.files?.[0];
+        sliceInput.value = '';
+        if (!file)
+            return;
+        if (file.size > 8 * 1024 * 1024) {
+            alert(tr('Original file size too large! Max limit 5MB for cropping.'));
+            return;
+        }
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+            sliceSourceImg = img;
+            if (previewImg)
+                previewImg.src = url;
+            if (choiceBox)
+                choiceBox.style.display = 'flex';
+            if (statusEl)
+                statusEl.textContent = `${img.naturalWidth}×${img.naturalHeight}px — ` + tr('choose how to cut the image');
+        };
+        img.onerror = () => alert(tr('Failed to load image.'));
+        img.src = url;
+    };
+    if (autoBtn) {
+        autoBtn.onclick = () => {
+            if (!sliceSourceImg)
+                return;
+            if (statusEl)
+                statusEl.textContent = tr('Slicing image…');
+            // Let the status paint before the heavy loop
+            setTimeout(() => {
+                try {
+                    const rects = autoSliceImage(sliceSourceImg);
+                    renderSliceFragments(rects);
+                    if (statusEl) {
+                        statusEl.textContent = rects.length
+                            ? `${tr('Fragments found:')} ${rects.length}. ${tr('Click a fragment, then click a tile on the left to assign it.')}`
+                            : tr('No fragments found — make sure the image has a transparent background.');
+                    }
+                }
+                catch (err) {
+                    console.error('[Compass] Auto-slice failed:', err);
+                    if (statusEl)
+                        statusEl.textContent = tr('Failed to slice the image.');
+                }
+            }, 30);
+        };
+    }
+    if (manualBtn) {
+        manualBtn.onclick = () => {
+            alert(tr('Manual cutting is coming soon! For now use auto-slice or the classic per-tile cropper.'));
+        };
+    }
+    if (addVariantBtn) {
+        addVariantBtn.onclick = openVariantPicker;
+    }
+}
+
+/**
+ * Cuts an image with a transparent background into fragments.
+ * Finds connected components of non-transparent pixels (8-connectivity,
+ * with a small gap tolerance so anti-aliased edges stay in one piece),
+ * then crops each component's bounding rectangle onto its own canvas.
+ */
+function autoSliceImage(img) {
+    const W = img.naturalWidth, H = img.naturalHeight;
+    const MAX_DIM = 4096;
+    if (W > MAX_DIM || H > MAX_DIM)
+        throw new Error('Image too large');
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0);
+    const data = ctx.getImageData(0, 0, W, H).data;
+    const ALPHA_MIN = 10; // pixels with alpha above this are "solid"
+    const GAP = 2; // bridge up to 2px transparent gaps (anti-aliasing)
+    const solid = (x, y) => data[(y * W + x) * 4 + 3] > ALPHA_MIN;
+    const visited = new Uint8Array(W * H);
+    const rects = [];
+    const stack = [];
+    for (let sy = 0; sy < H; sy++) {
+        for (let sx = 0; sx < W; sx++) {
+            const sIdx = sy * W + sx;
+            if (visited[sIdx] || !solid(sx, sy))
+                continue;
+            // BFS flood fill
+            let minX = sx, maxX = sx, minY = sy, maxY = sy, area = 0;
+            visited[sIdx] = 1;
+            stack.length = 0;
+            stack.push(sIdx);
+            while (stack.length) {
+                const idx = stack.pop();
+                const x = idx % W, y = (idx / W) | 0;
+                area++;
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+                for (let dy = -1 - GAP; dy <= 1 + GAP; dy++) {
+                    for (let dx = -1 - GAP; dx <= 1 + GAP; dx++) {
+                        if (!dx && !dy)
+                            continue;
+                        const nx = x + dx, ny = y + dy;
+                        if (nx < 0 || ny < 0 || nx >= W || ny >= H)
+                            continue;
+                        const nIdx = ny * W + nx;
+                        if (visited[nIdx] || !solid(nx, ny))
+                            continue;
+                        visited[nIdx] = 1;
+                        stack.push(nIdx);
+                    }
+                }
+            }
+            if (area >= 24) { // ignore stray specks
+                rects.push({ x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1, area });
+            }
+            if (rects.length > 256)
+                throw new Error('Too many fragments — is the background really transparent?');
+        }
+    }
+    // Merge rectangles that overlap each other (nested pieces of one tile)
+    let merged = true;
+    while (merged) {
+        merged = false;
+        outer: for (let i = 0; i < rects.length; i++) {
+            for (let j = i + 1; j < rects.length; j++) {
+                const a = rects[i], b = rects[j];
+                if (a.x <= b.x + b.w && b.x <= a.x + a.w && a.y <= b.y + b.h && b.y <= a.y + a.h) {
+                    const nx = Math.min(a.x, b.x), ny = Math.min(a.y, b.y);
+                    a.w = Math.max(a.x + a.w, b.x + b.w) - nx;
+                    a.h = Math.max(a.y + a.h, b.y + b.h) - ny;
+                    a.x = nx;
+                    a.y = ny;
+                    rects.splice(j, 1);
+                    merged = true;
+                    break outer;
+                }
+            }
+        }
+    }
+    // Sort reading-order: top-to-bottom rows, then left-to-right
+    rects.sort((a, b) => (Math.abs(a.y - b.y) > Math.min(a.h, b.h) / 2) ? a.y - b.y : a.x - b.x);
+    // Crop each rect to its own canvas
+    return rects.map(r => {
+        const c = document.createElement('canvas');
+        c.width = r.w;
+        c.height = r.h;
+        c.getContext('2d').drawImage(canvas, r.x, r.y, r.w, r.h, 0, 0, r.w, r.h);
+        return { canvas: c, w: r.w, h: r.h };
+    });
+}
+
+function renderSliceFragments(pieces) {
+    const grid = document.getElementById('sliceFragmentsGrid');
+    if (!grid)
+        return;
+    // Cleanup previous
+    sliceFragments.forEach(f => URL.revokeObjectURL(f.url));
+    sliceFragments = [];
+    selectedFragment = null;
+    document.getElementById('studioTileGrid')?.classList.remove('assign-mode');
+    grid.innerHTML = '';
+    pieces.forEach((piece) => {
+        piece.canvas.toBlob((blob) => {
+            if (!blob)
+                return;
+            const url = URL.createObjectURL(blob);
+            const frag = { blob, url, w: piece.w, h: piece.h, assignedTo: null, cardEl: null };
+            sliceFragments.push(frag);
+            const card = document.createElement('div');
+            card.className = 'slice-fragment-card';
+            card.innerHTML = `<img src="${url}" alt="fragment"><span class="frag-size">${piece.w}×${piece.h}</span>`;
+            card.onclick = () => {
+                const wasSelected = selectedFragment && selectedFragment.frag === frag;
+                grid.querySelectorAll('.slice-fragment-card').forEach(c => c.classList.remove('selected'));
+                if (wasSelected) {
+                    selectedFragment = null;
+                }
+                else {
+                    card.classList.add('selected');
+                    selectedFragment = { frag, cardEl: card };
+                }
+                document.getElementById('studioTileGrid')?.classList.toggle('assign-mode', !!selectedFragment);
+            };
+            frag.cardEl = card;
+            grid.appendChild(card);
+        }, 'image/png');
+    });
+}
+
+function assignFragmentToTile(tileId, cell) {
+    if (!selectedFragment)
+        return;
+    const { frag, cardEl } = selectedFragment;
+    editedTileFiles[tileId] = frag.blob;
+    frag.assignedTo = tileId;
+    // Update the tile cell preview + customized mark
+    const img = cell.querySelector('.tile-cell-img');
+    if (img)
+        img.src = frag.url;
+    cell.classList.add('customized');
+    if (!cell.querySelector('.customized-badge')) {
+        const b = document.createElement('div');
+        b.className = 'customized-badge';
+        cell.appendChild(b);
+    }
+    // Mark the fragment as used and clear the selection
+    cardEl.classList.remove('selected');
+    cardEl.classList.add('assigned');
+    selectedFragment = null;
+    document.getElementById('studioTileGrid')?.classList.remove('assign-mode');
+}
+
+/* ==========================================
+   VARIANT TILES ("Water 2", "Bush 2" …)
+   ========================================== */
+const VARIANT_SEP = '__v';
+
+// Base entries pickable as variants: every core tile, but the 47 water
+// edge textures act as ONE group ("Water") that expands automatically.
+function getVariantBases() {
+    const bases = CORE_TILES.filter(t => !t.id.startsWith('Water_')).map(t => ({ id: t.id, label: t.label, src: t.src, group: null }));
+    bases.push({ id: 'Water', label: 'Water', src: './Resources/Desert/Water/11111111.png', group: WATER_FILENAMES });
+    return bases;
+}
+
+function nextVariantNumber(baseId) {
+    let n = 2;
+    const taken = new Set(variantTiles.map(v => v.id));
+    const idFor = (num) => baseId + VARIANT_SEP + num;
+    while (taken.has(idFor(n)) || (baseId === 'Water' && taken.has(`Water_11111111${VARIANT_SEP}${n}`)))
+        n++;
+    return n;
+}
+
+function addVariantTile(base) {
+    const n = nextVariantNumber(base.id);
+    if (base.group) {
+        // Water: add the whole group — every edge texture gets its own variant cell
+        base.group.forEach(fname => {
+            const key = fname.replace('.png', '');
+            variantTiles.push({
+                id: `Water_${key}${VARIANT_SEP}${n}`,
+                label: `Water ${n} · ${key}`,
+                src: `./Resources/Desert/Water/${fname}`,
+                variantOf: `Water_${key}`
+            });
+        });
+    }
+    else {
+        variantTiles.push({
+            id: base.id + VARIANT_SEP + n,
+            label: `${base.label} ${n}`,
+            src: base.src,
+            variantOf: base.id
+        });
+    }
+    renderStudioPresets();
+    reapplyCustomizedMarks();
+    // Scroll the new cells into view
+    const firstNew = document.querySelector('.tile-edit-cell.variant-cell:last-child');
+    firstNew?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function openVariantPicker() {
+    // Lightweight picker popup anchored inside the studio modal
+    document.getElementById('variantPickerPop')?.remove();
+    const anchor = document.getElementById('addVariantTileBtn');
+    if (!anchor)
+        return;
+    const pop = document.createElement('div');
+    pop.id = 'variantPickerPop';
+    pop.style.cssText = `position: absolute; z-index: 50; width: 240px; max-height: 300px; overflow-y: auto;
+        background: linear-gradient(145deg, rgba(24,24,36,0.98), rgba(12,12,18,0.97));
+        border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 6px;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.6);`;
+    const rect = anchor.getBoundingClientRect();
+    const host = anchor.closest('.modal-container') || document.body;
+    const hostRect = host.getBoundingClientRect();
+    pop.style.left = Math.max(8, rect.left - hostRect.left - 60) + 'px';
+    pop.style.top = (rect.bottom - hostRect.top + 6) + 'px';
+    getVariantBases().forEach(base => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.style.cssText = `display:flex; align-items:center; gap:8px; width:100%; background:none;
+            border:none; color:rgba(255,255,255,0.85); padding:6px 8px; border-radius:8px;
+            cursor:pointer; font-size:0.78rem; text-align:left;`;
+        item.onmouseenter = () => item.style.background = 'rgba(0,210,255,0.1)';
+        item.onmouseleave = () => item.style.background = 'none';
+        const groupNote = base.group ? ` (${base.group.length})` : '';
+        item.innerHTML = `<img src="${base.src}" data-no-theme="true" style="width:22px;height:22px;object-fit:contain;"><span>${base.label}${groupNote}</span>`;
+        item.onclick = () => {
+            pop.remove();
+            addVariantTile(base);
+        };
+        pop.appendChild(item);
+    });
+    host.appendChild(pop);
+    // Close when clicking anywhere else
+    setTimeout(() => {
+        const closer = (e) => {
+            if (!pop.contains(e.target)) {
+                pop.remove();
+                document.removeEventListener('mousedown', closer);
+            }
+        };
+        document.addEventListener('mousedown', closer);
+    }, 0);
 }
 
 async function handleStudioSubmit() {

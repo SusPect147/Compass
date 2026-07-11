@@ -118,7 +118,7 @@
          TILES STUDIO MODAL
          ========================================== -->
     <div class="modal-overlay" id="studioModal">
-        <div class="modal-container">
+        <div class="modal-container studio-wide">
             <div class="studio-loader" id="studioLoader">
                 <div class="spinner"></div>
                 <div class="loader-text" id="loaderText">Uploading textures...</div>
@@ -136,15 +136,53 @@
                         placeholder="e.g. Cyberpunk Grid, Neon Retro, Lava Cave..." maxlength="40">
                 </div>
 
-                <div class="studio-input-group">
-                    <label>Select standard tiles to customize</label>
-                    <p style="font-size: 0.75rem; opacity: 0.5; margin-bottom: 1rem;">
-                        Click any item to replace it with an image from your device (.png/.jpg, max 1MB).
-                    </p>
+                <div class="studio-split">
+                    <!-- LEFT: standard tiles to assign textures to -->
+                    <div class="studio-split-left">
+                        <div class="studio-input-group" style="margin-bottom: 0;">
+                            <div class="split-left-head">
+                                <label style="margin-bottom: 0;">Select standard tiles to customize</label>
+                                <button type="button" class="add-variant-btn" id="addVariantTileBtn"
+                                    title="Add a second variant of a tile (e.g. Water 2)">＋ <span
+                                        data-i18n="Add tile">Add tile</span></button>
+                            </div>
+                            <p class="split-hint">
+                                Click a tile to replace it with an image from your device — or select a cut
+                                fragment on the right first, then click a tile to assign it.
+                            </p>
 
-                    <!-- Interactive Tile Settee -->
-                    <div class="studio-tile-grid" id="studioTileGrid">
-                        <!-- Rendered via JS -->
+                            <!-- Interactive Tile Settee -->
+                            <div class="studio-tile-grid" id="studioTileGrid">
+                                <!-- Rendered via JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: image upload + auto-slice fragments -->
+                    <div class="studio-split-right">
+                        <div class="split-right-head">
+                            <label>Texture source</label>
+                            <button type="button" class="upload-image-btn" id="sliceUploadBtn">
+                                🖼️ <span data-i18n="Upload image">Upload image</span>
+                            </button>
+                        </div>
+
+                        <!-- Choice: auto-slice or manual (shown after an image is uploaded) -->
+                        <div class="slice-choice" id="sliceChoice" style="display: none;">
+                            <div class="slice-preview-wrap">
+                                <img id="slicePreviewImg" alt="preview">
+                            </div>
+                            <button type="button" class="slice-choice-btn primary" id="autoSliceBtn">✂️ <span
+                                    data-i18n="Auto-slice tiles">Auto-slice tiles</span></button>
+                            <button type="button" class="slice-choice-btn" id="manualSliceBtn">🖐 <span
+                                    data-i18n="Cut manually (soon)">Cut manually (soon)</span></button>
+                        </div>
+
+                        <!-- Result cards -->
+                        <div class="slice-status" id="sliceStatus"></div>
+                        <div class="slice-fragments-grid" id="sliceFragmentsGrid">
+                            <!-- Fragment cards rendered via JS -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -299,6 +337,8 @@
 
     <!-- Invisible File Selector Widget -->
     <input type="file" id="tileFileInput" accept="image/*" style="display: none;">
+    <!-- Invisible file selector for the auto-slice source image -->
+    <input type="file" id="sliceFileInput" accept="image/png,image/webp" style="display: none;">
 
     <!-- Generic Disclaimer Footer Tooltip -->
     <div class="tooltip-floating">

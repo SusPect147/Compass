@@ -43,6 +43,12 @@ jobs:
       - name: Compile TypeScript Code Assets
         run: npm run build
 
+      # Cache busting: stamp every local js/css reference in the HTML files
+      # with the commit SHA, so users always load the freshly deployed code
+      # instead of a stale browser-cached version.
+      - name: Stamp Asset Versions (cache busting)
+        run: node scripts/stamp-assets.mjs "${{ github.sha }}"
+
       - name: Initialize Pages Configuration
         uses: actions/configure-pages@v4
 
